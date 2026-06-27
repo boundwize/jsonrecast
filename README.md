@@ -78,7 +78,6 @@ use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonPath;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonRemoval;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
-use Boundwize\JsonRecast\Value\JsonValue;
 
 use function count;
 
@@ -103,7 +102,7 @@ $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstr
         }
 
         if ($node instanceof ObjectNode && $path->matches(['autoload', 'psr-4'])) {
-            $node->set('Boundwize\\JsonRecast\\', JsonValue::from('src/'));
+            $node->set('Boundwize\\JsonRecast\\', new StringNode('src/'));
 
             return $node;
         }

@@ -13,7 +13,6 @@ use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonPath;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonRemoval;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
-use Boundwize\JsonRecast\Value\JsonValue;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -58,7 +57,7 @@ JSON;
                 }
 
                 if ($nodeJson instanceof ObjectNode && $nodeJsonPath->matches(['autoload', 'psr-4'])) {
-                    $nodeJson->set('Boundwize\\JsonRecast\\', JsonValue::from('src/'));
+                    $nodeJson->set('Boundwize\\JsonRecast\\', new StringNode('src/'));
 
                     return $nodeJson;
                 }

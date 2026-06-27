@@ -35,7 +35,7 @@ composer require boundwize/jsonrecast
 * Keep number representations like `1`, `1.0`, and `1e0`
 * Supports recursive objects and arrays
 * Tracks changes outside the AST
-* Designed for tooling, codemods, config updates, and automated refactoring
+* Designed for tooling, config updates, and automated refactoring
 
 ## Example
 

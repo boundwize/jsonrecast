@@ -45,7 +45,11 @@ final class JsonPreservingPrinterTest extends TestCase
         $objectNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '{}');
 
         $this->assertSame(
-            "{\n    \"name\": \"jsonrecast\"\n}",
+            <<<'JSON'
+{
+    "name": "jsonrecast"
+}
+JSON,
             (new JsonPreservingPrinter())->print($objectNode),
         );
     }

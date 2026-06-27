@@ -23,17 +23,35 @@ final class JsonPrinterTest extends TestCase
 {
     public function testItPreservesSpacingAroundColon(): void
     {
-        $source = "{\n    \"name\"   :   \"old\"\n}";
+        $source = <<<'JSON'
+{
+    "name"   :   "old"
+}
+JSON;
 
-        $this->assertSame("{\n    \"name\"   :   \"new\"\n}", $this->replaceStringValue($source, 'old', 'new'));
+        $this->assertSame(<<<'JSON'
+{
+    "name"   :   "new"
+}
+JSON, $this->replaceStringValue($source, 'old', 'new'));
     }
 
     public function testItPreservesUnmodifiedObjectItem(): void
     {
-        $source = "{\n    \"name\"   :   \"old\",\n    \"type\"   :   \"library\"\n}";
+        $source = <<<'JSON'
+{
+    "name"   :   "old",
+    "type"   :   "library"
+}
+JSON;
 
         $this->assertSame(
-            "{\n    \"name\"   :   \"new\",\n    \"type\"   :   \"library\"\n}",
+            <<<'JSON'
+{
+    "name"   :   "new",
+    "type"   :   "library"
+}
+JSON,
             $this->replaceStringValue($source, 'old', 'new'),
         );
     }
@@ -61,136 +79,220 @@ final class JsonPrinterTest extends TestCase
 
     public function testItPreservesArrayFormatting(): void
     {
-        $source = "[\n    \"old\",\n    \"keep\"\n]";
+        $source = <<<'JSON'
+[
+    "old",
+    "keep"
+]
+JSON;
 
-        $this->assertSame("[\n    \"new\",\n    \"keep\"\n]", $this->replaceStringValue($source, 'old', 'new'));
+        $this->assertSame(<<<'JSON'
+[
+    "new",
+    "keep"
+]
+JSON, $this->replaceStringValue($source, 'old', 'new'));
     }
 
     public function testItPreservesRecursiveObjectFormatting(): void
     {
-        $source = "{\n"
-            . "    \"autoload\": {\n"
-            . "        \"psr-4\": {\n"
-            . "            \"App\\\\\": \"./\"\n"
-            . "        }\n"
-            . "    },\n"
-            . "    \"type\": \"library\"\n"
-            . '}';
+        $source = <<<'JSON'
+{
+    "autoload": {
+        "psr-4": {
+            "App\\": "./"
+        }
+    },
+    "type": "library"
+}
+JSON;
 
-        $this->assertSame("{\n"
-            . "    \"autoload\": {\n"
-            . "        \"psr-4\": {\n"
-            . "            \"App\\\\\": \"src/\"\n"
-            . "        }\n"
-            . "    },\n"
-            . "    \"type\": \"library\"\n"
-            . '}', $this->replaceStringValue($source, './', 'src/'));
+        $this->assertSame(<<<'JSON'
+{
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "type": "library"
+}
+JSON, $this->replaceStringValue($source, './', 'src/'));
     }
 
     public function testItPreservesRecursiveArrayFormatting(): void
     {
-        $source = "[\n    [\n        [\n            \"old\"\n        ]\n    ],\n    \"keep\"\n]";
+        $source = <<<'JSON'
+[
+    [
+        [
+            "old"
+        ]
+    ],
+    "keep"
+]
+JSON;
 
         $this->assertSame(
-            "[\n    [\n        [\n            \"new\"\n        ]\n    ],\n    \"keep\"\n]",
+            <<<'JSON'
+[
+    [
+        [
+            "new"
+        ]
+    ],
+    "keep"
+]
+JSON,
             $this->replaceStringValue($source, 'old', 'new'),
         );
     }
 
     public function testItPreservesMixedRecursiveFormatting(): void
     {
-        $source = "{\n"
-            . "    \"items\": [\n"
-            . "        {\n"
-            . "            \"name\" : \"old\"\n"
-            . "        }\n"
-            . "    ],\n"
-            . "    \"type\": \"library\"\n"
-            . '}';
+        $source = <<<'JSON'
+{
+    "items": [
+        {
+            "name" : "old"
+        }
+    ],
+    "type": "library"
+}
+JSON;
 
-        $this->assertSame("{\n"
-            . "    \"items\": [\n"
-            . "        {\n"
-            . "            \"name\" : \"new\"\n"
-            . "        }\n"
-            . "    ],\n"
-            . "    \"type\": \"library\"\n"
-            . '}', $this->replaceStringValue($source, 'old', 'new'));
+        $this->assertSame(<<<'JSON'
+{
+    "items": [
+        {
+            "name" : "new"
+        }
+    ],
+    "type": "library"
+}
+JSON, $this->replaceStringValue($source, 'old', 'new'));
     }
 
     public function testItPreservesAddObjectItemBestEffort(): void
     {
-        $source = "{\n    \"name\": \"boundwize/jsonrecast\"\n}";
+        $source = <<<'JSON'
+{
+    "name": "boundwize/jsonrecast"
+}
+JSON;
 
         $this->assertSame(
-            "{\n    \"name\": \"boundwize/jsonrecast\",\n    \"license\": \"MIT\"\n}",
+            <<<'JSON'
+{
+    "name": "boundwize/jsonrecast",
+    "license": "MIT"
+}
+JSON,
             $this->addObjectItem($source),
         );
     }
 
     public function testItPreservesRemoveObjectItemBestEffort(): void
     {
-        $source = "{\n    \"name\": \"boundwize/jsonrecast\",\n    \"minimum-stability\": \"dev\"\n}";
+        $source = <<<'JSON'
+{
+    "name": "boundwize/jsonrecast",
+    "minimum-stability": "dev"
+}
+JSON;
 
         $this->assertSame(
-            "{\n    \"name\": \"boundwize/jsonrecast\"\n}",
+            <<<'JSON'
+{
+    "name": "boundwize/jsonrecast"
+}
+JSON,
             $this->removeObjectItem($source, 'minimum-stability'),
         );
     }
 
     public function testItRemovesEmptyStringObjectKey(): void
     {
-        $source = "{\n"
-            . "    \"autoload\": {\n"
-            . "        \"psr-4\": {\n"
-            . "            \"\": \"./\"\n"
-            . "        }\n"
-            . "    }\n"
-            . '}';
+        $source = <<<'JSON'
+{
+    "autoload": {
+        "psr-4": {
+            "": "./"
+        }
+    }
+}
+JSON;
 
-        $this->assertSame("{\n"
-            . "    \"autoload\": {\n"
-            . "        \"psr-4\": {\n"
-            . "        }\n"
-            . "    }\n"
-            . '}', $this->removeObjectItem($source, ''));
+        $this->assertSame(<<<'JSON'
+{
+    "autoload": {
+        "psr-4": {
+        }
+    }
+}
+JSON, $this->removeObjectItem($source, ''));
     }
 
     public function testItPreservesAddArrayItemBestEffort(): void
     {
-        $source = "[\n    \"json\"\n]";
+        $source = <<<'JSON'
+[
+    "json"
+]
+JSON;
 
-        $this->assertSame("[\n    \"json\",\n    \"ast\"\n]", $this->appendArrayItem($source));
+        $this->assertSame(<<<'JSON'
+[
+    "json",
+    "ast"
+]
+JSON, $this->appendArrayItem($source));
     }
 
     public function testItPreservesRemoveArrayItemBestEffort(): void
     {
-        $source = "[\n    \"json\",\n    \"temporary\"\n]";
+        $source = <<<'JSON'
+[
+    "json",
+    "temporary"
+]
+JSON;
 
-        $this->assertSame("[\n    \"json\"\n]", $this->removeArrayItem($source, 'temporary'));
+        $this->assertSame(<<<'JSON'
+[
+    "json"
+]
+JSON, $this->removeArrayItem($source, 'temporary'));
     }
 
     public function testItRemovesOnlyClassmapArrayItem(): void
     {
-        $source = "{\n"
-            . "    \"autoload-dev\": {\n"
-            . "        \"classmap\": [\n"
-            . "            \"tests/Fixtures/App\"\n"
-            . "        ]\n"
-            . "    }\n"
-            . '}';
+        $source = <<<'JSON'
+{
+    "autoload-dev": {
+        "classmap": [
+            "tests/Fixtures/App"
+        ]
+    }
+}
+JSON;
 
-        $this->assertSame("{\n"
-            . "    \"autoload-dev\": {\n"
-            . "        \"classmap\": [\n"
-            . "        ]\n"
-            . "    }\n"
-            . '}', $this->removeArrayItem($source, 'tests/Fixtures/App'));
+        $this->assertSame(<<<'JSON'
+{
+    "autoload-dev": {
+        "classmap": [
+        ]
+    }
+}
+JSON, $this->removeArrayItem($source, 'tests/Fixtures/App'));
     }
 
     public function testItPrintsUnchangedDocumentWithoutChangeSet(): void
     {
-        $source       = "{\n    \"name\": \"boundwize/jsonrecast\"\n}";
+        $source       = <<<'JSON'
+{
+    "name": "boundwize/jsonrecast"
+}
+JSON;
         $jsonDocument = (new JsonParser())->parse($source);
 
         $this->assertSame($source, (new JsonPreservingPrinter())->print($jsonDocument));

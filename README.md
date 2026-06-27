@@ -47,26 +47,147 @@ composer require boundwize/jsonrecast
 
 ## Example
 
+Given this JSON:
+
+```json
+{
+    "name": "acme/demo",
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "autoload-dev": {
+        "classmap": [
+            "tests/Fixtures/App"
+        ]
+    },
+    "minimum-stability": "dev"
+}
+```
+
+You can edit `name`, add a PSR-4 namespace, and delete stale object or array data in one traversal:
+
 ```php
 use Boundwize\JsonRecast\JsonRecast;
+use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\NodeJson;
+use Boundwize\JsonRecast\Node\ObjectItemNode;
+use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonPath;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonRemoval;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
+use Boundwize\JsonRecast\Value\JsonValue;
+
+use function count;
 
 $document = JsonRecast::parse($json);
 
 $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstract {
     public function enterNode(NodeJson $node, NodeJsonPath $path): null|NodeJson|NodeJsonRemoval
     {
-        if (! $node instanceof StringNode || ! $path->isObjectValue('name')) {
-            return null;
+        if (
+            $node instanceof ObjectItemNode
+            && $path->isRoot()
+        ) {
+            if ($node->key->value === 'name') {
+                $node->value = new StringNode('boundwize/jsonrecast');
+
+                return $node;
+            }
+
+            if ($node->key->value === 'minimum-stability') {
+                return NodeJsonRemoval::remove();
+            }
         }
 
-        return new StringNode('boundwize/jsonrecast');
+        if ($node instanceof ObjectNode && $path->matches(['autoload', 'psr-4'])) {
+            $node->set('Boundwize\\JsonRecast\\', JsonValue::from('src/'));
+
+            return $node;
+        }
+
+        if ($node instanceof ArrayNode && $path->matches(['autoload-dev', 'classmap'])) {
+            $removed = false;
+
+            for ($i = count($node->items) - 1; $i >= 0; $i--) {
+                $item = $node->items[$i];
+
+                if (! $item->value instanceof StringNode || $item->value->value !== 'tests/Fixtures/App') {
+                    continue;
+                }
+
+                $node->removeAt($i);
+                $removed = true;
+            }
+
+            return $removed ? $node : null;
+        }
+
+        return null;
     }
 });
 
 echo JsonRecast::print($result);
+```
+
+The printed JSON keeps the surrounding formatting and only rewrites the changed pieces:
+
+```json
+{
+    "name": "boundwize/jsonrecast",
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Boundwize\\JsonRecast\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "classmap": [
+        ]
+    }
+}
+```
+
+Use `leaveNode()` when a parent decision depends on child nodes that may already have changed. For example, after the `classmap` array item is removed, you can remove the now-empty root `autoload-dev` item:
+
+```php
+public function leaveNode(NodeJson $node, NodeJsonPath $path): ?NodeJsonRemoval
+{
+    if (
+        ! $node instanceof ObjectItemNode
+        || ! $path->isRoot()
+        || $node->key->value !== 'autoload-dev'
+        || ! $node->value instanceof ObjectNode
+    ) {
+        return null;
+    }
+
+    $classmapItem = $node->value->get('classmap');
+
+    if (
+        ! $classmapItem instanceof ObjectItemNode
+        || ! $classmapItem->value instanceof ArrayNode
+        || $classmapItem->value->items !== []
+    ) {
+        return null;
+    }
+
+    return NodeJsonRemoval::remove();
+}
+```
+
+With that hook added, the printed JSON becomes:
+
+```json
+{
+    "name": "boundwize/jsonrecast",
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Boundwize\\JsonRecast\\": "src/"
+        }
+    }
+}
 ```

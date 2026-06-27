@@ -173,7 +173,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     private function printArrayBestEffort(ArrayNode $arrayNode, PrintContext $printContext): string
     {
         if ($arrayNode->items === []) {
-            return '[]';
+            return $this->printEmptyArray($arrayNode);
         }
 
         $output = '[';
@@ -189,6 +189,15 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         }
 
         return $output . $printContext->newline . $printContext->indentation() . ']';
+    }
+
+    private function printEmptyArray(ArrayNode $arrayNode): string
+    {
+        if ($arrayNode->beforeCloseBracket !== '') {
+            return '[' . $arrayNode->beforeCloseBracket . ']';
+        }
+
+        return '[]';
     }
 
     private function printArrayItemPreserving(ArrayItemNode $arrayItemNode, PrintContext $printContext): string

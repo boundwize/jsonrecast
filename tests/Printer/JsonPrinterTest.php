@@ -170,6 +170,24 @@ final class JsonPrinterTest extends TestCase
         $this->assertSame("[\n    \"json\"\n]", $this->removeArrayItem($source, 'temporary'));
     }
 
+    public function testItRemovesOnlyClassmapArrayItem(): void
+    {
+        $source = "{\n"
+            . "    \"autoload-dev\": {\n"
+            . "        \"classmap\": [\n"
+            . "            \"tests/Fixtures/App\"\n"
+            . "        ]\n"
+            . "    }\n"
+            . '}';
+
+        $this->assertSame("{\n"
+            . "    \"autoload-dev\": {\n"
+            . "        \"classmap\": [\n"
+            . "        ]\n"
+            . "    }\n"
+            . '}', $this->removeArrayItem($source, 'tests/Fixtures/App'));
+    }
+
     public function testItPrintsUnchangedDocumentWithoutChangeSet(): void
     {
         $source       = "{\n    \"name\": \"boundwize/jsonrecast\"\n}";

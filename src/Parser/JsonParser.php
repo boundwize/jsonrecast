@@ -203,8 +203,8 @@ final class JsonParser
 
     private function parseNumber(): NumberNode
     {
-        $token = $this->consume(TokenType::Number);
-        $numberNode  = new NumberNode($token->text);
+        $token      = $this->consume(TokenType::Number);
+        $numberNode = new NumberNode($token->text);
         $this->setSourceMetadata($numberNode, $token->startOffset, $token->endOffset);
 
         return $numberNode;
@@ -212,8 +212,8 @@ final class JsonParser
 
     private function parseTrue(): BooleanNode
     {
-        $token = $this->consume(TokenType::True);
-        $booleanNode  = new BooleanNode(true);
+        $token       = $this->consume(TokenType::True);
+        $booleanNode = new BooleanNode(true);
         $this->setSourceMetadata($booleanNode, $token->startOffset, $token->endOffset);
 
         return $booleanNode;
@@ -221,8 +221,8 @@ final class JsonParser
 
     private function parseFalse(): BooleanNode
     {
-        $token = $this->consume(TokenType::False);
-        $booleanNode  = new BooleanNode(false);
+        $token       = $this->consume(TokenType::False);
+        $booleanNode = new BooleanNode(false);
         $this->setSourceMetadata($booleanNode, $token->startOffset, $token->endOffset);
 
         return $booleanNode;
@@ -230,8 +230,8 @@ final class JsonParser
 
     private function parseNull(): NullNode
     {
-        $token = $this->consume(TokenType::Null);
-        $nullNode  = new NullNode();
+        $token    = $this->consume(TokenType::Null);
+        $nullNode = new NullNode();
         $this->setSourceMetadata($nullNode, $token->startOffset, $token->endOffset);
 
         return $nullNode;

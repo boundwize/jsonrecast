@@ -142,7 +142,7 @@ final class JsonPrinterTest extends TestCase
 
     public function testItPrintsUnchangedDocumentWithoutChangeSet(): void
     {
-        $source   = "{\n    \"name\": \"boundwize/jsonrecast\"\n}";
+        $source       = "{\n    \"name\": \"boundwize/jsonrecast\"\n}";
         $jsonDocument = (new JsonParser())->parse($source);
 
         $this->assertSame($source, (new JsonPreservingPrinter())->print($jsonDocument));

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Tests\NodeVisitor;
 
-use Boundwize\JsonRecast\NodeVisitor\NodeJsonPathSegment;
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
@@ -13,6 +12,7 @@ use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonPath;
+use Boundwize\JsonRecast\NodeVisitor\NodeJsonPathSegment;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonRemoval;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonTraversalResult;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonTraverser;
@@ -42,7 +42,7 @@ final class NodeJsonTraverserTest extends TestCase
     public function testReturnedReplacementNodeIsRecordedAsChanged(): void
     {
         $jsonDocument = (new JsonParser())->parse('{"name":"old"}');
-        $visitor  = new class extends NodeJsonVisitorAbstract {
+        $visitor      = new class extends NodeJsonVisitorAbstract {
             public ?StringNode $replacement = null;
 
             public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
@@ -176,7 +176,7 @@ final class NodeJsonTraverserTest extends TestCase
     public function testItPassesPathToObjectValue(): void
     {
         $jsonDocument = (new JsonParser())->parse('{"name":"old"}');
-        $visitor  = new class extends NodeJsonVisitorAbstract {
+        $visitor      = new class extends NodeJsonVisitorAbstract {
             public bool $sawNameValue = false;
 
             public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
@@ -197,7 +197,7 @@ final class NodeJsonTraverserTest extends TestCase
     public function testItPassesPathToArrayValue(): void
     {
         $jsonDocument = (new JsonParser())->parse('["a", "b"]');
-        $visitor  = new class extends NodeJsonVisitorAbstract {
+        $visitor      = new class extends NodeJsonVisitorAbstract {
             /** @var list<int> */
             public array $indexes = [];
 
@@ -226,7 +226,7 @@ final class NodeJsonTraverserTest extends TestCase
     public function testItPassesNestedMixedPath(): void
     {
         $jsonDocument = (new JsonParser())->parse('{"items":[{"name":"first"}]}');
-        $visitor  = new class extends NodeJsonVisitorAbstract {
+        $visitor      = new class extends NodeJsonVisitorAbstract {
             public bool $sawPath = false;
 
             public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
@@ -393,7 +393,7 @@ final class NodeJsonTraverserTest extends TestCase
      */
     private function mutateRootObject(string $source, callable $mutation): NodeJsonTraversalResult
     {
-        $mutation = Closure::fromCallable($mutation);
+        $mutation     = Closure::fromCallable($mutation);
         $jsonDocument = (new JsonParser())->parse($source);
 
         return $this->traverse($jsonDocument, new class ($mutation) extends NodeJsonVisitorAbstract {
@@ -420,7 +420,7 @@ final class NodeJsonTraverserTest extends TestCase
      */
     private function mutateRootArray(string $source, callable $mutation): NodeJsonTraversalResult
     {
-        $mutation = Closure::fromCallable($mutation);
+        $mutation     = Closure::fromCallable($mutation);
         $jsonDocument = (new JsonParser())->parse($source);
 
         return $this->traverse($jsonDocument, new class ($mutation) extends NodeJsonVisitorAbstract {

@@ -6,15 +6,15 @@ namespace Boundwize\JsonRecast\Attribute;
 
 final class NodeAttributes
 {
-    public const START_OFFSET     = 'startOffset';
+    public const START_OFFSET = 'startOffset';
 
-    public const END_OFFSET       = 'endOffset';
+    public const END_OFFSET = 'endOffset';
 
-    public const ORIGINAL_TEXT    = 'originalText';
+    public const ORIGINAL_TEXT = 'originalText';
 
-    public const SOURCE           = 'source';
+    public const SOURCE = 'source';
 
-    public const NEWLINE          = 'newline';
+    public const NEWLINE = 'newline';
 
     public const TRAILING_NEWLINE = 'trailingNewline';
 

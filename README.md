@@ -2,7 +2,21 @@
 
 A PHP JSON parser that turns JSON into an editable AST, supports visitor-based traversal, and prints changes back while preserving the original formatting.
 
-Inspired by PHP-Parser, built for tools that need to modify JSON files safely.
+Inspired by [PHP-Parser](https://github.com/nikic/PHP-Parser/), built for tools that need to modify JSON files safely.
+
+JsonRecast is optimized for safely changing files. It keeps the original structure and formatting where possible, so automated tools can modify JSON without creating noisy diffs.
+
+The AST stays clean. Change metadata lives in the traversal result.
+
+[![Latest Version](https://img.shields.io/github/release/boundwize/jsonrecast.svg?style=flat-square)](https://github.com/boundwize/jsonrecast/releases)
+[![ci build](https://github.com/boundwize/jsonrecast/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/boundwize/jsonrecast/actions/workflows/ci.yml)
+[![Code Coverage](https://codecov.io/gh/boundwize/jsonrecast/branch/main/graph/badge.svg)](https://codecov.io/gh/boundwize/jsonrecast)
+[![PHPStan](https://img.shields.io/badge/style-level%20max-brightgreen.svg?style=flat-square&label=phpstan)](https://github.com/phpstan/phpstan)
+[![Downloads](https://poser.pugx.org/boundwize/jsonrecast/downloads)](https://packagist.org/packages/boundwize/jsonrecast)
+
+![Windows](https://img.shields.io/badge/Windows-supported-0078D6?logo=windows&logoColor=white&labelColor=555555)
+![macOS](https://img.shields.io/badge/macOS-supported-C084FC?logo=apple&logoColor=white&labelColor=555555)
+![Linux](https://img.shields.io/badge/Linux-supported-FCC624?logo=linux&logoColor=black&labelColor=555555)
 
 ## Installation
 
@@ -48,15 +62,3 @@ $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstr
 
 echo JsonRecast::print($result);
 ```
-
-## Philosophy
-
-Most JSON libraries are optimized for reading data.
-
-JsonRecast is optimized for safely changing files. It keeps the original structure and formatting where possible, so automated tools can modify JSON without creating noisy diffs.
-
-The AST stays clean. Change metadata lives in the traversal result.
-
-## License
-
-JsonRecast is released under the [MIT License](LICENSE).

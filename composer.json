@@ -5,7 +5,6 @@
         "json",
         "ast",
         "parser",
-        "codemod",
         "refactoring",
         "formatting"
     ],

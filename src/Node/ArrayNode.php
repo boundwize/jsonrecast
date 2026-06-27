@@ -19,14 +19,14 @@ final class ArrayNode extends AbstractNodeJson
     ) {
     }
 
-    public function append(NodeJson $value): void
+    public function append(NodeJson $nodeJson): void
     {
-        $this->items[] = new ArrayItemNode($value);
+        $this->items[] = new ArrayItemNode($nodeJson);
     }
 
-    public function insert(int $index, NodeJson $value): void
+    public function insert(int $index, NodeJson $nodeJson): void
     {
-        array_splice($this->items, $index, 0, [new ArrayItemNode($value)]);
+        array_splice($this->items, $index, 0, [new ArrayItemNode($nodeJson)]);
     }
 
     public function removeAt(int $index): bool

@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\NodeVisitor;
 
-final class NodeJsonPathSegment
+final readonly class NodeJsonPathSegment
 {
     private const OBJECT_KEY = 'objectKey';
 
     private const ARRAY_INDEX = 'arrayIndex';
 
     private function __construct(
-        private readonly string $type,
-        public readonly string|int $value,
+        private string $type,
+        public string|int $value,
     ) {
     }
 

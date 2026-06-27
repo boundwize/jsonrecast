@@ -17,16 +17,16 @@ final class JsonValueTest extends TestCase
 {
     public function testItCreatesScalarNodes(): void
     {
-        self::assertInstanceOf(StringNode::class, JsonValue::from('json'));
-        self::assertInstanceOf(NumberNode::class, JsonValue::from(1));
-        self::assertInstanceOf(NumberNode::class, JsonValue::from(1.5));
-        self::assertInstanceOf(BooleanNode::class, JsonValue::from(true));
-        self::assertInstanceOf(NullNode::class, JsonValue::from(null));
+        $this->assertInstanceOf(StringNode::class, JsonValue::from('json'));
+        $this->assertInstanceOf(NumberNode::class, JsonValue::from(1));
+        $this->assertInstanceOf(NumberNode::class, JsonValue::from(1.5));
+        $this->assertInstanceOf(BooleanNode::class, JsonValue::from(true));
+        $this->assertInstanceOf(NullNode::class, JsonValue::from(null));
     }
 
     public function testJsonValueCreatesRecursiveObject(): void
     {
-        $node = JsonValue::from([
+        $nodeJson = JsonValue::from([
             'autoload' => [
                 'psr-4' => [
                     'App\\' => 'src/',
@@ -34,30 +34,30 @@ final class JsonValueTest extends TestCase
             ],
         ]);
 
-        self::assertInstanceOf(ObjectNode::class, $node);
-        self::assertSame('autoload', $node->items[0]->key->value);
+        $this->assertInstanceOf(ObjectNode::class, $nodeJson);
+        $this->assertSame('autoload', $nodeJson->items[0]->key->value);
 
-        $autoload = $node->items[0]->value;
-        self::assertInstanceOf(ObjectNode::class, $autoload);
-        self::assertSame('psr-4', $autoload->items[0]->key->value);
+        $autoload = $nodeJson->items[0]->value;
+        $this->assertInstanceOf(ObjectNode::class, $autoload);
+        $this->assertSame('psr-4', $autoload->items[0]->key->value);
 
         $psr4 = $autoload->items[0]->value;
-        self::assertInstanceOf(ObjectNode::class, $psr4);
-        self::assertSame('App\\', $psr4->items[0]->key->value);
-        self::assertInstanceOf(StringNode::class, $psr4->items[0]->value);
-        self::assertSame('src/', $psr4->items[0]->value->value);
+        $this->assertInstanceOf(ObjectNode::class, $psr4);
+        $this->assertSame('App\\', $psr4->items[0]->key->value);
+        $this->assertInstanceOf(StringNode::class, $psr4->items[0]->value);
+        $this->assertSame('src/', $psr4->items[0]->value->value);
     }
 
     public function testJsonValueCreatesRecursiveArray(): void
     {
-        $node = JsonValue::from([
+        $nodeJson = JsonValue::from([
             ['json'],
         ]);
 
-        self::assertInstanceOf(ArrayNode::class, $node);
-        $nested = $node->items[0]->value;
-        self::assertInstanceOf(ArrayNode::class, $nested);
-        self::assertInstanceOf(StringNode::class, $nested->items[0]->value);
-        self::assertSame('json', $nested->items[0]->value->value);
+        $this->assertInstanceOf(ArrayNode::class, $nodeJson);
+        $nested = $nodeJson->items[0]->value;
+        $this->assertInstanceOf(ArrayNode::class, $nested);
+        $this->assertInstanceOf(StringNode::class, $nested->items[0]->value);
+        $this->assertSame('json', $nested->items[0]->value->value);
     }
 }

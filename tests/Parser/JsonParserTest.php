@@ -17,87 +17,87 @@ final class JsonParserTest extends TestCase
 {
     public function testItParsesString(): void
     {
-        $document = (new JsonParser())->parse('"hello"');
+        $jsonDocument = (new JsonParser())->parse('"hello"');
 
-        self::assertInstanceOf(StringNode::class, $document->value);
-        self::assertSame('hello', $document->value->value);
+        $this->assertInstanceOf(StringNode::class, $jsonDocument->value);
+        $this->assertSame('hello', $jsonDocument->value->value);
     }
 
     public function testItParsesNumberWithRawValue(): void
     {
-        $document = (new JsonParser())->parse('1.0');
+        $jsonDocument = (new JsonParser())->parse('1.0');
 
-        self::assertInstanceOf(NumberNode::class, $document->value);
-        self::assertSame('1.0', $document->value->rawValue);
+        $this->assertInstanceOf(NumberNode::class, $jsonDocument->value);
+        $this->assertSame('1.0', $jsonDocument->value->rawValue);
     }
 
     public function testItParsesObject(): void
     {
-        $document = (new JsonParser())->parse('{"name":"boundwize"}');
+        $jsonDocument = (new JsonParser())->parse('{"name":"boundwize"}');
 
-        self::assertInstanceOf(ObjectNode::class, $document->value);
-        self::assertCount(1, $document->value->items);
-        self::assertSame('name', $document->value->items[0]->key->value);
-        self::assertInstanceOf(StringNode::class, $document->value->items[0]->value);
-        self::assertSame('boundwize', $document->value->items[0]->value->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+        $this->assertCount(1, $jsonDocument->value->items);
+        $this->assertSame('name', $jsonDocument->value->items[0]->key->value);
+        $this->assertInstanceOf(StringNode::class, $jsonDocument->value->items[0]->value);
+        $this->assertSame('boundwize', $jsonDocument->value->items[0]->value->value);
     }
 
     public function testItParsesArray(): void
     {
-        $document = (new JsonParser())->parse('["a","b"]');
+        $jsonDocument = (new JsonParser())->parse('["a","b"]');
 
-        self::assertInstanceOf(ArrayNode::class, $document->value);
-        self::assertCount(2, $document->value->items);
-        self::assertInstanceOf(StringNode::class, $document->value->items[0]->value);
-        self::assertSame('a', $document->value->items[0]->value->value);
-        self::assertInstanceOf(StringNode::class, $document->value->items[1]->value);
-        self::assertSame('b', $document->value->items[1]->value->value);
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+        $this->assertCount(2, $jsonDocument->value->items);
+        $this->assertInstanceOf(StringNode::class, $jsonDocument->value->items[0]->value);
+        $this->assertSame('a', $jsonDocument->value->items[0]->value->value);
+        $this->assertInstanceOf(StringNode::class, $jsonDocument->value->items[1]->value);
+        $this->assertSame('b', $jsonDocument->value->items[1]->value->value);
     }
 
     public function testItParsesRecursiveObject(): void
     {
-        $document = (new JsonParser())->parse('{"a":{"b":{"c":true}}}');
+        $jsonDocument = (new JsonParser())->parse('{"a":{"b":{"c":true}}}');
 
-        self::assertInstanceOf(ObjectNode::class, $document->value);
-        $a = $document->value->items[0]->value;
-        self::assertInstanceOf(ObjectNode::class, $a);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+        $a = $jsonDocument->value->items[0]->value;
+        $this->assertInstanceOf(ObjectNode::class, $a);
         $b = $a->items[0]->value;
-        self::assertInstanceOf(ObjectNode::class, $b);
+        $this->assertInstanceOf(ObjectNode::class, $b);
         $c = $b->items[0]->value;
-        self::assertInstanceOf(BooleanNode::class, $c);
-        self::assertTrue($c->value);
+        $this->assertInstanceOf(BooleanNode::class, $c);
+        $this->assertTrue($c->value);
     }
 
     public function testItParsesRecursiveArray(): void
     {
-        $document = (new JsonParser())->parse('[[[1]]]');
+        $jsonDocument = (new JsonParser())->parse('[[[1]]]');
 
-        self::assertInstanceOf(ArrayNode::class, $document->value);
-        $second = $document->value->items[0]->value;
-        self::assertInstanceOf(ArrayNode::class, $second);
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+        $second = $jsonDocument->value->items[0]->value;
+        $this->assertInstanceOf(ArrayNode::class, $second);
         $third = $second->items[0]->value;
-        self::assertInstanceOf(ArrayNode::class, $third);
-        self::assertInstanceOf(NumberNode::class, $third->items[0]->value);
-        self::assertSame('1', $third->items[0]->value->rawValue);
+        $this->assertInstanceOf(ArrayNode::class, $third);
+        $this->assertInstanceOf(NumberNode::class, $third->items[0]->value);
+        $this->assertSame('1', $third->items[0]->value->rawValue);
     }
 
     public function testItParsesMixedRecursiveObjectAndArray(): void
     {
-        $document = (new JsonParser())->parse('{"items":[{"name":"first"},{"name":"second"}]}');
+        $jsonDocument = (new JsonParser())->parse('{"items":[{"name":"first"},{"name":"second"}]}');
 
-        self::assertInstanceOf(ObjectNode::class, $document->value);
-        $items = $document->value->items[0]->value;
-        self::assertInstanceOf(ArrayNode::class, $items);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+        $items = $jsonDocument->value->items[0]->value;
+        $this->assertInstanceOf(ArrayNode::class, $items);
 
         $first = $items->items[0]->value;
-        self::assertInstanceOf(ObjectNode::class, $first);
-        self::assertInstanceOf(StringNode::class, $first->items[0]->value);
-        self::assertSame('first', $first->items[0]->value->value);
+        $this->assertInstanceOf(ObjectNode::class, $first);
+        $this->assertInstanceOf(StringNode::class, $first->items[0]->value);
+        $this->assertSame('first', $first->items[0]->value->value);
 
         $second = $items->items[1]->value;
-        self::assertInstanceOf(ObjectNode::class, $second);
-        self::assertInstanceOf(StringNode::class, $second->items[0]->value);
-        self::assertSame('second', $second->items[0]->value->value);
+        $this->assertInstanceOf(ObjectNode::class, $second);
+        $this->assertInstanceOf(StringNode::class, $second->items[0]->value);
+        $this->assertSame('second', $second->items[0]->value->value);
     }
 
     public function testItRejectsTrailingComma(): void

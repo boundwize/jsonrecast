@@ -22,81 +22,81 @@ use function json_encode;
 
 use const JSON_UNESCAPED_SLASHES;
 
-final class JsonPrettyPrinter implements JsonPrinter
+final readonly class JsonPrettyPrinter implements JsonPrinter
 {
     public function __construct(
-        private readonly string $indent = '    ',
+        private string $indent = '    ',
     ) {
     }
 
-    public function print(NodeJson $node): string
+    public function print(NodeJson $nodeJson): string
     {
-        return $this->printNode($node, new PrintContext($this->indent));
+        return $this->printNode($nodeJson, new PrintContext($this->indent));
     }
 
-    private function printNode(NodeJson $node, PrintContext $context): string
+    private function printNode(NodeJson $nodeJson, PrintContext $printContext): string
     {
         return match (true) {
-            $node instanceof JsonDocument => $this->printNode($node->value, $context),
-            $node instanceof ObjectNode => $this->printObject($node, $context),
-            $node instanceof ObjectItemNode => $this->printObjectItem($node, $context),
-            $node instanceof ArrayNode => $this->printArray($node, $context),
-            $node instanceof ArrayItemNode => $this->printNode($node->value, $context),
-            $node instanceof StringNode => $this->encodeString($node->value),
-            $node instanceof NumberNode => $node->rawValue,
-            $node instanceof BooleanNode => $node->value ? 'true' : 'false',
-            $node instanceof NullNode => 'null',
+            $nodeJson instanceof JsonDocument => $this->printNode($nodeJson->value, $printContext),
+            $nodeJson instanceof ObjectNode => $this->printObject($nodeJson, $printContext),
+            $nodeJson instanceof ObjectItemNode => $this->printObjectItem($nodeJson, $printContext),
+            $nodeJson instanceof ArrayNode => $this->printArray($nodeJson, $printContext),
+            $nodeJson instanceof ArrayItemNode => $this->printNode($nodeJson->value, $printContext),
+            $nodeJson instanceof StringNode => $this->encodeString($nodeJson->value),
+            $nodeJson instanceof NumberNode => $nodeJson->rawValue,
+            $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
+            $nodeJson instanceof NullNode => 'null',
             default => throw new RuntimeException('Unsupported JSON node.'),
         };
     }
 
-    private function printObject(ObjectNode $node, PrintContext $context): string
+    private function printObject(ObjectNode $objectNode, PrintContext $printContext): string
     {
-        if ($node->items === []) {
+        if ($objectNode->items === []) {
             return '{}';
         }
 
         $output = '{';
 
-        foreach ($node->items as $i => $item) {
-            $output .= $context->newline
-                . $context->childIndentation()
-                . $this->printObjectItem($item, $context->next());
+        foreach ($objectNode->items as $i => $item) {
+            $output .= $printContext->newline
+                . $printContext->childIndentation()
+                . $this->printObjectItem($item, $printContext->next());
 
-            if ($i < count($node->items) - 1) {
+            if ($i < count($objectNode->items) - 1) {
                 $output .= ',';
             }
         }
 
-        return $output . $context->newline . $context->indentation() . '}';
+        return $output . $printContext->newline . $printContext->indentation() . '}';
     }
 
-    private function printObjectItem(ObjectItemNode $node, PrintContext $context): string
+    private function printObjectItem(ObjectItemNode $objectItemNode, PrintContext $printContext): string
     {
-        return $this->encodeString($node->key->value)
+        return $this->encodeString($objectItemNode->key->value)
             . ': '
-            . $this->printNode($node->value, $context);
+            . $this->printNode($objectItemNode->value, $printContext);
     }
 
-    private function printArray(ArrayNode $node, PrintContext $context): string
+    private function printArray(ArrayNode $arrayNode, PrintContext $printContext): string
     {
-        if ($node->items === []) {
+        if ($arrayNode->items === []) {
             return '[]';
         }
 
         $output = '[';
 
-        foreach ($node->items as $i => $item) {
-            $output .= $context->newline
-                . $context->childIndentation()
-                . $this->printNode($item->value, $context->next());
+        foreach ($arrayNode->items as $i => $item) {
+            $output .= $printContext->newline
+                . $printContext->childIndentation()
+                . $this->printNode($item->value, $printContext->next());
 
-            if ($i < count($node->items) - 1) {
+            if ($i < count($arrayNode->items) - 1) {
                 $output .= ',';
             }
         }
 
-        return $output . $context->newline . $context->indentation() . ']';
+        return $output . $printContext->newline . $printContext->indentation() . ']';
     }
 
     private function encodeString(string $value): string

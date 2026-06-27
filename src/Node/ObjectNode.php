@@ -29,24 +29,24 @@ final class ObjectNode extends AbstractNodeJson
 
     public function has(string $key): bool
     {
-        return $this->get($key) !== null;
+        return $this->get($key) instanceof ObjectItemNode;
     }
 
-    public function set(string $key, NodeJson $value): void
+    public function set(string $key, NodeJson $nodeJson): void
     {
         foreach ($this->items as $item) {
             if ($item->key->value !== $key) {
                 continue;
             }
 
-            $item->value = $value;
+            $item->value = $nodeJson;
 
             return;
         }
 
         $this->items[] = new ObjectItemNode(
             key: new StringNode($key),
-            value: $value,
+            value: $nodeJson,
         );
     }
 

@@ -7,11 +7,11 @@ namespace Boundwize\JsonRecast;
 use Boundwize\JsonRecast\Node\JsonDocument;
 use Boundwize\JsonRecast\NodeVisitor\NodeChangeSet;
 
-final class JsonRecastResult
+final readonly class JsonRecastResult
 {
     public function __construct(
-        public readonly JsonDocument $document,
-        public readonly NodeChangeSet $changeSet,
+        public JsonDocument $document,
+        public NodeChangeSet $changeSet,
     ) {
     }
 }

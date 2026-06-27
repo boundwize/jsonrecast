@@ -8,5 +8,5 @@ use Boundwize\JsonRecast\Node\NodeJson;
 
 interface JsonPrinter
 {
-    public function print(NodeJson $node): string;
+    public function print(NodeJson $nodeJson): string;
 }

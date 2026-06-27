@@ -24,27 +24,27 @@ use function json_encode;
 
 use const JSON_UNESCAPED_SLASHES;
 
-final class JsonPreservingPrinter implements JsonPrinter
+final readonly class JsonPreservingPrinter implements JsonPrinter
 {
     public function __construct(
-        private readonly ?NodeChangeSet $changeSet = null,
-        private readonly string $indent = '    ',
+        private ?NodeChangeSet $nodeChangeSet = null,
+        private string $indent = '    ',
     ) {
     }
 
-    public function print(NodeJson $node): string
+    public function print(NodeJson $nodeJson): string
     {
-        $newline = $node instanceof JsonDocument && is_string($node->getAttribute(NodeAttributes::NEWLINE))
-            ? $node->getAttribute(NodeAttributes::NEWLINE)
+        $newline = $nodeJson instanceof JsonDocument && is_string($nodeJson->getAttribute(NodeAttributes::NEWLINE))
+            ? $nodeJson->getAttribute(NodeAttributes::NEWLINE)
             : "\n";
 
-        return $this->printNode($node, new PrintContext($this->indent, $newline));
+        return $this->printNode($nodeJson, new PrintContext($this->indent, $newline));
     }
 
-    private function printNode(NodeJson $node, PrintContext $context): string
+    private function printNode(NodeJson $nodeJson, PrintContext $printContext): string
     {
-        if (! $this->isChanged($node)) {
-            $originalText = $node->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+        if (! $this->isChanged($nodeJson)) {
+            $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
             if (is_string($originalText)) {
                 return $originalText;
@@ -52,42 +52,42 @@ final class JsonPreservingPrinter implements JsonPrinter
         }
 
         return match (true) {
-            $node instanceof JsonDocument => $this->printDocument($node, $context),
-            $node instanceof ObjectNode => $this->printObject($node, $context),
-            $node instanceof ObjectItemNode => $this->printObjectItemPreserving($node, $context),
-            $node instanceof ArrayNode => $this->printArray($node, $context),
-            $node instanceof ArrayItemNode => $this->printArrayItemPreserving($node, $context),
-            $node instanceof StringNode => $this->encodeString($node->value),
-            $node instanceof NumberNode => $node->rawValue,
-            $node instanceof BooleanNode => $node->value ? 'true' : 'false',
-            $node instanceof NullNode => 'null',
+            $nodeJson instanceof JsonDocument => $this->printDocument($nodeJson, $printContext),
+            $nodeJson instanceof ObjectNode => $this->printObject($nodeJson, $printContext),
+            $nodeJson instanceof ObjectItemNode => $this->printObjectItemPreserving($nodeJson, $printContext),
+            $nodeJson instanceof ArrayNode => $this->printArray($nodeJson, $printContext),
+            $nodeJson instanceof ArrayItemNode => $this->printArrayItemPreserving($nodeJson, $printContext),
+            $nodeJson instanceof StringNode => $this->encodeString($nodeJson->value),
+            $nodeJson instanceof NumberNode => $nodeJson->rawValue,
+            $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
+            $nodeJson instanceof NullNode => 'null',
             default => throw new RuntimeException('Unsupported JSON node.'),
         };
     }
 
-    private function printDocument(JsonDocument $node, PrintContext $context): string
+    private function printDocument(JsonDocument $jsonDocument, PrintContext $printContext): string
     {
-        $output = $this->printNode($node->value, $context);
+        $output = $this->printNode($jsonDocument->value, $printContext);
 
-        if ($node->getAttribute(NodeAttributes::TRAILING_NEWLINE) === true) {
-            $output .= $context->newline;
+        if ($jsonDocument->getAttribute(NodeAttributes::TRAILING_NEWLINE) === true) {
+            $output .= $printContext->newline;
         }
 
         return $output;
     }
 
-    private function printObject(ObjectNode $node, PrintContext $context): string
+    private function printObject(ObjectNode $objectNode, PrintContext $printContext): string
     {
-        if ($this->shouldPrintContainerBestEffort($node, $node->items)) {
-            return $this->printObjectBestEffort($node, $context);
+        if ($this->shouldPrintContainerBestEffort($objectNode, $objectNode->items)) {
+            return $this->printObjectBestEffort($objectNode, $printContext);
         }
 
         $output = '{';
 
-        foreach ($node->items as $i => $item) {
-            $output .= $this->printObjectItemPreserving($item, $context->next());
+        foreach ($objectNode->items as $i => $item) {
+            $output .= $this->printObjectItemPreserving($item, $printContext->next());
 
-            if ($i < count($node->items) - 1) {
+            if ($i < count($objectNode->items) - 1) {
                 $output .= ',';
             }
         }
@@ -95,65 +95,65 @@ final class JsonPreservingPrinter implements JsonPrinter
         return $output . '}';
     }
 
-    private function printObjectBestEffort(ObjectNode $node, PrintContext $context): string
+    private function printObjectBestEffort(ObjectNode $objectNode, PrintContext $printContext): string
     {
-        if ($node->items === []) {
+        if ($objectNode->items === []) {
             return '{}';
         }
 
         $output = '{';
 
-        foreach ($node->items as $i => $item) {
-            $output .= $context->newline
-                . $context->childIndentation()
-                . $this->printObjectItemBestEffort($item, $context->next());
+        foreach ($objectNode->items as $i => $item) {
+            $output .= $printContext->newline
+                . $printContext->childIndentation()
+                . $this->printObjectItemBestEffort($item, $printContext->next());
 
-            if ($i < count($node->items) - 1) {
+            if ($i < count($objectNode->items) - 1) {
                 $output .= ',';
             }
         }
 
-        return $output . $context->newline . $context->indentation() . '}';
+        return $output . $printContext->newline . $printContext->indentation() . '}';
     }
 
-    private function printObjectItemPreserving(ObjectItemNode $node, PrintContext $context): string
+    private function printObjectItemPreserving(ObjectItemNode $objectItemNode, PrintContext $printContext): string
     {
-        if (! $this->isChanged($node)) {
-            $originalText = $node->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+        if (! $this->isChanged($objectItemNode)) {
+            $originalText = $objectItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
             if (is_string($originalText)) {
                 return $originalText;
             }
         }
 
-        return $node->beforeKey
-            . $this->printNode($node->key, $context)
-            . $node->betweenKeyAndColon
+        return $objectItemNode->beforeKey
+            . $this->printNode($objectItemNode->key, $printContext)
+            . $objectItemNode->betweenKeyAndColon
             . ':'
-            . $node->betweenColonAndValue
-            . $this->printNode($node->value, $context)
-            . $node->afterValue;
+            . $objectItemNode->betweenColonAndValue
+            . $this->printNode($objectItemNode->value, $printContext)
+            . $objectItemNode->afterValue;
     }
 
-    private function printObjectItemBestEffort(ObjectItemNode $node, PrintContext $context): string
+    private function printObjectItemBestEffort(ObjectItemNode $objectItemNode, PrintContext $printContext): string
     {
-        return $this->printNode($node->key, $context)
+        return $this->printNode($objectItemNode->key, $printContext)
             . ': '
-            . $this->printNode($node->value, $context);
+            . $this->printNode($objectItemNode->value, $printContext);
     }
 
-    private function printArray(ArrayNode $node, PrintContext $context): string
+    private function printArray(ArrayNode $arrayNode, PrintContext $printContext): string
     {
-        if ($this->shouldPrintContainerBestEffort($node, $node->items)) {
-            return $this->printArrayBestEffort($node, $context);
+        if ($this->shouldPrintContainerBestEffort($arrayNode, $arrayNode->items)) {
+            return $this->printArrayBestEffort($arrayNode, $printContext);
         }
 
         $output = '[';
 
-        foreach ($node->items as $i => $item) {
-            $output .= $this->printArrayItemPreserving($item, $context->next());
+        foreach ($arrayNode->items as $i => $item) {
+            $output .= $this->printArrayItemPreserving($item, $printContext->next());
 
-            if ($i < count($node->items) - 1) {
+            if ($i < count($arrayNode->items) - 1) {
                 $output .= ',';
             }
         }
@@ -161,48 +161,48 @@ final class JsonPreservingPrinter implements JsonPrinter
         return $output . ']';
     }
 
-    private function printArrayBestEffort(ArrayNode $node, PrintContext $context): string
+    private function printArrayBestEffort(ArrayNode $arrayNode, PrintContext $printContext): string
     {
-        if ($node->items === []) {
+        if ($arrayNode->items === []) {
             return '[]';
         }
 
         $output = '[';
 
-        foreach ($node->items as $i => $item) {
-            $output .= $context->newline
-                . $context->childIndentation()
-                . $this->printNode($item->value, $context->next());
+        foreach ($arrayNode->items as $i => $item) {
+            $output .= $printContext->newline
+                . $printContext->childIndentation()
+                . $this->printNode($item->value, $printContext->next());
 
-            if ($i < count($node->items) - 1) {
+            if ($i < count($arrayNode->items) - 1) {
                 $output .= ',';
             }
         }
 
-        return $output . $context->newline . $context->indentation() . ']';
+        return $output . $printContext->newline . $printContext->indentation() . ']';
     }
 
-    private function printArrayItemPreserving(ArrayItemNode $node, PrintContext $context): string
+    private function printArrayItemPreserving(ArrayItemNode $arrayItemNode, PrintContext $printContext): string
     {
-        if (! $this->isChanged($node)) {
-            $originalText = $node->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+        if (! $this->isChanged($arrayItemNode)) {
+            $originalText = $arrayItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
             if (is_string($originalText)) {
                 return $originalText;
             }
         }
 
-        return $node->beforeValue
-            . $this->printNode($node->value, $context)
-            . $node->afterValue;
+        return $arrayItemNode->beforeValue
+            . $this->printNode($arrayItemNode->value, $printContext)
+            . $arrayItemNode->afterValue;
     }
 
     /**
      * @param list<NodeJson> $items
      */
-    private function shouldPrintContainerBestEffort(NodeJson $node, array $items): bool
+    private function shouldPrintContainerBestEffort(NodeJson $nodeJson, array $items): bool
     {
-        if ($this->changeSet !== null && $this->changeSet->isChanged($node)) {
+        if ($this->nodeChangeSet !== null && $this->nodeChangeSet->isChanged($nodeJson)) {
             return true;
         }
 
@@ -212,30 +212,30 @@ final class JsonPreservingPrinter implements JsonPrinter
             }
         }
 
-        return ! $node->hasAttribute(NodeAttributes::ORIGINAL_TEXT);
+        return ! $nodeJson->hasAttribute(NodeAttributes::ORIGINAL_TEXT);
     }
 
-    private function isChanged(NodeJson $node): bool
+    private function isChanged(NodeJson $nodeJson): bool
     {
-        if ($this->changeSet !== null && $this->changeSet->isChanged($node)) {
+        if ($this->nodeChangeSet !== null && $this->nodeChangeSet->isChanged($nodeJson)) {
             return true;
         }
 
-        if (! $node->hasAttribute(NodeAttributes::ORIGINAL_TEXT)) {
+        if (! $nodeJson->hasAttribute(NodeAttributes::ORIGINAL_TEXT)) {
             return true;
         }
 
-        return $this->hasChangedDescendant($node);
+        return $this->hasChangedDescendant($nodeJson);
     }
 
-    private function hasChangedDescendant(NodeJson $node): bool
+    private function hasChangedDescendant(NodeJson $nodeJson): bool
     {
-        if ($node instanceof JsonDocument) {
-            return $this->isChanged($node->value);
+        if ($nodeJson instanceof JsonDocument) {
+            return $this->isChanged($nodeJson->value);
         }
 
-        if ($node instanceof ObjectNode) {
-            foreach ($node->items as $item) {
+        if ($nodeJson instanceof ObjectNode) {
+            foreach ($nodeJson->items as $item) {
                 if ($this->isChanged($item)) {
                     return true;
                 }
@@ -244,12 +244,12 @@ final class JsonPreservingPrinter implements JsonPrinter
             return false;
         }
 
-        if ($node instanceof ObjectItemNode) {
-            return $this->isChanged($node->key) || $this->isChanged($node->value);
+        if ($nodeJson instanceof ObjectItemNode) {
+            return $this->isChanged($nodeJson->key) || $this->isChanged($nodeJson->value);
         }
 
-        if ($node instanceof ArrayNode) {
-            foreach ($node->items as $item) {
+        if ($nodeJson instanceof ArrayNode) {
+            foreach ($nodeJson->items as $item) {
                 if ($this->isChanged($item)) {
                     return true;
                 }
@@ -258,8 +258,8 @@ final class JsonPreservingPrinter implements JsonPrinter
             return false;
         }
 
-        if ($node instanceof ArrayItemNode) {
-            return $this->isChanged($node->value);
+        if ($nodeJson instanceof ArrayItemNode) {
+            return $this->isChanged($nodeJson->value);
         }
 
         return false;

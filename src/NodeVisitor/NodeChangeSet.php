@@ -17,13 +17,13 @@ final class NodeChangeSet
         $this->changed = new SplObjectStorage();
     }
 
-    public function markChanged(NodeJson $node): void
+    public function markChanged(NodeJson $nodeJson): void
     {
-        $this->changed[$node] = true;
+        $this->changed[$nodeJson] = true;
     }
 
-    public function isChanged(NodeJson $node): bool
+    public function isChanged(NodeJson $nodeJson): bool
     {
-        return isset($this->changed[$node]);
+        return isset($this->changed[$nodeJson]);
     }
 }

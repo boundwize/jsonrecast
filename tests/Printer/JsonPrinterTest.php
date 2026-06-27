@@ -25,48 +25,42 @@ final class JsonPrinterTest extends TestCase
     {
         $source = "{\n    \"name\"   :   \"old\"\n}";
 
-        self::assertSame("{\n    \"name\"   :   \"new\"\n}", $this->replaceStringValue($source, 'old', 'new'));
+        $this->assertSame("{\n    \"name\"   :   \"new\"\n}", $this->replaceStringValue($source, 'old', 'new'));
     }
 
     public function testItPreservesUnmodifiedObjectItem(): void
     {
         $source = "{\n    \"name\"   :   \"old\",\n    \"type\"   :   \"library\"\n}";
 
-        self::assertSame(
-            "{\n    \"name\"   :   \"new\",\n    \"type\"   :   \"library\"\n}",
-            $this->replaceStringValue($source, 'old', 'new'),
-        );
+        $this->assertSame("{\n    \"name\"   :   \"new\",\n    \"type\"   :   \"library\"\n}", $this->replaceStringValue($source, 'old', 'new'));
     }
 
     public function testItPreservesNumberRawValue(): void
     {
         $source = '{"value": 1.0}';
 
-        self::assertSame($source, JsonRecast::print(JsonRecast::parse($source)));
+        $this->assertSame($source, JsonRecast::print(JsonRecast::parse($source)));
     }
 
     public function testItPreservesExponentNumberRawValue(): void
     {
         $source = '{"value": 1E+0}';
 
-        self::assertSame($source, JsonRecast::print(JsonRecast::parse($source)));
+        $this->assertSame($source, JsonRecast::print(JsonRecast::parse($source)));
     }
 
     public function testItPreservesNewlineStyle(): void
     {
         $source = "{\r\n    \"name\": \"old\"\r\n}\r\n";
 
-        self::assertSame(
-            "{\r\n    \"name\": \"new\"\r\n}\r\n",
-            $this->replaceStringValue($source, 'old', 'new'),
-        );
+        $this->assertSame("{\r\n    \"name\": \"new\"\r\n}\r\n", $this->replaceStringValue($source, 'old', 'new'));
     }
 
     public function testItPreservesArrayFormatting(): void
     {
         $source = "[\n    \"old\",\n    \"keep\"\n]";
 
-        self::assertSame("[\n    \"new\",\n    \"keep\"\n]", $this->replaceStringValue($source, 'old', 'new'));
+        $this->assertSame("[\n    \"new\",\n    \"keep\"\n]", $this->replaceStringValue($source, 'old', 'new'));
     }
 
     public function testItPreservesRecursiveObjectFormatting(): void
@@ -80,27 +74,21 @@ final class JsonPrinterTest extends TestCase
             . "    \"type\": \"library\"\n"
             . '}';
 
-        self::assertSame(
-            "{\n"
-                . "    \"autoload\": {\n"
-                . "        \"psr-4\": {\n"
-                . "            \"App\\\\\": \"src/\"\n"
-                . "        }\n"
-                . "    },\n"
-                . "    \"type\": \"library\"\n"
-                . '}',
-            $this->replaceStringValue($source, './', 'src/'),
-        );
+        $this->assertSame("{\n"
+            . "    \"autoload\": {\n"
+            . "        \"psr-4\": {\n"
+            . "            \"App\\\\\": \"src/\"\n"
+            . "        }\n"
+            . "    },\n"
+            . "    \"type\": \"library\"\n"
+            . '}', $this->replaceStringValue($source, './', 'src/'));
     }
 
     public function testItPreservesRecursiveArrayFormatting(): void
     {
         $source = "[\n    [\n        [\n            \"old\"\n        ]\n    ],\n    \"keep\"\n]";
 
-        self::assertSame(
-            "[\n    [\n        [\n            \"new\"\n        ]\n    ],\n    \"keep\"\n]",
-            $this->replaceStringValue($source, 'old', 'new'),
-        );
+        $this->assertSame("[\n    [\n        [\n            \"new\"\n        ]\n    ],\n    \"keep\"\n]", $this->replaceStringValue($source, 'old', 'new'));
     }
 
     public function testItPreservesMixedRecursiveFormatting(): void
@@ -114,75 +102,66 @@ final class JsonPrinterTest extends TestCase
             . "    \"type\": \"library\"\n"
             . '}';
 
-        self::assertSame(
-            "{\n"
-                . "    \"items\": [\n"
-                . "        {\n"
-                . "            \"name\" : \"new\"\n"
-                . "        }\n"
-                . "    ],\n"
-                . "    \"type\": \"library\"\n"
-                . '}',
-            $this->replaceStringValue($source, 'old', 'new'),
-        );
+        $this->assertSame("{\n"
+            . "    \"items\": [\n"
+            . "        {\n"
+            . "            \"name\" : \"new\"\n"
+            . "        }\n"
+            . "    ],\n"
+            . "    \"type\": \"library\"\n"
+            . '}', $this->replaceStringValue($source, 'old', 'new'));
     }
 
     public function testItPreservesAddObjectItemBestEffort(): void
     {
         $source = "{\n    \"name\": \"boundwize/jsonrecast\"\n}";
 
-        self::assertSame(
-            "{\n    \"name\": \"boundwize/jsonrecast\",\n    \"license\": \"MIT\"\n}",
-            $this->addObjectItem($source),
-        );
+        $this->assertSame("{\n    \"name\": \"boundwize/jsonrecast\",\n    \"license\": \"MIT\"\n}", $this->addObjectItem($source));
     }
 
     public function testItPreservesRemoveObjectItemBestEffort(): void
     {
         $source = "{\n    \"name\": \"boundwize/jsonrecast\",\n    \"minimum-stability\": \"dev\"\n}";
 
-        self::assertSame(
-            "{\n    \"name\": \"boundwize/jsonrecast\"\n}",
-            $this->removeObjectItem($source, 'minimum-stability'),
-        );
+        $this->assertSame("{\n    \"name\": \"boundwize/jsonrecast\"\n}", $this->removeObjectItem($source, 'minimum-stability'));
     }
 
     public function testItPreservesAddArrayItemBestEffort(): void
     {
         $source = "[\n    \"json\"\n]";
 
-        self::assertSame("[\n    \"json\",\n    \"ast\"\n]", $this->appendArrayItem($source));
+        $this->assertSame("[\n    \"json\",\n    \"ast\"\n]", $this->appendArrayItem($source));
     }
 
     public function testItPreservesRemoveArrayItemBestEffort(): void
     {
         $source = "[\n    \"json\",\n    \"temporary\"\n]";
 
-        self::assertSame("[\n    \"json\"\n]", $this->removeArrayItem($source, 'temporary'));
+        $this->assertSame("[\n    \"json\"\n]", $this->removeArrayItem($source, 'temporary'));
     }
 
     public function testItPrintsUnchangedDocumentWithoutChangeSet(): void
     {
         $source   = "{\n    \"name\": \"boundwize/jsonrecast\"\n}";
-        $document = (new JsonParser())->parse($source);
+        $jsonDocument = (new JsonParser())->parse($source);
 
-        self::assertSame($source, (new JsonPreservingPrinter())->print($document));
+        $this->assertSame($source, (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
     private function replaceStringValue(string $source, string $old, string $new): string
     {
-        $document = JsonRecast::parse($source);
+        $jsonDocument = JsonRecast::parse($source);
 
-        $result = JsonRecast::traverse($document, new class ($old, $new) extends NodeJsonVisitorAbstract {
+        $jsonRecastResult = JsonRecast::traverse($jsonDocument, new class ($old, $new) extends NodeJsonVisitorAbstract {
             public function __construct(
                 private readonly string $old,
                 private readonly string $new,
             ) {
             }
 
-            public function enterNode(NodeJson $node, NodeJsonPath $path): ?NodeJson
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
             {
-                if (! $node instanceof StringNode || $node->value !== $this->old) {
+                if (! $nodeJson instanceof StringNode || $nodeJson->value !== $this->old) {
                     return null;
                 }
 
@@ -190,42 +169,42 @@ final class JsonPrinterTest extends TestCase
             }
         });
 
-        return JsonRecast::print($result);
+        return JsonRecast::print($jsonRecastResult);
     }
 
     private function addObjectItem(string $source): string
     {
-        $document = JsonRecast::parse($source);
+        $jsonDocument = JsonRecast::parse($source);
 
-        $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstract {
-            public function leaveNode(NodeJson $node, NodeJsonPath $path): ?NodeJson
+        $jsonRecastResult = JsonRecast::traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
+            public function leaveNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
             {
-                if (! $node instanceof ObjectNode || ! $path->isRoot()) {
+                if (! $nodeJson instanceof ObjectNode || ! $nodeJsonPath->isRoot()) {
                     return null;
                 }
 
-                $node->set('license', JsonValue::from('MIT'));
+                $nodeJson->set('license', JsonValue::from('MIT'));
 
-                return $node;
+                return $nodeJson;
             }
         });
 
-        return JsonRecast::print($result);
+        return JsonRecast::print($jsonRecastResult);
     }
 
     private function removeObjectItem(string $source, string $key): string
     {
-        $document = JsonRecast::parse($source);
+        $jsonDocument = JsonRecast::parse($source);
 
-        $result = JsonRecast::traverse($document, new class ($key) extends NodeJsonVisitorAbstract {
+        $jsonRecastResult = JsonRecast::traverse($jsonDocument, new class ($key) extends NodeJsonVisitorAbstract {
             public function __construct(
                 private readonly string $key,
             ) {
             }
 
-            public function enterNode(NodeJson $node, NodeJsonPath $path): ?NodeJsonRemoval
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJsonRemoval
             {
-                if (! $node instanceof ObjectItemNode || $node->key->value !== $this->key) {
+                if (! $nodeJson instanceof ObjectItemNode || $nodeJson->key->value !== $this->key) {
                     return null;
                 }
 
@@ -233,46 +212,46 @@ final class JsonPrinterTest extends TestCase
             }
         });
 
-        return JsonRecast::print($result);
+        return JsonRecast::print($jsonRecastResult);
     }
 
     private function appendArrayItem(string $source): string
     {
-        $document = JsonRecast::parse($source);
+        $jsonDocument = JsonRecast::parse($source);
 
-        $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstract {
-            public function leaveNode(NodeJson $node, NodeJsonPath $path): ?NodeJson
+        $jsonRecastResult = JsonRecast::traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
+            public function leaveNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
             {
-                if (! $node instanceof ArrayNode || ! $path->isRoot()) {
+                if (! $nodeJson instanceof ArrayNode || ! $nodeJsonPath->isRoot()) {
                     return null;
                 }
 
-                $node->append(JsonValue::from('ast'));
+                $nodeJson->append(JsonValue::from('ast'));
 
-                return $node;
+                return $nodeJson;
             }
         });
 
-        return JsonRecast::print($result);
+        return JsonRecast::print($jsonRecastResult);
     }
 
     private function removeArrayItem(string $source, string $value): string
     {
-        $document = JsonRecast::parse($source);
+        $jsonDocument = JsonRecast::parse($source);
 
-        $result = JsonRecast::traverse($document, new class ($value) extends NodeJsonVisitorAbstract {
+        $jsonRecastResult = JsonRecast::traverse($jsonDocument, new class ($value) extends NodeJsonVisitorAbstract {
             public function __construct(
                 private readonly string $value,
             ) {
             }
 
-            public function enterNode(NodeJson $node, NodeJsonPath $path): ?NodeJsonRemoval
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJsonRemoval
             {
-                if (! $node instanceof ArrayItemNode || ! $node->value instanceof StringNode) {
+                if (! $nodeJson instanceof ArrayItemNode || ! $nodeJson->value instanceof StringNode) {
                     return null;
                 }
 
-                if ($node->value->value !== $this->value) {
+                if ($nodeJson->value->value !== $this->value) {
                     return null;
                 }
 
@@ -280,6 +259,6 @@ final class JsonPrinterTest extends TestCase
             }
         });
 
-        return JsonRecast::print($result);
+        return JsonRecast::print($jsonRecastResult);
     }
 }

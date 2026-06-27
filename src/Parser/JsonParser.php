@@ -44,18 +44,18 @@ final class JsonParser
 
         $this->readWhitespace();
 
-        $value = $this->parseValue();
+        $nodeJson = $this->parseValue();
 
         $this->readWhitespace();
         $this->consume(TokenType::EndOfFile);
 
-        $document = new JsonDocument($value);
-        $this->setSourceMetadata($document, 0, strlen($source));
-        $document->setAttribute(NodeAttributes::SOURCE, $source);
-        $document->setAttribute(NodeAttributes::NEWLINE, $this->detectNewline($source));
-        $document->setAttribute(NodeAttributes::TRAILING_NEWLINE, $this->hasTrailingNewline($source));
+        $jsonDocument = new JsonDocument($nodeJson);
+        $this->setSourceMetadata($jsonDocument, 0, strlen($source));
+        $jsonDocument->setAttribute(NodeAttributes::SOURCE, $source);
+        $jsonDocument->setAttribute(NodeAttributes::NEWLINE, $this->detectNewline($source));
+        $jsonDocument->setAttribute(NodeAttributes::TRAILING_NEWLINE, $this->hasTrailingNewline($source));
 
-        return $document;
+        return $jsonDocument;
     }
 
     private function parseValue(): NodeJson
@@ -74,7 +74,7 @@ final class JsonParser
 
     private function parseObject(): ObjectNode
     {
-        $open = $this->consume(TokenType::LeftBrace);
+        $token = $this->consume(TokenType::LeftBrace);
 
         $beforeKeyStart = $this->currentToken()->startOffset;
         $beforeKey      = $this->readWhitespace();
@@ -82,7 +82,7 @@ final class JsonParser
         if ($this->currentToken()->type === TokenType::RightBrace) {
             $close = $this->consume(TokenType::RightBrace);
             $node  = new ObjectNode([]);
-            $this->setSourceMetadata($node, $open->startOffset, $close->endOffset);
+            $this->setSourceMetadata($node, $token->startOffset, $close->endOffset);
 
             return $node;
         }
@@ -125,7 +125,7 @@ final class JsonParser
             if ($this->currentToken()->type === TokenType::RightBrace) {
                 $close = $this->consume(TokenType::RightBrace);
                 $node  = new ObjectNode($items);
-                $this->setSourceMetadata($node, $open->startOffset, $close->endOffset);
+                $this->setSourceMetadata($node, $token->startOffset, $close->endOffset);
 
                 return $node;
             }
@@ -136,7 +136,7 @@ final class JsonParser
 
     private function parseArray(): ArrayNode
     {
-        $open = $this->consume(TokenType::LeftBracket);
+        $token = $this->consume(TokenType::LeftBracket);
 
         $beforeValueStart = $this->currentToken()->startOffset;
         $beforeValue      = $this->readWhitespace();
@@ -144,7 +144,7 @@ final class JsonParser
         if ($this->currentToken()->type === TokenType::RightBracket) {
             $close = $this->consume(TokenType::RightBracket);
             $node  = new ArrayNode([], $beforeValue, $beforeValue);
-            $this->setSourceMetadata($node, $open->startOffset, $close->endOffset);
+            $this->setSourceMetadata($node, $token->startOffset, $close->endOffset);
 
             return $node;
         }
@@ -172,7 +172,7 @@ final class JsonParser
             if ($this->currentToken()->type === TokenType::RightBracket) {
                 $close = $this->consume(TokenType::RightBracket);
                 $node  = new ArrayNode($items, $items[0]->beforeValue, $afterValue);
-                $this->setSourceMetadata($node, $open->startOffset, $close->endOffset);
+                $this->setSourceMetadata($node, $token->startOffset, $close->endOffset);
 
                 return $node;
             }
@@ -187,67 +187,67 @@ final class JsonParser
 
         try {
             $value = json_decode($token->text, true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException $exception) {
-            throw new ParseError($exception->getMessage(), $token->startOffset, $token->line, $token->column);
+        } catch (JsonException $jsonException) {
+            throw new ParseError($jsonException->getMessage(), $token->startOffset, $token->line, $token->column);
         }
 
         if (! is_string($value)) {
             throw new ParseError('Expected JSON string.', $token->startOffset, $token->line, $token->column);
         }
 
-        $node = new StringNode($value);
-        $this->setSourceMetadata($node, $token->startOffset, $token->endOffset);
+        $stringNode = new StringNode($value);
+        $this->setSourceMetadata($stringNode, $token->startOffset, $token->endOffset);
 
-        return $node;
+        return $stringNode;
     }
 
     private function parseNumber(): NumberNode
     {
         $token = $this->consume(TokenType::Number);
-        $node  = new NumberNode($token->text);
-        $this->setSourceMetadata($node, $token->startOffset, $token->endOffset);
+        $numberNode  = new NumberNode($token->text);
+        $this->setSourceMetadata($numberNode, $token->startOffset, $token->endOffset);
 
-        return $node;
+        return $numberNode;
     }
 
     private function parseTrue(): BooleanNode
     {
         $token = $this->consume(TokenType::True);
-        $node  = new BooleanNode(true);
-        $this->setSourceMetadata($node, $token->startOffset, $token->endOffset);
+        $booleanNode  = new BooleanNode(true);
+        $this->setSourceMetadata($booleanNode, $token->startOffset, $token->endOffset);
 
-        return $node;
+        return $booleanNode;
     }
 
     private function parseFalse(): BooleanNode
     {
         $token = $this->consume(TokenType::False);
-        $node  = new BooleanNode(false);
-        $this->setSourceMetadata($node, $token->startOffset, $token->endOffset);
+        $booleanNode  = new BooleanNode(false);
+        $this->setSourceMetadata($booleanNode, $token->startOffset, $token->endOffset);
 
-        return $node;
+        return $booleanNode;
     }
 
     private function parseNull(): NullNode
     {
         $token = $this->consume(TokenType::Null);
-        $node  = new NullNode();
-        $this->setSourceMetadata($node, $token->startOffset, $token->endOffset);
+        $nullNode  = new NullNode();
+        $this->setSourceMetadata($nullNode, $token->startOffset, $token->endOffset);
 
-        return $node;
+        return $nullNode;
     }
 
     private function arrayItem(
-        NodeJson $value,
+        NodeJson $nodeJson,
         string $beforeValue,
         string $afterValue,
         int $startOffset,
         int $endOffset,
     ): ArrayItemNode {
-        $item = new ArrayItemNode($value, $beforeValue, $afterValue);
-        $this->setSourceMetadata($item, $startOffset, $endOffset);
+        $arrayItemNode = new ArrayItemNode($nodeJson, $beforeValue, $afterValue);
+        $this->setSourceMetadata($arrayItemNode, $startOffset, $endOffset);
 
-        return $item;
+        return $arrayItemNode;
     }
 
     private function readWhitespace(): string
@@ -262,12 +262,12 @@ final class JsonParser
         return $whitespace;
     }
 
-    private function consume(TokenType $type): Token
+    private function consume(TokenType $tokenType): Token
     {
         $token = $this->currentToken();
 
-        if ($token->type !== $type) {
-            throw $this->unexpectedToken($type->name);
+        if ($token->type !== $tokenType) {
+            throw $this->unexpectedToken($tokenType->name);
         }
 
         $this->position++;
@@ -295,11 +295,11 @@ final class JsonParser
         );
     }
 
-    private function setSourceMetadata(NodeJson $node, int $startOffset, int $endOffset): void
+    private function setSourceMetadata(NodeJson $nodeJson, int $startOffset, int $endOffset): void
     {
-        $node->setAttribute(NodeAttributes::START_OFFSET, $startOffset);
-        $node->setAttribute(NodeAttributes::END_OFFSET, $endOffset);
-        $node->setAttribute(
+        $nodeJson->setAttribute(NodeAttributes::START_OFFSET, $startOffset);
+        $nodeJson->setAttribute(NodeAttributes::END_OFFSET, $endOffset);
+        $nodeJson->setAttribute(
             NodeAttributes::ORIGINAL_TEXT,
             substr($this->source, $startOffset, $endOffset - $startOffset),
         );

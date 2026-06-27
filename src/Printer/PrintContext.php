@@ -6,12 +6,12 @@ namespace Boundwize\JsonRecast\Printer;
 
 use function str_repeat;
 
-final class PrintContext
+final readonly class PrintContext
 {
     public function __construct(
-        private readonly string $indent = '    ',
-        public readonly string $newline = "\n",
-        private readonly int $level = 0,
+        private string $indent = '    ',
+        public string $newline = "\n",
+        private int $level = 0,
     ) {
     }
 

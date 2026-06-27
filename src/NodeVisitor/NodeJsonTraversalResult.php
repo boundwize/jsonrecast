@@ -6,11 +6,11 @@ namespace Boundwize\JsonRecast\NodeVisitor;
 
 use Boundwize\JsonRecast\Node\NodeJson;
 
-final class NodeJsonTraversalResult
+final readonly class NodeJsonTraversalResult
 {
     public function __construct(
-        public readonly NodeJson $node,
-        public readonly NodeChangeSet $changeSet,
+        public NodeJson $node,
+        public NodeChangeSet $changeSet,
     ) {
     }
 }

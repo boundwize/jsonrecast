@@ -8,13 +8,13 @@ use function array_key_last;
 use function count;
 use function is_string;
 
-final class NodeJsonPath
+final readonly class NodeJsonPath
 {
     /**
      * @param list<NodeJsonPathSegment> $segments
      */
     public function __construct(
-        private readonly array $segments = [],
+        private array $segments = [],
     ) {
     }
 
@@ -67,7 +67,7 @@ final class NodeJsonPath
     {
         $last = $this->last();
 
-        return $last !== null
+        return $last instanceof NodeJsonPathSegment
             && $last->isObjectKey()
             && $last->value === $key;
     }
@@ -76,7 +76,7 @@ final class NodeJsonPath
     {
         $last = $this->last();
 
-        return $last !== null
+        return $last instanceof NodeJsonPathSegment
             && $last->isArrayIndex()
             && $last->value === $index;
     }

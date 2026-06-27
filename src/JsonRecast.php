@@ -18,20 +18,20 @@ final class JsonRecast
         return (new JsonParser())->parse($source);
     }
 
-    public static function traverse(JsonDocument $document, NodeJsonVisitor $visitor): JsonRecastResult
+    public static function traverse(JsonDocument $jsonDocument, NodeJsonVisitor $nodeJsonVisitor): JsonRecastResult
     {
-        $traverser = new NodeJsonTraverser();
-        $traverser->addVisitor($visitor);
+        $nodeJsonTraverser = new NodeJsonTraverser();
+        $nodeJsonTraverser->addVisitor($nodeJsonVisitor);
 
-        $result = $traverser->traverse($document);
+        $nodeJsonTraversalResult = $nodeJsonTraverser->traverse($jsonDocument);
 
-        if (! $result->node instanceof JsonDocument) {
+        if (! $nodeJsonTraversalResult->node instanceof JsonDocument) {
             throw new RuntimeException('JsonRecast traversal must return JsonDocument.');
         }
 
         return new JsonRecastResult(
-            document: $result->node,
-            changeSet: $result->changeSet,
+            document: $nodeJsonTraversalResult->node,
+            changeSet: $nodeJsonTraversalResult->changeSet,
         );
     }
 

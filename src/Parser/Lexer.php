@@ -98,12 +98,12 @@ final class Lexer
         throw $this->error('Unexpected character.');
     }
 
-    private function singleCharacterToken(TokenType $type, int $startOffset, int $line, int $column): Token
+    private function singleCharacterToken(TokenType $tokenType, int $startOffset, int $line, int $column): Token
     {
         $text = $this->currentChar();
         $this->advance();
 
-        return new Token($type, $text, $startOffset, $this->offset, $line, $column);
+        return new Token($tokenType, $text, $startOffset, $this->offset, $line, $column);
     }
 
     private function whitespaceToken(int $startOffset, int $line, int $column): Token

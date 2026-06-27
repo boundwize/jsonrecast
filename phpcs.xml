@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<ruleset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         name="jsonrecast"
+         xsi:noNamespaceSchemaLocation="vendor/squizlabs/php_codesniffer/phpcs.xsd">
+
+    <description>Coding standard for boundwize/jsonrecast</description>
+
+    <rule ref="LaminasCodingStandard">
+        <exclude name="WebimpressCodingStandard.NamingConventions.AbstractClass.Prefix"/>
+        <exclude name="WebimpressCodingStandard.NamingConventions.Exception.Suffix"/>
+        <exclude name="WebimpressCodingStandard.NamingConventions.Interface.Suffix"/>
+    </rule>
+
+    <file>src</file>
+    <file>tests</file>
+    <file>rector.php</file>
+    <file>structarmed.php</file>
+
+    <arg name="basepath" value="."/>
+    <arg name="colors"/>
+    <arg value="p"/>
+    <arg name="extensions" value="php"/>
+
+</ruleset>

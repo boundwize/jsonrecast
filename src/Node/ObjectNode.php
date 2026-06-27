@@ -1,0 +1,67 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Boundwize\JsonRecast\Node;
+
+use function array_splice;
+
+final class ObjectNode extends AbstractNodeJson
+{
+    /**
+     * @param list<ObjectItemNode> $items
+     */
+    public function __construct(
+        public array $items,
+    ) {
+    }
+
+    public function get(string $key): ?ObjectItemNode
+    {
+        foreach ($this->items as $item) {
+            if ($item->key->value === $key) {
+                return $item;
+            }
+        }
+
+        return null;
+    }
+
+    public function has(string $key): bool
+    {
+        return $this->get($key) !== null;
+    }
+
+    public function set(string $key, NodeJson $value): void
+    {
+        foreach ($this->items as $item) {
+            if ($item->key->value !== $key) {
+                continue;
+            }
+
+            $item->value = $value;
+
+            return;
+        }
+
+        $this->items[] = new ObjectItemNode(
+            key: new StringNode($key),
+            value: $value,
+        );
+    }
+
+    public function remove(string $key): bool
+    {
+        foreach ($this->items as $i => $item) {
+            if ($item->key->value !== $key) {
+                continue;
+            }
+
+            array_splice($this->items, $i, 1);
+
+            return true;
+        }
+
+        return false;
+    }
+}

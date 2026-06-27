@@ -1,0 +1,57 @@
+{
+    "name": "boundwize/jsonrecast",
+    "description": "Editable JSON AST with visitor traversal and formatting-preserving printing.",
+    "keywords": [
+        "json",
+        "ast",
+        "parser",
+        "codemod",
+        "refactoring",
+        "formatting"
+    ],
+    "homepage": "https://github.com/boundwize/jsonrecast",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Abdul Malik Ikhsan",
+            "email": "samsonasik@gmail.com",
+            "homepage": "http://samsonasik.wordpress.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Boundwize\\JsonRecast\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Boundwize\\JsonRecast\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "cs-check": "phpcs",
+        "cs-fix": "phpcbf",
+        "phpstan": "phpstan",
+        "rector": "rector process --dry-run",
+        "structarmed": "structarmed analyze"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    },
+    "require-dev": {
+        "boundwize/structarmed": "^0.13.4",
+        "laminas/laminas-coding-standard": "^3.1",
+        "phpstan/phpstan": "^2.2",
+        "phpunit/phpunit": "^11.5",
+        "rector/rector": "^2.4"
+    }
+}

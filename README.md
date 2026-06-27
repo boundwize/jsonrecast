@@ -1,5 +1,13 @@
 # JsonRecast
 
+<p align="center">
+    <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/assets/jsonrecast-dark-mode.svg">
+        <source media="(prefers-color-scheme: light)" srcset="docs/assets/jsonrecast-light-mode.svg">
+        <img alt="JsonRecast Logo" src="docs/assets/jsonrecast-light-mode.svg" width="300">
+    </picture>
+</p>
+
 A PHP JSON parser that turns JSON into an editable AST, supports visitor-based traversal, and prints changes back while preserving the original formatting.
 
 Inspired by [PHP-Parser](https://github.com/nikic/PHP-Parser/), built for tools that need to modify JSON files safely.

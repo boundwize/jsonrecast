@@ -13,6 +13,8 @@ final class ObjectNode extends AbstractNodeJson
      */
     public function __construct(
         public array $items,
+        public string $afterOpenBrace = '',
+        public string $beforeCloseBrace = '',
     ) {
     }
 

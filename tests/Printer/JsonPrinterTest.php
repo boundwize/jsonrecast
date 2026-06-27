@@ -138,6 +138,24 @@ final class JsonPrinterTest extends TestCase
         );
     }
 
+    public function testItRemovesEmptyStringObjectKey(): void
+    {
+        $source = "{\n"
+            . "    \"autoload\": {\n"
+            . "        \"psr-4\": {\n"
+            . "            \"\": \"./\"\n"
+            . "        }\n"
+            . "    }\n"
+            . '}';
+
+        $this->assertSame("{\n"
+            . "    \"autoload\": {\n"
+            . "        \"psr-4\": {\n"
+            . "        }\n"
+            . "    }\n"
+            . '}', $this->removeObjectItem($source, ''));
+    }
+
     public function testItPreservesAddArrayItemBestEffort(): void
     {
         $source = "[\n    \"json\"\n]";

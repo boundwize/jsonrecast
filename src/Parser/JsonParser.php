@@ -81,7 +81,7 @@ final class JsonParser
 
         if ($this->currentToken()->type === TokenType::RightBrace) {
             $close = $this->consume(TokenType::RightBrace);
-            $node  = new ObjectNode([]);
+            $node  = new ObjectNode([], afterOpenBrace: $beforeKey, beforeCloseBrace: $beforeKey);
             $this->setSourceMetadata($node, $token->startOffset, $close->endOffset);
 
             return $node;
@@ -124,7 +124,7 @@ final class JsonParser
 
             if ($this->currentToken()->type === TokenType::RightBrace) {
                 $close = $this->consume(TokenType::RightBrace);
-                $node  = new ObjectNode($items);
+                $node  = new ObjectNode($items, $items[0]->beforeKey, $afterValue);
                 $this->setSourceMetadata($node, $token->startOffset, $close->endOffset);
 
                 return $node;

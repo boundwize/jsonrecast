@@ -79,8 +79,6 @@ use Boundwize\JsonRecast\NodeVisitor\NodeJsonPath;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonRemoval;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
 
-use function count;
-
 $document = JsonRecast::parse($json);
 
 $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstract {
@@ -110,14 +108,12 @@ $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstr
         if ($node instanceof ArrayNode && $path->matches(['autoload-dev', 'classmap'])) {
             $removed = false;
 
-            for ($i = count($node->items) - 1; $i >= 0; $i--) {
-                $item = $node->items[$i];
-
+            foreach ($node->items as $index => $item) {
                 if (! $item->value instanceof StringNode || $item->value->value !== 'tests/Fixtures/App') {
                     continue;
                 }
 
-                $node->removeAt($i);
+                $node->removeAt($index);
                 $removed = true;
             }
 

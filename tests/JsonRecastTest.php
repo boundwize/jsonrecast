@@ -16,8 +16,6 @@ use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
-use function count;
-
 final class JsonRecastTest extends TestCase
 {
     public function testReadmeExampleAddsEditsDeletesAndRemovesEmptyParent(): void
@@ -65,9 +63,7 @@ JSON;
                 if ($nodeJson instanceof ArrayNode && $nodeJsonPath->matches(['autoload-dev', 'classmap'])) {
                     $removed = false;
 
-                    for ($i = count($nodeJson->items) - 1; $i >= 0; $i--) {
-                        $item = $nodeJson->items[$i];
-
+                    foreach ($nodeJson->items as $index => $item) {
                         if (
                             ! $item->value instanceof StringNode
                             || $item->value->value !== 'tests/Fixtures/App'
@@ -75,7 +71,7 @@ JSON;
                             continue;
                         }
 
-                        $nodeJson->removeAt($i);
+                        $nodeJson->removeAt($index);
                         $removed = true;
                     }
 

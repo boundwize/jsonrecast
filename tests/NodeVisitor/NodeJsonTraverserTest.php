@@ -90,9 +90,16 @@ final class NodeJsonTraverserTest extends TestCase
 
     public function testItReplacesStringNode(): void
     {
-        $nodeJsonTraversalResult = $this->replaceStringValue((new JsonParser())->parse('{"name":"old"}'), 'old', 'new');
+        $nodeJsonTraversalResult = $this->replaceStringValue(
+            (new JsonParser())->parse('{"name":"old"}'),
+            'old',
+            'new',
+        );
 
-        $this->assertSame("{\n    \"name\": \"new\"\n}", (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
+        $this->assertSame(
+            "{\n    \"name\": \"new\"\n}",
+            (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node),
+        );
     }
 
     public function testItUpdatesObjectItemValue(): void
@@ -112,7 +119,10 @@ final class NodeJsonTraverserTest extends TestCase
             }
         });
 
-        $this->assertSame("{\n    \"name\": \"new\"\n}", (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
+        $this->assertSame(
+            "{\n    \"name\": \"new\"\n}",
+            (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node),
+        );
     }
 
     public function testItRemovesObjectItem(): void
@@ -130,7 +140,10 @@ final class NodeJsonTraverserTest extends TestCase
             }
         });
 
-        $this->assertSame("{\n    \"name\": \"boundwize/jsonrecast\"\n}", (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
+        $this->assertSame(
+            "{\n    \"name\": \"boundwize/jsonrecast\"\n}",
+            (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node),
+        );
     }
 
     public function testItRemovesArrayItem(): void
@@ -181,7 +194,11 @@ final class NodeJsonTraverserTest extends TestCase
 
             public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
             {
-                if ($nodeJson instanceof StringNode && $nodeJson->value === 'old' && $nodeJsonPath->isObjectValue('name')) {
+                if (
+                    $nodeJson instanceof StringNode
+                    && $nodeJson->value === 'old'
+                    && $nodeJsonPath->isObjectValue('name')
+                ) {
                     $this->sawNameValue = true;
                 }
 
@@ -256,14 +273,24 @@ final class NodeJsonTraverserTest extends TestCase
             'new',
         );
 
-        $this->assertSame("{\n    \"a\": {\n        \"b\": {\n            \"c\": \"new\"\n        }\n    }\n}", (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
+        $this->assertSame(
+            "{\n    \"a\": {\n        \"b\": {\n            \"c\": \"new\"\n        }\n    }\n}",
+            (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node),
+        );
     }
 
     public function testItTraversesRecursiveArrays(): void
     {
-        $nodeJsonTraversalResult = $this->replaceStringValue((new JsonParser())->parse('[[["old"]]]'), 'old', 'new');
+        $nodeJsonTraversalResult = $this->replaceStringValue(
+            (new JsonParser())->parse('[[["old"]]]'),
+            'old',
+            'new',
+        );
 
-        $this->assertSame("[\n    [\n        [\n            \"new\"\n        ]\n    ]\n]", (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
+        $this->assertSame(
+            "[\n    [\n        [\n            \"new\"\n        ]\n    ]\n]",
+            (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node),
+        );
     }
 
     public function testItTraversesMixedRecursiveArraysAndObjects(): void
@@ -274,24 +301,33 @@ final class NodeJsonTraverserTest extends TestCase
             'new',
         );
 
-        $this->assertSame("{\n"
-            . "    \"items\": [\n"
-            . "        {\n"
-            . "            \"values\": [\n"
-            . "                \"new\"\n"
-            . "            ]\n"
-            . "        }\n"
-            . "    ]\n"
-            . '}', (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
+        $this->assertSame(
+            "{\n"
+                . "    \"items\": [\n"
+                . "        {\n"
+                . "            \"values\": [\n"
+                . "                \"new\"\n"
+                . "            ]\n"
+                . "        }\n"
+                . "    ]\n"
+                . '}',
+            (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node),
+        );
     }
 
     public function testObjectNodeSetUpdatesExistingKey(): void
     {
-        $nodeJsonTraversalResult = $this->mutateRootObject('{"license":"GPL"}', static function (ObjectNode $objectNode): void {
-            $objectNode->set('license', JsonValue::from('MIT'));
-        });
+        $nodeJsonTraversalResult = $this->mutateRootObject(
+            '{"license":"GPL"}',
+            static function (ObjectNode $objectNode): void {
+                $objectNode->set('license', JsonValue::from('MIT'));
+            },
+        );
 
-        $this->assertSame("{\n    \"license\": \"MIT\"\n}", (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
+        $this->assertSame(
+            "{\n    \"license\": \"MIT\"\n}",
+            (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node),
+        );
     }
 
     public function testObjectNodeSetAddsMissingKey(): void
@@ -303,7 +339,10 @@ final class NodeJsonTraverserTest extends TestCase
             },
         );
 
-        $this->assertSame("{\n    \"name\": \"boundwize/jsonrecast\",\n    \"license\": \"MIT\"\n}", (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
+        $this->assertSame(
+            "{\n    \"name\": \"boundwize/jsonrecast\",\n    \"license\": \"MIT\"\n}",
+            (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node),
+        );
     }
 
     public function testObjectNodeRemoveRemovesKey(): void
@@ -315,25 +354,40 @@ final class NodeJsonTraverserTest extends TestCase
             },
         );
 
-        $this->assertSame("{\n    \"name\": \"boundwize/jsonrecast\"\n}", (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
+        $this->assertSame(
+            "{\n    \"name\": \"boundwize/jsonrecast\"\n}",
+            (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node),
+        );
     }
 
     public function testArrayNodeAppendAddsValue(): void
     {
-        $nodeJsonTraversalResult = $this->mutateRootArray('["json"]', static function (ArrayNode $arrayNode): void {
-            $arrayNode->append(JsonValue::from('ast'));
-        });
+        $nodeJsonTraversalResult = $this->mutateRootArray(
+            '["json"]',
+            static function (ArrayNode $arrayNode): void {
+                $arrayNode->append(JsonValue::from('ast'));
+            },
+        );
 
-        $this->assertSame("[\n    \"json\",\n    \"ast\"\n]", (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
+        $this->assertSame(
+            "[\n    \"json\",\n    \"ast\"\n]",
+            (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node),
+        );
     }
 
     public function testArrayNodeInsertAddsValueAtIndex(): void
     {
-        $nodeJsonTraversalResult = $this->mutateRootArray('["json","parser"]', static function (ArrayNode $arrayNode): void {
-            $arrayNode->insert(1, JsonValue::from('ast'));
-        });
+        $nodeJsonTraversalResult = $this->mutateRootArray(
+            '["json","parser"]',
+            static function (ArrayNode $arrayNode): void {
+                $arrayNode->insert(1, JsonValue::from('ast'));
+            },
+        );
 
-        $this->assertSame("[\n    \"json\",\n    \"ast\",\n    \"parser\"\n]", (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
+        $this->assertSame(
+            "[\n    \"json\",\n    \"ast\",\n    \"parser\"\n]",
+            (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node),
+        );
     }
 
     public function testArrayNodeRemoveAtRemovesValue(): void
@@ -345,7 +399,10 @@ final class NodeJsonTraverserTest extends TestCase
             },
         );
 
-        $this->assertSame("[\n    \"json\"\n]", (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
+        $this->assertSame(
+            "[\n    \"json\"\n]",
+            (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node),
+        );
     }
 
     public function testMutationWithoutReturnIsNotTracked(): void
@@ -442,8 +499,10 @@ final class NodeJsonTraverserTest extends TestCase
         });
     }
 
-    private function traverse(NodeJson $nodeJson, NodeJsonVisitorAbstract $nodeJsonVisitorAbstract): NodeJsonTraversalResult
-    {
+    private function traverse(
+        NodeJson $nodeJson,
+        NodeJsonVisitorAbstract $nodeJsonVisitorAbstract,
+    ): NodeJsonTraversalResult {
         $nodeJsonTraverser = new NodeJsonTraverser();
         $nodeJsonTraverser->addVisitor($nodeJsonVisitorAbstract);
 

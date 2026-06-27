@@ -202,7 +202,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
      */
     private function shouldPrintContainerBestEffort(NodeJson $nodeJson, array $items): bool
     {
-        if ($this->nodeChangeSet !== null && $this->nodeChangeSet->isChanged($nodeJson)) {
+        if ($this->nodeChangeSet instanceof NodeChangeSet && $this->nodeChangeSet->isChanged($nodeJson)) {
             return true;
         }
 
@@ -217,7 +217,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
     private function isChanged(NodeJson $nodeJson): bool
     {
-        if ($this->nodeChangeSet !== null && $this->nodeChangeSet->isChanged($nodeJson)) {
+        if ($this->nodeChangeSet instanceof NodeChangeSet && $this->nodeChangeSet->isChanged($nodeJson)) {
             return true;
         }
 

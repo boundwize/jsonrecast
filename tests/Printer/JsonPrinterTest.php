@@ -32,7 +32,10 @@ final class JsonPrinterTest extends TestCase
     {
         $source = "{\n    \"name\"   :   \"old\",\n    \"type\"   :   \"library\"\n}";
 
-        $this->assertSame("{\n    \"name\"   :   \"new\",\n    \"type\"   :   \"library\"\n}", $this->replaceStringValue($source, 'old', 'new'));
+        $this->assertSame(
+            "{\n    \"name\"   :   \"new\",\n    \"type\"   :   \"library\"\n}",
+            $this->replaceStringValue($source, 'old', 'new'),
+        );
     }
 
     public function testItPreservesNumberRawValue(): void
@@ -88,7 +91,10 @@ final class JsonPrinterTest extends TestCase
     {
         $source = "[\n    [\n        [\n            \"old\"\n        ]\n    ],\n    \"keep\"\n]";
 
-        $this->assertSame("[\n    [\n        [\n            \"new\"\n        ]\n    ],\n    \"keep\"\n]", $this->replaceStringValue($source, 'old', 'new'));
+        $this->assertSame(
+            "[\n    [\n        [\n            \"new\"\n        ]\n    ],\n    \"keep\"\n]",
+            $this->replaceStringValue($source, 'old', 'new'),
+        );
     }
 
     public function testItPreservesMixedRecursiveFormatting(): void
@@ -116,14 +122,20 @@ final class JsonPrinterTest extends TestCase
     {
         $source = "{\n    \"name\": \"boundwize/jsonrecast\"\n}";
 
-        $this->assertSame("{\n    \"name\": \"boundwize/jsonrecast\",\n    \"license\": \"MIT\"\n}", $this->addObjectItem($source));
+        $this->assertSame(
+            "{\n    \"name\": \"boundwize/jsonrecast\",\n    \"license\": \"MIT\"\n}",
+            $this->addObjectItem($source),
+        );
     }
 
     public function testItPreservesRemoveObjectItemBestEffort(): void
     {
         $source = "{\n    \"name\": \"boundwize/jsonrecast\",\n    \"minimum-stability\": \"dev\"\n}";
 
-        $this->assertSame("{\n    \"name\": \"boundwize/jsonrecast\"\n}", $this->removeObjectItem($source, 'minimum-stability'));
+        $this->assertSame(
+            "{\n    \"name\": \"boundwize/jsonrecast\"\n}",
+            $this->removeObjectItem($source, 'minimum-stability'),
+        );
     }
 
     public function testItPreservesAddArrayItemBestEffort(): void

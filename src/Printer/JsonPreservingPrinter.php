@@ -92,6 +92,12 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             }
         }
 
+        $lastItem = $objectNode->items[count($objectNode->items) - 1];
+
+        if ($lastItem->afterValue !== $objectNode->beforeCloseBrace) {
+            $output .= $objectNode->beforeCloseBrace;
+        }
+
         return $output . '}';
     }
 
@@ -228,7 +234,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     {
         if ($this->nodeChangeSet instanceof NodeChangeSet && $this->nodeChangeSet->isChanged($nodeJson)) {
             if (
-                $nodeJson instanceof ArrayNode
+                ($nodeJson instanceof ObjectNode || $nodeJson instanceof ArrayNode)
                 && $items !== []
                 && $nodeJson->hasAttribute(NodeAttributes::ORIGINAL_TEXT)
                 && ! $this->hasItemWithoutOriginalText($items)

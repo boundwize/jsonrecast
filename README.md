@@ -76,13 +76,13 @@ use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonPath;
-use Boundwize\JsonRecast\NodeVisitor\NodeJsonRemoval;
+use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitor;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
 
 $document = JsonRecast::parse($json);
 
 $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstract {
-    public function enterNode(NodeJson $node, NodeJsonPath $path): null|NodeJson|NodeJsonRemoval
+    public function enterNode(NodeJson $node, NodeJsonPath $path): null|NodeJson|int
     {
         if (
             $node instanceof ObjectItemNode
@@ -95,7 +95,7 @@ $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstr
             }
 
             if ($node->key->value === 'minimum-stability') {
-                return NodeJsonRemoval::remove();
+                return NodeJsonVisitor::REMOVE_NODE;
             }
         }
 
@@ -148,7 +148,7 @@ The printed JSON keeps the surrounding formatting and only rewrites the changed 
 Use `leaveNode()` when a parent decision depends on child nodes that may already have changed. For example, after the `classmap` array item is removed, you can remove the now-empty root `autoload-dev` item:
 
 ```php
-public function leaveNode(NodeJson $node, NodeJsonPath $path): ?NodeJsonRemoval
+public function leaveNode(NodeJson $node, NodeJsonPath $path): ?int
 {
     if (
         ! $node instanceof ObjectItemNode
@@ -169,7 +169,7 @@ public function leaveNode(NodeJson $node, NodeJsonPath $path): ?NodeJsonRemoval
         return null;
     }
 
-    return NodeJsonRemoval::remove();
+    return NodeJsonVisitor::REMOVE_NODE;
 }
 ```
 

@@ -11,7 +11,7 @@ use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonPath;
-use Boundwize\JsonRecast\NodeVisitor\NodeJsonRemoval;
+use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitor;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -40,7 +40,7 @@ JSON;
         $jsonDocument = JsonRecast::parse($json);
 
         $jsonRecastResult = JsonRecast::traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
-            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): null|NodeJson|NodeJsonRemoval
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): null|NodeJson|int
             {
                 if ($nodeJson instanceof ObjectItemNode && $nodeJsonPath->isRoot()) {
                     if ($nodeJson->key->value === 'name') {
@@ -50,7 +50,7 @@ JSON;
                     }
 
                     if ($nodeJson->key->value === 'minimum-stability') {
-                        return NodeJsonRemoval::remove();
+                        return NodeJsonVisitor::REMOVE_NODE;
                     }
                 }
 
@@ -81,7 +81,7 @@ JSON;
                 return null;
             }
 
-            public function leaveNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJsonRemoval
+            public function leaveNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?int
             {
                 if (
                     ! $nodeJson instanceof ObjectItemNode
@@ -102,7 +102,7 @@ JSON;
                     return null;
                 }
 
-                return NodeJsonRemoval::remove();
+                return NodeJsonVisitor::REMOVE_NODE;
             }
         });
 

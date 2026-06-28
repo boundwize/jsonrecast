@@ -15,6 +15,7 @@ use LogicException;
 
 use function array_splice;
 use function count;
+use function is_int;
 
 final class NodeJsonTraverser
 {
@@ -40,7 +41,7 @@ final class NodeJsonTraverser
         foreach ($this->visitors as $visitor) {
             $result = $visitor->beforeTraverse($nodeJson);
 
-            if ($result instanceof NodeJsonRemoval) {
+            if ($this->isRemoveNode($result)) {
                 throw new LogicException('Cannot remove root node during beforeTraverse().');
             }
 
@@ -50,16 +51,18 @@ final class NodeJsonTraverser
             }
         }
 
-        $nodeJson = $this->traverseNode($nodeJson, new NodeJsonPath());
+        $traverseResult = $this->traverseNode($nodeJson, new NodeJsonPath());
 
-        if ($nodeJson instanceof NodeJsonRemoval) {
+        if ($traverseResult === NodeJsonVisitor::REMOVE_NODE) {
             throw new LogicException('Cannot remove root node.');
         }
+
+        $nodeJson = $traverseResult;
 
         foreach ($this->visitors as $visitor) {
             $result = $visitor->afterTraverse($nodeJson);
 
-            if ($result instanceof NodeJsonRemoval) {
+            if ($this->isRemoveNode($result)) {
                 throw new LogicException('Cannot remove root node during afterTraverse().');
             }
 
@@ -72,13 +75,16 @@ final class NodeJsonTraverser
         return new NodeJsonTraversalResult($nodeJson, $this->nodeChangeSet);
     }
 
-    private function traverseNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): NodeJson|NodeJsonRemoval
+    /**
+     * @return NodeJson|NodeJsonVisitor::REMOVE_NODE
+     */
+    private function traverseNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): NodeJson|int
     {
         foreach ($this->visitors as $visitor) {
             $result = $visitor->enterNode($nodeJson, $nodeJsonPath);
 
-            if ($result instanceof NodeJsonRemoval) {
-                return $result;
+            if ($this->isRemoveNode($result)) {
+                return NodeJsonVisitor::REMOVE_NODE;
             }
 
             if ($result instanceof NodeJson) {
@@ -102,8 +108,8 @@ final class NodeJsonTraverser
         foreach ($this->visitors as $visitor) {
             $result = $visitor->leaveNode($nodeJson, $nodeJsonPath);
 
-            if ($result instanceof NodeJsonRemoval) {
-                return $result;
+            if ($this->isRemoveNode($result)) {
+                return NodeJsonVisitor::REMOVE_NODE;
             }
 
             if ($result instanceof NodeJson) {
@@ -119,7 +125,7 @@ final class NodeJsonTraverser
     {
         $result = $this->traverseNode($jsonDocument->value, $nodeJsonPath);
 
-        if ($result instanceof NodeJsonRemoval) {
+        if ($result === NodeJsonVisitor::REMOVE_NODE) {
             throw new LogicException('Cannot remove document value directly.');
         }
 
@@ -133,7 +139,7 @@ final class NodeJsonTraverser
         while ($i < count($objectNode->items)) {
             $result = $this->traverseNode($objectNode->items[$i], $nodeJsonPath);
 
-            if ($result instanceof NodeJsonRemoval) {
+            if ($result === NodeJsonVisitor::REMOVE_NODE) {
                 array_splice($objectNode->items, $i, 1);
                 $this->nodeChangeSet->markChanged($objectNode);
                 continue;
@@ -152,7 +158,7 @@ final class NodeJsonTraverser
     {
         $keyResult = $this->traverseNode($objectItemNode->key, $nodeJsonPath);
 
-        if ($keyResult instanceof NodeJsonRemoval) {
+        if ($keyResult === NodeJsonVisitor::REMOVE_NODE) {
             throw new LogicException('Cannot remove object key directly.');
         }
 
@@ -165,7 +171,7 @@ final class NodeJsonTraverser
         $valuePath   = $nodeJsonPath->childObjectKey($objectItemNode->key->value);
         $valueResult = $this->traverseNode($objectItemNode->value, $valuePath);
 
-        if ($valueResult instanceof NodeJsonRemoval) {
+        if ($valueResult === NodeJsonVisitor::REMOVE_NODE) {
             throw new LogicException('Cannot remove object value directly. Remove the ObjectItemNode instead.');
         }
 
@@ -179,7 +185,7 @@ final class NodeJsonTraverser
         while ($i < count($arrayNode->items)) {
             $result = $this->traverseNode($arrayNode->items[$i], $nodeJsonPath->childArrayIndex($i));
 
-            if ($result instanceof NodeJsonRemoval) {
+            if ($result === NodeJsonVisitor::REMOVE_NODE) {
                 array_splice($arrayNode->items, $i, 1);
                 $this->nodeChangeSet->markChanged($arrayNode);
                 continue;
@@ -198,10 +204,23 @@ final class NodeJsonTraverser
     {
         $result = $this->traverseNode($arrayItemNode->value, $nodeJsonPath);
 
-        if ($result instanceof NodeJsonRemoval) {
+        if ($result === NodeJsonVisitor::REMOVE_NODE) {
             throw new LogicException('Cannot remove array value directly. Remove the ArrayItemNode instead.');
         }
 
         $arrayItemNode->value = $result;
+    }
+
+    private function isRemoveNode(null|NodeJson|int $result): bool
+    {
+        if ($result === NodeJsonVisitor::REMOVE_NODE) {
+            return true;
+        }
+
+        if (is_int($result)) {
+            throw new LogicException('Unknown node visitor action.');
+        }
+
+        return false;
     }
 }

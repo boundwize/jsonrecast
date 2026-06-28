@@ -10,9 +10,9 @@ use Boundwize\JsonRecast\Node\NumberNode;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonPath;
-use Boundwize\JsonRecast\NodeVisitor\NodeJsonRemoval;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonTraversalResult;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonTraverser;
+use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitor;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
 use Boundwize\JsonRecast\Parser\JsonParser;
 use LogicException;
@@ -26,9 +26,9 @@ final class NodeJsonTraverserGuardTest extends TestCase
         $this->expectExceptionMessage('Cannot remove root node during beforeTraverse().');
 
         $this->traverse(new StringNode('root'), new class extends NodeJsonVisitorAbstract {
-            public function beforeTraverse(NodeJson $nodeJson): NodeJsonRemoval
+            public function beforeTraverse(NodeJson $nodeJson): int
             {
-                return NodeJsonRemoval::remove();
+                return NodeJsonVisitor::REMOVE_NODE;
             }
         });
     }
@@ -53,9 +53,9 @@ final class NodeJsonTraverserGuardTest extends TestCase
         $this->expectExceptionMessage('Cannot remove root node during afterTraverse().');
 
         $this->traverse(new StringNode('root'), new class extends NodeJsonVisitorAbstract {
-            public function afterTraverse(NodeJson $nodeJson): NodeJsonRemoval
+            public function afterTraverse(NodeJson $nodeJson): int
             {
-                return NodeJsonRemoval::remove();
+                return NodeJsonVisitor::REMOVE_NODE;
             }
         });
     }
@@ -80,9 +80,9 @@ final class NodeJsonTraverserGuardTest extends TestCase
         $this->expectExceptionMessage('Cannot remove root node.');
 
         $this->traverse(new StringNode('root'), new class extends NodeJsonVisitorAbstract {
-            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): NodeJsonRemoval
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): int
             {
-                return NodeJsonRemoval::remove();
+                return NodeJsonVisitor::REMOVE_NODE;
             }
         });
     }
@@ -93,9 +93,9 @@ final class NodeJsonTraverserGuardTest extends TestCase
         $this->expectExceptionMessage('Cannot remove root node.');
 
         $this->traverse(new StringNode('root'), new class extends NodeJsonVisitorAbstract {
-            public function leaveNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): NodeJsonRemoval
+            public function leaveNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): int
             {
-                return NodeJsonRemoval::remove();
+                return NodeJsonVisitor::REMOVE_NODE;
             }
         });
     }
@@ -106,13 +106,13 @@ final class NodeJsonTraverserGuardTest extends TestCase
         $this->expectExceptionMessage('Cannot remove document value directly.');
 
         $this->traverse((new JsonParser())->parse('"value"'), new class extends NodeJsonVisitorAbstract {
-            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJsonRemoval
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?int
             {
                 if (! $nodeJson instanceof StringNode) {
                     return null;
                 }
 
-                return NodeJsonRemoval::remove();
+                return NodeJsonVisitor::REMOVE_NODE;
             }
         });
     }
@@ -140,13 +140,13 @@ final class NodeJsonTraverserGuardTest extends TestCase
         $this->expectExceptionMessage('Cannot remove object key directly.');
 
         $this->traverse((new JsonParser())->parse('{"name":"value"}'), new class extends NodeJsonVisitorAbstract {
-            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJsonRemoval
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?int
             {
                 if (! $nodeJson instanceof StringNode || $nodeJson->value !== 'name') {
                     return null;
                 }
 
-                return NodeJsonRemoval::remove();
+                return NodeJsonVisitor::REMOVE_NODE;
             }
         });
     }
@@ -191,13 +191,13 @@ final class NodeJsonTraverserGuardTest extends TestCase
         $this->expectExceptionMessage('Cannot remove array value directly. Remove the ArrayItemNode instead.');
 
         $this->traverse((new JsonParser())->parse('["value"]'), new class extends NodeJsonVisitorAbstract {
-            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJsonRemoval
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?int
             {
                 if (! $nodeJson instanceof StringNode) {
                     return null;
                 }
 
-                return NodeJsonRemoval::remove();
+                return NodeJsonVisitor::REMOVE_NODE;
             }
         });
     }

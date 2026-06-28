@@ -12,7 +12,7 @@ use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonPath;
-use Boundwize\JsonRecast\NodeVisitor\NodeJsonRemoval;
+use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitor;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
 use Boundwize\JsonRecast\Parser\JsonParser;
 use Boundwize\JsonRecast\Printer\JsonPreservingPrinter;
@@ -352,13 +352,13 @@ JSON;
             ) {
             }
 
-            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJsonRemoval
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?int
             {
                 if (! $nodeJson instanceof ObjectItemNode || $nodeJson->key->value !== $this->key) {
                     return null;
                 }
 
-                return NodeJsonRemoval::remove();
+                return NodeJsonVisitor::REMOVE_NODE;
             }
         });
 
@@ -395,7 +395,7 @@ JSON;
             ) {
             }
 
-            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJsonRemoval
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?int
             {
                 if (! $nodeJson instanceof ArrayItemNode || ! $nodeJson->value instanceof StringNode) {
                     return null;
@@ -405,7 +405,7 @@ JSON;
                     return null;
                 }
 
-                return NodeJsonRemoval::remove();
+                return NodeJsonVisitor::REMOVE_NODE;
             }
         });
 

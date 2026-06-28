@@ -13,9 +13,9 @@ use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonPath;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonPathSegment;
-use Boundwize\JsonRecast\NodeVisitor\NodeJsonRemoval;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonTraversalResult;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonTraverser;
+use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitor;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
 use Boundwize\JsonRecast\Parser\JsonParser;
 use Boundwize\JsonRecast\Printer\JsonPrettyPrinter;
@@ -138,13 +138,13 @@ JSON,
         $jsonDocument = (new JsonParser())->parse('{"name":"boundwize/jsonrecast","minimum-stability":"dev"}');
 
         $nodeJsonTraversalResult = $this->traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
-            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJsonRemoval
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?int
             {
                 if (! $nodeJson instanceof ObjectItemNode || $nodeJson->key->value !== 'minimum-stability') {
                     return null;
                 }
 
-                return NodeJsonRemoval::remove();
+                return NodeJsonVisitor::REMOVE_NODE;
             }
         });
 
@@ -163,7 +163,7 @@ JSON,
         $jsonDocument = (new JsonParser())->parse('["json","temporary"]');
 
         $nodeJsonTraversalResult = $this->traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
-            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJsonRemoval
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?int
             {
                 if (! $nodeJson instanceof ArrayItemNode || ! $nodeJson->value instanceof StringNode) {
                     return null;
@@ -173,7 +173,7 @@ JSON,
                     return null;
                 }
 
-                return NodeJsonRemoval::remove();
+                return NodeJsonVisitor::REMOVE_NODE;
             }
         });
 
@@ -191,13 +191,13 @@ JSON, (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
         $this->expectException(LogicException::class);
 
         $this->traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
-            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJsonRemoval
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?int
             {
                 if (! $nodeJson instanceof StringNode || $nodeJson->value !== 'old') {
                     return null;
                 }
 
-                return NodeJsonRemoval::remove();
+                return NodeJsonVisitor::REMOVE_NODE;
             }
         });
     }

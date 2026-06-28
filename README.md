@@ -53,7 +53,8 @@ Start by parsing JSON into a document node:
 ```php
 use Boundwize\JsonRecast\JsonRecast;
 
-$document = JsonRecast::parse('{"name": "jsonrecast", "private": true}');
+$jsonContent = '{"name": "jsonrecast", "private": true}';
+$document    = JsonRecast::parse($jsonContent);
 ```
 
 The result is an AST. Dump it when you want to understand the node shape your visitors will receive:

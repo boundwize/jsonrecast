@@ -227,29 +227,31 @@ The printed JSON keeps the surrounding formatting and only rewrites the changed 
 Use `leaveNode()` when a parent decision depends on child nodes that may already have changed. For example, after the `classmap` array item is removed, you can remove the now-empty root `autoload-dev` item:
 
 ```php
-public function leaveNode(NodeJson $node, NodeJsonPath $path): ?int
-{
-    if (
-        ! $node instanceof ObjectItemNode
-        || ! $path->isRoot()
-        || $node->key->value !== 'autoload-dev'
-        || ! $node->value instanceof ObjectNode
-    ) {
-        return null;
+// ...
+    public function leaveNode(NodeJson $node, NodeJsonPath $path): ?int
+    {
+        if (
+            ! $node instanceof ObjectItemNode
+            || ! $path->isRoot()
+            || $node->key->value !== 'autoload-dev'
+            || ! $node->value instanceof ObjectNode
+        ) {
+            return null;
+        }
+
+        $classmapItem = $node->value->get('classmap');
+
+        if (
+            ! $classmapItem instanceof ObjectItemNode
+            || ! $classmapItem->value instanceof ArrayNode
+            || $classmapItem->value->items !== []
+        ) {
+            return null;
+        }
+
+        return NodeJsonVisitor::REMOVE_NODE;
     }
-
-    $classmapItem = $node->value->get('classmap');
-
-    if (
-        ! $classmapItem instanceof ObjectItemNode
-        || ! $classmapItem->value instanceof ArrayNode
-        || $classmapItem->value->items !== []
-    ) {
-        return null;
-    }
-
-    return NodeJsonVisitor::REMOVE_NODE;
-}
+// ...
 ```
 
 With that hook added, the printed JSON becomes:

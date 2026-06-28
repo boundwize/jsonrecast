@@ -210,6 +210,25 @@ JSON,
         );
     }
 
+    public function testItPreservesInlineObjectFormattingWhenRemovingObjectItem(): void
+    {
+        $source = <<<'JSON'
+{
+    "autoload": {
+        "psr-4": {"Mixed\\": "src/", "Missing\\": "missing-tests/"}
+    }
+}
+JSON;
+
+        $this->assertSame(<<<'JSON'
+{
+    "autoload": {
+        "psr-4": {"Mixed\\": "src/"}
+    }
+}
+JSON, $this->removeObjectItem($source, 'Missing\\'));
+    }
+
     public function testItRemovesEmptyStringObjectKey(): void
     {
         $source = <<<'JSON'
@@ -262,6 +281,29 @@ JSON;
     "json"
 ]
 JSON, $this->removeArrayItem($source, 'temporary'));
+    }
+
+    public function testItPreservesInlineArrayFormattingWhenRemovingArrayItem(): void
+    {
+        $source = <<<'JSON'
+{
+    "autoload": {
+        "psr-4": {
+            "Mixed\\": ["src/", "missing-tests/"]
+        }
+    }
+}
+JSON;
+
+        $this->assertSame(<<<'JSON'
+{
+    "autoload": {
+        "psr-4": {
+            "Mixed\\": ["src/"]
+        }
+    }
+}
+JSON, $this->removeArrayItem($source, 'missing-tests/'));
     }
 
     public function testItRemovesOnlyClassmapArrayItem(): void

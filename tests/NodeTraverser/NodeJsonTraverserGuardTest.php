@@ -103,12 +103,12 @@ final class NodeJsonTraverserGuardTest extends TestCase
 
     public function testItRejectsUnknownIntegerVisitorAction(): void
     {
-        $isRemoveNode = new ReflectionMethod(NodeJsonTraverser::class, 'isRemoveNode');
+        $reflectionMethod = new ReflectionMethod(NodeJsonTraverser::class, 'isRemoveNode');
 
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Unknown node visitor action.');
 
-        $isRemoveNode->invoke(new NodeJsonTraverser(), 2);
+        $reflectionMethod->invoke(new NodeJsonTraverser(), 2);
     }
 
     public function testItForbidsRemovingDocumentValueDirectly(): void

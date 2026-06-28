@@ -43,9 +43,87 @@ composer require boundwize/jsonrecast
 * Keep number representations like `1`, `1.0`, and `1e0`
 * Supports recursive objects and arrays
 * Tracks changes outside the AST
+* Dump the AST for tooling and debugging
 * Designed for tooling, config updates, and automated refactoring
 
-## Example
+## Quick Start
+
+Start by parsing JSON into a document node:
+
+```php
+use Boundwize\JsonRecast\JsonRecast;
+
+$document = JsonRecast::parse('{"name": "jsonrecast", "private": true}');
+```
+
+The result is an AST. Dump it when you want to understand the node shape your visitors will receive:
+
+```php
+echo JsonRecast::dumpAst($document);
+```
+
+```text
+JsonDocument
+  value: ObjectNode
+    items:
+      [0]: ObjectItemNode
+        key: StringNode(value: "name")
+        value: StringNode(value: "jsonrecast")
+      [1]: ObjectItemNode
+        key: StringNode(value: "private")
+        value: BooleanNode(value: true)
+```
+
+The structure follows the JSON shape:
+
+* `JsonDocument` wraps the root JSON value
+* `ObjectNode` and `ArrayNode` contain item nodes
+* `ObjectItemNode` contains a string key and a value node
+* Scalar values use `StringNode`, `NumberNode`, `BooleanNode`, and `NullNode`
+
+Arrays use the same pattern with `ArrayItemNode`:
+
+```php
+$document = JsonRecast::parse('["json", 1, null]');
+
+echo JsonRecast::dumpAst($document);
+```
+
+```text
+JsonDocument
+  value: ArrayNode
+    items:
+      [0]: ArrayItemNode
+        value: StringNode(value: "json")
+      [1]: ArrayItemNode
+        value: NumberNode(rawValue: "1")
+      [2]: ArrayItemNode
+        value: NullNode
+```
+
+After traversal, the dumper also accepts `JsonRecastResult`:
+
+```php
+$result = JsonRecast::traverse($document, $visitor);
+
+echo JsonRecast::dumpAst($result);
+```
+
+Pass a named option when you need parser metadata:
+
+```php
+echo JsonRecast::dumpAst($document, includeAttributes: true);
+```
+
+You can also use the utility directly:
+
+```php
+use Boundwize\JsonRecast\AstDumper;
+
+echo (new AstDumper(includeAttributes: true))->dump($document);
+```
+
+## Editing and Printing
 
 Given this JSON:
 

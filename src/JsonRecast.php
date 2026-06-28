@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast;
 
 use Boundwize\JsonRecast\Node\JsonDocument;
+use Boundwize\JsonRecast\Node\NodeJson;
 use Boundwize\JsonRecast\NodeTraverser\NodeJsonTraverser;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitor;
 use Boundwize\JsonRecast\Parser\JsonParser;
@@ -42,5 +43,14 @@ final class JsonRecast
         }
 
         return (new JsonPreservingPrinter())->print($input);
+    }
+
+    public static function dumpAst(
+        NodeJson|JsonRecastResult $input,
+        bool $includeAttributes = false,
+    ): string {
+        return (new AstDumper(
+            includeAttributes: $includeAttributes,
+        ))->dump($input);
     }
 }

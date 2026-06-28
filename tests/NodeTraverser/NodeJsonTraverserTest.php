@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Boundwize\JsonRecast\Tests\NodeVisitor;
+namespace Boundwize\JsonRecast\Tests\NodeTraverser;
 
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
@@ -11,10 +11,10 @@ use Boundwize\JsonRecast\Node\NodeJson;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
-use Boundwize\JsonRecast\NodeVisitor\NodeJsonPath;
-use Boundwize\JsonRecast\NodeVisitor\NodeJsonPathSegment;
-use Boundwize\JsonRecast\NodeVisitor\NodeJsonTraversalResult;
-use Boundwize\JsonRecast\NodeVisitor\NodeJsonTraverser;
+use Boundwize\JsonRecast\NodePath\NodeJsonPath;
+use Boundwize\JsonRecast\NodePath\NodeJsonPathSegment;
+use Boundwize\JsonRecast\NodeTraverser\NodeJsonTraversalResult;
+use Boundwize\JsonRecast\NodeTraverser\NodeJsonTraverser;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitor;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
 use Boundwize\JsonRecast\Parser\JsonParser;

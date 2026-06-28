@@ -15,7 +15,7 @@ use Boundwize\JsonRecast\Node\NumberNode;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
-use Boundwize\JsonRecast\NodeVisitor\NodeChangeSet;
+use Boundwize\JsonRecast\NodeTraverser\NodeChangeSet;
 use RuntimeException;
 
 use function count;

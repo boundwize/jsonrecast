@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Boundwize\JsonRecast\NodeVisitor;
+namespace Boundwize\JsonRecast\NodePath;
 
 final readonly class NodeJsonPathSegment
 {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Boundwize\JsonRecast\NodeVisitor;
+namespace Boundwize\JsonRecast\NodeTraverser;
 
 use Boundwize\JsonRecast\Node\NodeJson;
 use SplObjectStorage;

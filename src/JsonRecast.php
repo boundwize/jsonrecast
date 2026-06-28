@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast;
 
 use Boundwize\JsonRecast\Node\JsonDocument;
-use Boundwize\JsonRecast\NodeVisitor\NodeJsonTraverser;
+use Boundwize\JsonRecast\NodeTraverser\NodeJsonTraverser;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitor;
 use Boundwize\JsonRecast\Parser\JsonParser;
 use Boundwize\JsonRecast\Printer\JsonPreservingPrinter;

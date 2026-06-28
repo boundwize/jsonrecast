@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Boundwize\JsonRecast\Tests\NodeVisitor;
+namespace Boundwize\JsonRecast\Tests\NodePath;
 
-use Boundwize\JsonRecast\NodeVisitor\NodeJsonPath;
-use Boundwize\JsonRecast\NodeVisitor\NodeJsonPathSegment;
+use Boundwize\JsonRecast\NodePath\NodeJsonPath;
+use Boundwize\JsonRecast\NodePath\NodeJsonPathSegment;
 use PHPUnit\Framework\TestCase;
 
 final class NodeJsonPathTest extends TestCase

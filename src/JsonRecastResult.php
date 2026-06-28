@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast;
 
 use Boundwize\JsonRecast\Node\JsonDocument;
-use Boundwize\JsonRecast\NodeVisitor\NodeChangeSet;
+use Boundwize\JsonRecast\NodeTraverser\NodeChangeSet;
 
 final readonly class JsonRecastResult
 {

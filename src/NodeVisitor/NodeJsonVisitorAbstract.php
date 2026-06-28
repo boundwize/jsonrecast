@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast\NodeVisitor;
 
 use Boundwize\JsonRecast\Node\NodeJson;
+use Boundwize\JsonRecast\NodePath\NodeJsonPath;
 
 abstract class NodeJsonVisitorAbstract implements NodeJsonVisitor
 {

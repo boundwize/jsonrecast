@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Boundwize\JsonRecast\NodeVisitor;
+namespace Boundwize\JsonRecast\NodeTraverser;
 
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
@@ -11,6 +11,8 @@ use Boundwize\JsonRecast\Node\NodeJson;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
+use Boundwize\JsonRecast\NodePath\NodeJsonPath;
+use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitor;
 use LogicException;
 
 use function array_splice;

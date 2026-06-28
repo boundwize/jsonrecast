@@ -184,6 +184,54 @@ JSON,
 JSON, (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
     }
 
+    public function testArrayIndexesAreReindexedAfterVisitorRemovalAndAddition(): void
+    {
+        $jsonDocument      = (new JsonParser())->parse('["keep","remove","after"]');
+        $indexVisitor      = new class extends NodeJsonVisitorAbstract {
+            /** @var array<int, string> */
+            public array $valuesByIndex = [];
+
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+            {
+                $last = $nodeJsonPath->last();
+
+                if (! $nodeJson instanceof StringNode || ! $last instanceof NodeJsonPathSegment || ! is_int($last->value)) {
+                    return null;
+                }
+
+                $this->valuesByIndex[$last->value] = $nodeJson->value;
+
+                return null;
+            }
+        };
+        $nodeJsonTraverser = new NodeJsonTraverser();
+        $nodeJsonTraverser->addVisitor(new class extends NodeJsonVisitorAbstract {
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+            {
+                if (! $nodeJson instanceof ArrayNode || ! $nodeJsonPath->isRoot()) {
+                    return null;
+                }
+
+                $nodeJson->removeAt(1);
+                $nodeJson->append(JsonValue::from('added'));
+
+                return $nodeJson;
+            }
+        });
+        $nodeJsonTraverser->addVisitor($indexVisitor);
+
+        $nodeJsonTraversalResult = $nodeJsonTraverser->traverse($jsonDocument);
+
+        $this->assertSame(['keep', 'after', 'added'], $indexVisitor->valuesByIndex);
+        $this->assertSame(<<<'JSON'
+[
+    "keep",
+    "after",
+    "added"
+]
+JSON, (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
+    }
+
     public function testItForbidsRemovingStringValueDirectly(): void
     {
         $jsonDocument = (new JsonParser())->parse('{"name":"old"}');

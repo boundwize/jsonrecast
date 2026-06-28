@@ -195,7 +195,11 @@ JSON, (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
             {
                 $last = $nodeJsonPath->last();
 
-                if (! $nodeJson instanceof StringNode || ! $last instanceof NodeJsonPathSegment || ! is_int($last->value)) {
+                if (
+                    ! $nodeJson instanceof StringNode
+                    || ! $last instanceof NodeJsonPathSegment
+                    || ! is_int($last->value)
+                ) {
                     return null;
                 }
 

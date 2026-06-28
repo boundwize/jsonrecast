@@ -167,6 +167,12 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             }
         }
 
+        $lastItem = $arrayNode->items[count($arrayNode->items) - 1];
+
+        if ($lastItem->afterValue !== $arrayNode->beforeCloseBracket) {
+            $output .= $arrayNode->beforeCloseBracket;
+        }
+
         return $output . ']';
     }
 
@@ -221,16 +227,34 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     private function shouldPrintContainerBestEffort(NodeJson $nodeJson, array $items): bool
     {
         if ($this->nodeChangeSet instanceof NodeChangeSet && $this->nodeChangeSet->isChanged($nodeJson)) {
+            if (
+                $nodeJson instanceof ArrayNode
+                && $items !== []
+                && $nodeJson->hasAttribute(NodeAttributes::ORIGINAL_TEXT)
+                && ! $this->hasItemWithoutOriginalText($items)
+            ) {
+                return false;
+            }
+
             return true;
         }
 
+        return $this->hasItemWithoutOriginalText($items)
+            || ! $nodeJson->hasAttribute(NodeAttributes::ORIGINAL_TEXT);
+    }
+
+    /**
+     * @param list<NodeJson> $items
+     */
+    private function hasItemWithoutOriginalText(array $items): bool
+    {
         foreach ($items as $item) {
             if (! $item->hasAttribute(NodeAttributes::ORIGINAL_TEXT)) {
                 return true;
             }
         }
 
-        return ! $nodeJson->hasAttribute(NodeAttributes::ORIGINAL_TEXT);
+        return false;
     }
 
     private function isChanged(NodeJson $nodeJson): bool

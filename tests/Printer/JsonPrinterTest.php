@@ -264,6 +264,29 @@ JSON;
 JSON, $this->removeArrayItem($source, 'temporary'));
     }
 
+    public function testItPreservesInlineArrayFormattingWhenRemovingArrayItem(): void
+    {
+        $source = <<<'JSON'
+{
+    "autoload": {
+        "psr-4": {
+            "Mixed\\": ["src/", "missing-tests/"]
+        }
+    }
+}
+JSON;
+
+        $this->assertSame(<<<'JSON'
+{
+    "autoload": {
+        "psr-4": {
+            "Mixed\\": ["src/"]
+        }
+    }
+}
+JSON, $this->removeArrayItem($source, 'missing-tests/'));
+    }
+
     public function testItRemovesOnlyClassmapArrayItem(): void
     {
         $source = <<<'JSON'

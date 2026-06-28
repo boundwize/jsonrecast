@@ -17,6 +17,7 @@ use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
 use Boundwize\JsonRecast\Parser\JsonParser;
 use LogicException;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
 
 final class NodeJsonTraverserGuardTest extends TestCase
 {
@@ -98,6 +99,16 @@ final class NodeJsonTraverserGuardTest extends TestCase
                 return NodeJsonVisitor::REMOVE_NODE;
             }
         });
+    }
+
+    public function testItRejectsUnknownIntegerVisitorAction(): void
+    {
+        $isRemoveNode = new ReflectionMethod(NodeJsonTraverser::class, 'isRemoveNode');
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Unknown node visitor action.');
+
+        $isRemoveNode->invoke(new NodeJsonTraverser(), 2);
     }
 
     public function testItForbidsRemovingDocumentValueDirectly(): void

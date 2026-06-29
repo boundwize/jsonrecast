@@ -3,6 +3,7 @@ description: Editable JSON AST with visitor traversal and formatting-preserving 
 url: "https://boundwize.github.io"
 baseurl: "/jsonrecast"
 repository: boundwize/jsonrecast
+favicon_ico: "/assets/favicon.ico"
 twitter:
   card: summary
 

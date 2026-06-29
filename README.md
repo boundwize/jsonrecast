@@ -23,7 +23,7 @@
 ![macOS](https://img.shields.io/badge/macOS-supported-C084FC?logo=apple&logoColor=white&labelColor=555555)
 ![Linux](https://img.shields.io/badge/Linux-supported-FCC624?logo=linux&logoColor=black&labelColor=555555)
 
-JsonRecast parses JSON into an editable AST, lets you transform it with path-aware visitors, and prints the result while keeping the original formatting where possible. It is built for tools that update JSON files without creating noisy diffs.
+JsonRecast parses JSON into an editable AST, lets you transform it with path-aware visitors, and prints the result while keeping the original formatting where possible. Its traversal model is inspired by [nikic/PHP-Parser](https://github.com/nikic/PHP-Parser), applied to JSON documents for tools that update files without creating noisy diffs.
 
 ## Installation
 

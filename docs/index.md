@@ -28,7 +28,7 @@ nav_order: 1
 ![macOS](https://img.shields.io/badge/macOS-supported-C084FC?logo=apple&logoColor=white&labelColor=555555)
 ![Linux](https://img.shields.io/badge/Linux-supported-FCC624?logo=linux&logoColor=black&labelColor=555555)
 
-JsonRecast is a PHP library for tools that need to read, edit, and rewrite JSON without causing noisy diffs. It parses JSON into node objects, lets visitors mutate or replace nodes, tracks the changed parts, then prints the document back with the original spacing and newline style where possible.
+JsonRecast is a PHP library for tools that need to read, edit, and rewrite JSON without causing noisy diffs. It parses JSON into an editable AST, lets visitors mutate or replace nodes, tracks the changed parts, then prints the document back with the original spacing and newline style where possible. Its traversal model is inspired by [nikic/PHP-Parser](https://github.com/nikic/PHP-Parser), adapted for JSON documents.
 
 ## Contents
 {: .no_toc }
@@ -39,7 +39,7 @@ JsonRecast is a PHP library for tools that need to read, edit, and rewrite JSON 
 ## Why Use JsonRecast
 
 - Build config migration tools that preserve a user's formatting choices.
-- Traverse JSON as typed nodes instead of nested arrays.
+- Traverse JSON as an AST instead of nested arrays.
 - Use path-aware visitors for focused edits.
 - Keep number spellings such as `1`, `1.0`, and `1e0`.
 - Dump ASTs while writing visitors or debugging transformations.

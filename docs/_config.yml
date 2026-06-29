@@ -5,7 +5,16 @@ baseurl: "/jsonrecast"
 repository: boundwize/jsonrecast
 favicon_ico: "/assets/favicon.ico"
 twitter:
-  card: summary
+  card: summary_large_image
+defaults:
+  - scope:
+      path: ""
+    values:
+      image:
+        path: /assets/json-recast-preview.png
+        width: 1731
+        height: 909
+        alt: JsonRecast social preview
 
 remote_theme: just-the-docs/just-the-docs
 plugins:

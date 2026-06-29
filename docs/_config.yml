@@ -1,0 +1,51 @@
+title: JsonRecast
+description: Editable JSON AST with visitor traversal and formatting-preserving printing.
+url: "https://boundwize.github.io"
+baseurl: "/jsonrecast"
+repository: boundwize/jsonrecast
+favicon_ico: "/assets/favicon.ico"
+twitter:
+  card: summary_large_image
+defaults:
+  - scope:
+      path: ""
+    values:
+      image:
+        path: /assets/json-recast-preview.png
+        width: 1731
+        height: 909
+        alt: JsonRecast social preview
+
+remote_theme: just-the-docs/just-the-docs
+plugins:
+  - jekyll-remote-theme
+permalink: pretty
+
+search_enabled: true
+heading_anchors: true
+back_to_top: true
+back_to_top_text: Back to top
+enable_copy_code_button: true
+
+aux_links:
+  GitHub:
+    - https://github.com/boundwize/jsonrecast
+  Packagist:
+    - https://packagist.org/packages/boundwize/jsonrecast
+
+callouts:
+  important:
+    title: Important
+    color: yellow
+  note:
+    title: Note
+    color: blue
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - Gemfile.local
+  - Gemfile.local.lock
+  - _config.local.yml
+  - vendor
+  - .bundle

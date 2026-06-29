@@ -3,3 +3,7 @@
 /.phpunit-smoke-cache/
 /composer.lock
 /coverage.xml
+/docs/.bundle/
+/docs/_site/
+/docs/vendor/bundle/
+/docs/Gemfile.local.lock

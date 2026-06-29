@@ -8,16 +8,13 @@
     </picture>
 </p>
 
-A PHP JSON parser that turns JSON into an editable AST, supports visitor-based traversal, and prints changes back while preserving the original formatting.
-
-Inspired by [PHP-Parser](https://github.com/nikic/PHP-Parser/), built for tools that need to modify JSON files safely.
-
-JsonRecast is optimized for safely changing files. It keeps the original structure and formatting where possible, so automated tools can modify JSON without creating noisy diffs.
-
-The AST stays clean. Change metadata lives in the traversal result.
+<p align="center">
+    Editable JSON AST with visitor traversal and formatting-preserving printing.
+</p>
 
 [![Latest Version](https://img.shields.io/github/release/boundwize/jsonrecast.svg?style=flat-square)](https://github.com/boundwize/jsonrecast/releases)
 [![ci build](https://github.com/boundwize/jsonrecast/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/boundwize/jsonrecast/actions/workflows/ci.yml)
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-0969da?style=flat-square)](https://boundwize.github.io/jsonrecast/)
 [![Code Coverage](https://codecov.io/gh/boundwize/jsonrecast/branch/main/graph/badge.svg)](https://codecov.io/gh/boundwize/jsonrecast)
 [![PHPStan](https://img.shields.io/badge/style-level%20max-brightgreen.svg?style=flat-square&label=phpstan)](https://github.com/phpstan/phpstan)
 [![Downloads](https://poser.pugx.org/boundwize/jsonrecast/downloads)](https://packagist.org/packages/boundwize/jsonrecast)
@@ -26,109 +23,39 @@ The AST stays clean. Change metadata lives in the traversal result.
 ![macOS](https://img.shields.io/badge/macOS-supported-C084FC?logo=apple&logoColor=white&labelColor=555555)
 ![Linux](https://img.shields.io/badge/Linux-supported-FCC624?logo=linux&logoColor=black&labelColor=555555)
 
+JsonRecast parses JSON into an editable AST, lets you transform it with path-aware visitors, and prints the result while keeping the original formatting where possible. Its traversal model is inspired by [nikic/PHP-Parser](https://github.com/nikic/PHP-Parser), applied to JSON documents for tools that update files without creating noisy diffs.
+
 ## Installation
 
 ```bash
 composer require boundwize/jsonrecast
 ```
 
-## Features
+## Example
 
-* Parse JSON into an AST
-* Traverse and modify nodes with `NodeJsonTraverser`
-* Create visitors with `NodeJsonVisitor`
-* Access runtime traversal context with `NodeJsonPath`
-* Replace, add, and remove JSON data
-* Preserve original formatting when printing modified JSON
-* Keep number representations like `1`, `1.0`, and `1e0`
-* Supports recursive objects and arrays
-* Tracks changes outside the AST
-* Dump the AST for tooling and debugging
-* Designed for tooling, config updates, and automated refactoring
+This example updates a `composer.json`-style document in one traversal:
 
-## Quick Start
-
-Start by parsing JSON into a document node:
+1. Parse the JSON into a `JsonDocument`.
+2. Traverse the document with a visitor and return changed nodes.
+3. Replace the root `name` value.
+4. Remove the root `minimum-stability` entry.
+5. Add a PSR-4 namespace under `autoload.psr-4`.
+6. Remove a stale value from `autoload-dev.classmap`.
+7. In `leaveNode()`, remove the now-empty `autoload-dev` parent.
+8. Print the result while preserving the original formatting style.
 
 ```php
 use Boundwize\JsonRecast\JsonRecast;
+use Boundwize\JsonRecast\Node\ArrayNode;
+use Boundwize\JsonRecast\Node\NodeJson;
+use Boundwize\JsonRecast\Node\ObjectItemNode;
+use Boundwize\JsonRecast\Node\ObjectNode;
+use Boundwize\JsonRecast\Node\StringNode;
+use Boundwize\JsonRecast\NodePath\NodeJsonPath;
+use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitor;
+use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
 
-$jsonContent = '{"name": "jsonrecast", "private": true}';
-$document    = JsonRecast::parse($jsonContent);
-```
-
-The result is an AST. Dump it when you want to understand the node shape your visitors will receive:
-
-```php
-echo JsonRecast::dumpAst($document);
-```
-
-```text
-JsonDocument
-  value: ObjectNode
-    items:
-      [0]: ObjectItemNode
-        key: StringNode(value: "name")
-        value: StringNode(value: "jsonrecast")
-      [1]: ObjectItemNode
-        key: StringNode(value: "private")
-        value: BooleanNode(value: true)
-```
-
-The structure follows the JSON shape:
-
-* `JsonDocument` wraps the root JSON value
-* `ObjectNode` and `ArrayNode` contain item nodes
-* `ObjectItemNode` contains a string key and a value node
-* Scalar values use `StringNode`, `NumberNode`, `BooleanNode`, and `NullNode`
-
-Arrays use the same pattern with `ArrayItemNode`:
-
-```php
-$document = JsonRecast::parse('["json", 1, null]');
-
-echo JsonRecast::dumpAst($document);
-```
-
-```text
-JsonDocument
-  value: ArrayNode
-    items:
-      [0]: ArrayItemNode
-        value: StringNode(value: "json")
-      [1]: ArrayItemNode
-        value: NumberNode(rawValue: "1")
-      [2]: ArrayItemNode
-        value: NullNode
-```
-
-After traversal, the dumper also accepts `JsonRecastResult`:
-
-```php
-$result = JsonRecast::traverse($document, $visitor);
-
-echo JsonRecast::dumpAst($result);
-```
-
-Pass a named option when you need parser metadata:
-
-```php
-echo JsonRecast::dumpAst($document, includeAttributes: true);
-```
-
-You can also use the utility directly:
-
-```php
-use Boundwize\JsonRecast\AstDumper;
-
-echo (new AstDumper(includeAttributes: true))->dump($document);
-```
-
-## Editing and Printing
-
-Given this JSON:
-
-```json
+$json = <<<'JSON'
 {
     "name": "acme/demo",
     "autoload": {
@@ -143,91 +70,51 @@ Given this JSON:
     },
     "minimum-stability": "dev"
 }
-```
+JSON;
 
-You can edit `name`, add a PSR-4 namespace, and delete stale object or array data in one traversal:
-
-```php
-use Boundwize\JsonRecast\JsonRecast;
-use Boundwize\JsonRecast\Node\ArrayNode;
-use Boundwize\JsonRecast\Node\NodeJson;
-use Boundwize\JsonRecast\Node\ObjectItemNode;
-use Boundwize\JsonRecast\Node\ObjectNode;
-use Boundwize\JsonRecast\Node\StringNode;
-use Boundwize\JsonRecast\NodePath\NodeJsonPath;
-use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitor;
-use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
-
+// 1. Parse the source JSON into an editable document node.
 $document = JsonRecast::parse($json);
 
+// 2. Traverse the document and return changed nodes so JsonRecast can track edits.
 $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstract {
     public function enterNode(NodeJson $node, NodeJsonPath $path): null|NodeJson|int
     {
-        if (
-            $node instanceof ObjectItemNode
-            && $path->isRoot()
-        ) {
+        if ($node instanceof ObjectItemNode && $path->isRoot()) {
+            // 3. Replace the root "name" value.
             if ($node->key->value === 'name') {
                 $node->value = new StringNode('boundwize/jsonrecast');
 
                 return $node;
             }
 
+            // 4. Remove an unwanted root object item.
             if ($node->key->value === 'minimum-stability') {
                 return NodeJsonVisitor::REMOVE_NODE;
             }
         }
 
+        // 5. Add a new namespace under "autoload.psr-4".
         if ($node instanceof ObjectNode && $path->matches(['autoload', 'psr-4'])) {
             $node->set('Boundwize\\JsonRecast\\', new StringNode('src/'));
 
             return $node;
         }
 
+        // 6. Remove a stale classmap entry.
         if ($node instanceof ArrayNode && $path->matches(['autoload-dev', 'classmap'])) {
-            $removed = false;
-
             foreach ($node->items as $index => $item) {
-                if (! $item->value instanceof StringNode || $item->value->value !== 'tests/Fixtures/App') {
-                    continue;
+                if ($item->value instanceof StringNode && $item->value->value === 'tests/Fixtures/App') {
+                    $node->removeAt($index);
+
+                    return $node;
                 }
-
-                $node->removeAt($index);
-                $removed = true;
             }
-
-            return $removed ? $node : null;
         }
 
         return null;
     }
-});
 
-echo JsonRecast::print($result);
-```
-
-The printed JSON keeps the surrounding formatting and only rewrites the changed pieces:
-
-```json
-{
-    "name": "boundwize/jsonrecast",
-    "autoload": {
-        "psr-4": {
-            "App\\": "app/",
-            "Boundwize\\JsonRecast\\": "src/"
-        }
-    },
-    "autoload-dev": {
-        "classmap": [
-        ]
-    }
-}
-```
-
-Use `leaveNode()` when a parent decision depends on child nodes that may already have changed. For example, after the `classmap` array item is removed, you can remove the now-empty root `autoload-dev` item:
-
-```php
-// ...
+    // 7. After child edits are done, remove the empty "autoload-dev" parent.
     public function leaveNode(NodeJson $node, NodeJsonPath $path): ?int
     {
         if (
@@ -242,19 +129,22 @@ Use `leaveNode()` when a parent decision depends on child nodes that may already
         $classmapItem = $node->value->get('classmap');
 
         if (
-            ! $classmapItem instanceof ObjectItemNode
-            || ! $classmapItem->value instanceof ArrayNode
-            || $classmapItem->value->items !== []
+            $classmapItem instanceof ObjectItemNode
+            && $classmapItem->value instanceof ArrayNode
+            && $classmapItem->value->items === []
         ) {
-            return null;
+            return NodeJsonVisitor::REMOVE_NODE;
         }
 
-        return NodeJsonVisitor::REMOVE_NODE;
+        return null;
     }
-// ...
+});
+
+// 8. Print with the original formatting preserved where possible.
+echo JsonRecast::print($result);
 ```
 
-With that hook added, the printed JSON becomes:
+That will output:
 
 ```json
 {
@@ -267,3 +157,7 @@ With that hook added, the printed JSON becomes:
     }
 }
 ```
+
+## Documentation
+
+Read the full documentation at <https://boundwize.github.io/jsonrecast/>.

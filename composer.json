@@ -36,6 +36,7 @@
         "test": "phpunit",
         "cs-check": "phpcs",
         "cs-fix": "phpcbf",
+        "docs:serve": "bin/docs-serve",
         "phpstan": "phpstan",
         "rector": "rector process --dry-run",
         "structarmed": "structarmed analyze"

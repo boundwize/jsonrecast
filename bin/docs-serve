@@ -72,30 +72,46 @@ fi
 find_free_port() {
   local start_port="$1"
   local host="$2"
+  local port="$start_port"
+
+  while (( port <= start_port + 100 )); do
+    if ! port_is_listening "$port" "$host"; then
+      printf '%s\n' "$port"
+      return 0
+    fi
+
+    port=$((port + 1))
+  done
+
+  echo "No available port found from ${start_port} to $((start_port + 100))" >&2
+  return 1
+}
+
+port_is_listening() {
+  local port="$1"
+  local host="$2"
+
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
+    return $?
+  fi
 
   "$RUBY_BIN" -rsocket -rtimeout -e '
-    start_port = Integer(ARGV[0])
-    host = ARGV[1]
-    port = start_port
+    host = ARGV[0]
+    port = Integer(ARGV[1])
 
-    loop do
-      begin
-        Timeout.timeout(0.2) do
-          socket = TCPSocket.new(host, port)
-          socket.close
-        end
-        port += 1
-      rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH, Timeout::Error
-        puts port
-        exit 0
-      ensure
-        if port > start_port + 100
-          warn "No available port found from #{start_port} to #{port - 1}"
-          exit 1
-        end
+    begin
+      Timeout.timeout(0.2) do
+        socket = TCPSocket.new(host, port)
+        socket.close
       end
+      exit 0
+    rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH, Timeout::Error
+      exit 1
+    rescue Errno::EACCES, Errno::EPERM
+      exit 1
     end
-  ' "$start_port" "$host"
+  ' "$host" "$port"
 }
 
 DOCS_HOST="${DOCS_HOST:-127.0.0.1}"

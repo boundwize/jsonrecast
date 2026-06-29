@@ -69,10 +69,49 @@ if ! "$RUBY_BIN" -S bundle check >/dev/null 2>&1; then
   "$RUBY_BIN" -S bundle install
 fi
 
+find_free_port() {
+  local start_port="$1"
+  local host="$2"
+
+  "$RUBY_BIN" -rsocket -rtimeout -e '
+    start_port = Integer(ARGV[0])
+    host = ARGV[1]
+    port = start_port
+
+    loop do
+      begin
+        Timeout.timeout(0.2) do
+          socket = TCPSocket.new(host, port)
+          socket.close
+        end
+        port += 1
+      rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH, Timeout::Error
+        puts port
+        exit 0
+      ensure
+        if port > start_port + 100
+          warn "No available port found from #{start_port} to #{port - 1}"
+          exit 1
+        end
+      end
+    end
+  ' "$start_port" "$host"
+}
+
+DOCS_HOST="${DOCS_HOST:-127.0.0.1}"
+DOCS_PORT="$(find_free_port "${DOCS_PORT:-4000}" "$DOCS_HOST")"
+DOCS_LIVERELOAD_PORT="$(find_free_port "${DOCS_LIVERELOAD_PORT:-35729}" "$DOCS_HOST")"
+
+echo "Serving docs at http://${DOCS_HOST}:${DOCS_PORT}/jsonrecast/"
+echo "LiveReload listening on ${DOCS_HOST}:${DOCS_LIVERELOAD_PORT}"
+
 exec "$RUBY_BIN" -S bundle exec jekyll serve \
   --source "$ROOT/docs" \
   --destination "$ROOT/docs/_site" \
   --config "$ROOT/docs/_config.yml,$ROOT/docs/_config.local.yml" \
   --baseurl "/jsonrecast" \
+  --host "$DOCS_HOST" \
+  --port "$DOCS_PORT" \
   --livereload \
+  --livereload-port "$DOCS_LIVERELOAD_PORT" \
   "$@"

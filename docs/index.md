@@ -7,11 +7,7 @@ nav_order: 1
 ---
 
 <p class="jr-logo">
-    <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="{{ '/assets/jsonrecast-dark-mode.svg' | relative_url }}">
-        <source media="(prefers-color-scheme: light)" srcset="{{ '/assets/jsonrecast-light-mode.svg' | relative_url }}">
-        <img alt="JsonRecast Logo" src="{{ '/assets/jsonrecast-light-mode.svg' | relative_url }}">
-    </picture>
+    <img alt="JsonRecast Logo" src="{{ '/assets/jsonrecast-adaptive.svg' | relative_url }}">
 </p>
 
 <p align="center">

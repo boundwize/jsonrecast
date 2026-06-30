@@ -1,11 +1,7 @@
 # JsonRecast
 
 <p align="center">
-    <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/assets/jsonrecast-dark-mode.svg">
-        <source media="(prefers-color-scheme: light)" srcset="docs/assets/jsonrecast-light-mode.svg">
-        <img alt="JsonRecast Logo" src="docs/assets/jsonrecast-light-mode.svg" width="300">
-    </picture>
+    <img alt="JsonRecast Logo" src="docs/assets/jsonrecast-adaptive.svg" width="300">
 </p>
 
 <p align="center">

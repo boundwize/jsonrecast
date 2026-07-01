@@ -11,7 +11,12 @@ use Boundwize\JsonRecast\Node\NumberNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\Value\JsonValue;
+use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+
+use const INF;
+use const NAN;
 
 final class JsonValueTest extends TestCase
 {
@@ -22,6 +27,24 @@ final class JsonValueTest extends TestCase
         $this->assertInstanceOf(NumberNode::class, JsonValue::from(1.5));
         $this->assertInstanceOf(BooleanNode::class, JsonValue::from(true));
         $this->assertInstanceOf(NullNode::class, JsonValue::from(null));
+    }
+
+    /**
+     * @return iterable<string, array{float}>
+     */
+    public static function nonFiniteFloatProvider(): iterable
+    {
+        yield 'positive infinity' => [INF];
+        yield 'negative infinity' => [-INF];
+        yield 'not a number' => [NAN];
+    }
+
+    #[DataProvider('nonFiniteFloatProvider')]
+    public function testItRejectsNonFiniteFloat(float $value): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        JsonValue::from($value);
     }
 
     public function testJsonValueCreatesRecursiveObject(): void

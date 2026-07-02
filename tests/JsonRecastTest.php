@@ -201,4 +201,17 @@ JSON, JsonRecast::print($jsonRecastResult));
         $this->assertSame('{"b":2}', $printed);
         $this->assertSame(['b' => 2], json_decode($printed, true, 512, JSON_THROW_ON_ERROR));
     }
+
+    public function testArrayNodeRemoveAtPrintsDirectParsedMutation(): void
+    {
+        $jsonDocument = JsonRecast::parse('[1, 2, 3]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $this->assertTrue($jsonDocument->value->removeAt(1));
+
+        $printed = JsonRecast::print($jsonDocument);
+
+        $this->assertSame('[1, 3]', $printed);
+        $this->assertSame([1, 3], json_decode($printed, true, 512, JSON_THROW_ON_ERROR));
+    }
 }

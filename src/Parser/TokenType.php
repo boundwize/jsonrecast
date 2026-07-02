@@ -4,19 +4,35 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Parser;
 
-enum TokenType
+final class TokenType
 {
-    case LeftBrace;
-    case RightBrace;
-    case LeftBracket;
-    case RightBracket;
-    case Colon;
-    case Comma;
-    case String;
-    case Number;
-    case True;
-    case False;
-    case Null;
-    case Whitespace;
-    case EndOfFile;
+    public const LEFT_BRACE = 'LeftBrace';
+
+    public const RIGHT_BRACE = 'RightBrace';
+
+    public const LEFT_BRACKET = 'LeftBracket';
+
+    public const RIGHT_BRACKET = 'RightBracket';
+
+    public const COLON = 'Colon';
+
+    public const COMMA = 'Comma';
+
+    public const STRING = 'String';
+
+    public const NUMBER = 'Number';
+
+    public const TRUE = 'True';
+
+    public const FALSE = 'False';
+
+    public const NULL = 'Null';
+
+    public const WHITESPACE = 'Whitespace';
+
+    public const END_OF_FILE = 'EndOfFile';
+
+    private function __construct()
+    {
+    }
 }

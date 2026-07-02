@@ -347,6 +347,10 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             return true;
         }
 
+        if (! is_string($nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT))) {
+            return true;
+        }
+
         return $this->hasChangedDescendant($nodeJson);
     }
 

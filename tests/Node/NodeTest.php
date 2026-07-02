@@ -103,8 +103,8 @@ final class NodeTest extends TestCase
         $arrayItemNode = new ArrayItemNode(new StringNode('old'));
         $arrayItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '"old"');
 
-        $arrayNode = new ArrayNode([$arrayItemNode]);
-        $stringNode   = new StringNode('new');
+        $arrayNode  = new ArrayNode([$arrayItemNode]);
+        $stringNode = new StringNode('new');
 
         $this->assertTrue($arrayNode->setAt(0, $stringNode));
         $this->assertSame($stringNode, $arrayNode->items[0]->value);

@@ -50,6 +50,7 @@ final class ArrayNode extends AbstractNodeJson
         }
 
         array_splice($this->items, $index, 1);
+        $this->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
 
         return true;
     }

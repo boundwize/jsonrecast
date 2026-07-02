@@ -87,24 +87,20 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             return $this->printObjectBestEffort($objectNode, $printContext);
         }
 
-        $output = '{';
+        $output    = '{';
+        $lastIndex = count($objectNode->items) - 1;
 
         foreach ($objectNode->items as $i => $item) {
             $output .= $this->printObjectItemPreserving(
                 $item,
                 $printContext->next(),
                 $i === 0 ? $objectNode->afterOpenBrace : null,
+                $i === $lastIndex ? $objectNode->beforeCloseBrace : null,
             );
 
             if ($i < count($objectNode->items) - 1) {
                 $output .= ',';
             }
-        }
-
-        $lastItem = $objectNode->items[count($objectNode->items) - 1];
-
-        if ($lastItem->afterValue !== $objectNode->beforeCloseBrace) {
-            $output .= $objectNode->beforeCloseBrace;
         }
 
         return $output . '}';
@@ -144,10 +140,16 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         ObjectItemNode $objectItemNode,
         PrintContext $printContext,
         ?string $beforeKey = null,
+        ?string $afterValue = null,
     ): string {
-        $beforeKey ??= $objectItemNode->beforeKey;
+        $beforeKey  ??= $objectItemNode->beforeKey;
+        $afterValue ??= $objectItemNode->afterValue;
 
-        if ($beforeKey === $objectItemNode->beforeKey && ! $this->isChanged($objectItemNode)) {
+        if (
+            $beforeKey === $objectItemNode->beforeKey
+            && $afterValue === $objectItemNode->afterValue
+            && ! $this->isChanged($objectItemNode)
+        ) {
             $originalText = $objectItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
             if (is_string($originalText)) {
@@ -161,7 +163,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             . ':'
             . $objectItemNode->betweenColonAndValue
             . $this->printNode($objectItemNode->value, $printContext)
-            . $objectItemNode->afterValue;
+            . $afterValue;
     }
 
     private function printObjectItemBestEffort(ObjectItemNode $objectItemNode, PrintContext $printContext): string
@@ -177,24 +179,20 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             return $this->printArrayBestEffort($arrayNode, $printContext);
         }
 
-        $output = '[';
+        $output    = '[';
+        $lastIndex = count($arrayNode->items) - 1;
 
         foreach ($arrayNode->items as $i => $item) {
             $output .= $this->printArrayItemPreserving(
                 $item,
                 $printContext->next(),
                 $i === 0 ? $arrayNode->afterOpenBracket : null,
+                $i === $lastIndex ? $arrayNode->beforeCloseBracket : null,
             );
 
             if ($i < count($arrayNode->items) - 1) {
                 $output .= ',';
             }
-        }
-
-        $lastItem = $arrayNode->items[count($arrayNode->items) - 1];
-
-        if ($lastItem->afterValue !== $arrayNode->beforeCloseBracket) {
-            $output .= $arrayNode->beforeCloseBracket;
         }
 
         return $output . ']';
@@ -234,10 +232,16 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         ArrayItemNode $arrayItemNode,
         PrintContext $printContext,
         ?string $beforeValue = null,
+        ?string $afterValue = null,
     ): string {
         $beforeValue ??= $arrayItemNode->beforeValue;
+        $afterValue  ??= $arrayItemNode->afterValue;
 
-        if ($beforeValue === $arrayItemNode->beforeValue && ! $this->isChanged($arrayItemNode)) {
+        if (
+            $beforeValue === $arrayItemNode->beforeValue
+            && $afterValue === $arrayItemNode->afterValue
+            && ! $this->isChanged($arrayItemNode)
+        ) {
             $originalText = $arrayItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
             if (is_string($originalText)) {
@@ -247,7 +251,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
         return $beforeValue
             . $this->printNode($arrayItemNode->value, $printContext)
-            . $arrayItemNode->afterValue;
+            . $afterValue;
     }
 
     /**

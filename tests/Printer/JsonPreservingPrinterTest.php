@@ -112,6 +112,19 @@ JSON,
         $this->assertSame('["first", "second"]', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
     }
 
+    public function testItDoesNotReuseCommaWhitespaceWhenLastInlineArrayItemIsRemoved(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('["first" , "second"]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->removeAt(1);
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($jsonDocument->value);
+
+        $this->assertSame('["first"]', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
+    }
+
     public function testItDoesNotReuseCommaWhitespaceWhenFirstInlineObjectItemIsRemoved(): void
     {
         $jsonDocument = (new JsonParser())->parse('{"first": 1, "second": 2}');
@@ -155,6 +168,19 @@ JSON,
             '{"first": 1, "second": 2}',
             (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument),
         );
+    }
+
+    public function testItDoesNotReuseCommaWhitespaceWhenLastInlineObjectItemIsRemoved(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"first": 1 , "second": 2}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->remove('second');
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($jsonDocument->value);
+
+        $this->assertSame('{"first": 1}', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
     }
 
     public function testItRejectsInvalidUtf8String(): void

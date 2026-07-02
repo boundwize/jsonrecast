@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Tests\Node;
 
+use Boundwize\JsonRecast\Attribute\NodeAttributes;
+use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\NumberNode;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
@@ -94,6 +96,21 @@ final class NodeTest extends TestCase
         $arrayNode = new ArrayNode([]);
 
         $this->assertFalse($arrayNode->removeAt(0));
+    }
+
+    public function testArrayNodeSetAtReplacesExistingItemAndInvalidatesOriginalText(): void
+    {
+        $arrayItemNode = new ArrayItemNode(new StringNode('old'));
+        $arrayItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '"old"');
+
+        $arrayNode = new ArrayNode([$arrayItemNode]);
+        $stringNode   = new StringNode('new');
+
+        $this->assertTrue($arrayNode->setAt(0, $stringNode));
+        $this->assertSame($stringNode, $arrayNode->items[0]->value);
+        $this->assertTrue($arrayNode->items[0]->hasAttribute(NodeAttributes::ORIGINAL_TEXT));
+        $this->assertNull($arrayNode->items[0]->getAttribute(NodeAttributes::ORIGINAL_TEXT));
+        $this->assertFalse($arrayNode->setAt(1, new StringNode('missing')));
     }
 
     public function testNumberNodeConvertsRawIntegersAndFloats(): void

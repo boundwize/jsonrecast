@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Node;
 
+use Boundwize\JsonRecast\Attribute\NodeAttributes;
+
 use function array_key_exists;
 use function array_splice;
 
@@ -27,6 +29,18 @@ final class ArrayNode extends AbstractNodeJson
     public function insert(int $index, NodeJson $nodeJson): void
     {
         array_splice($this->items, $index, 0, [new ArrayItemNode($nodeJson)]);
+    }
+
+    public function setAt(int $index, NodeJson $nodeJson): bool
+    {
+        if (! array_key_exists($index, $this->items)) {
+            return false;
+        }
+
+        $this->items[$index]->value = $nodeJson;
+        $this->items[$index]->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+
+        return true;
     }
 
     public function removeAt(int $index): bool

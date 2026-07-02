@@ -23,6 +23,7 @@ use function is_finite;
 use function is_float;
 use function is_int;
 use function is_string;
+use function strpbrk;
 
 final class JsonValue
 {
@@ -31,12 +32,24 @@ final class JsonValue
         return match (true) {
             is_string($value) => new StringNode($value),
             is_float($value) && ! is_finite($value) => throw new InvalidArgumentException('Unsupported JSON value.'),
-            is_int($value), is_float($value) => new NumberNode((string) $value),
+            is_int($value) => new NumberNode((string) $value),
+            is_float($value) => new NumberNode(self::formatFloat($value)),
             is_bool($value) => new BooleanNode($value),
             $value === null => new NullNode(),
             is_array($value) => self::fromArray($value),
             default => throw new InvalidArgumentException('Unsupported JSON value.'),
         };
+    }
+
+    private static function formatFloat(float $value): string
+    {
+        $rawValue = (string) $value;
+
+        if (strpbrk($rawValue, '.eE') !== false) {
+            return $rawValue;
+        }
+
+        return $rawValue . '.0';
     }
 
     /**

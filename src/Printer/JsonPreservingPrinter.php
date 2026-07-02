@@ -90,7 +90,11 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $output = '{';
 
         foreach ($objectNode->items as $i => $item) {
-            $output .= $this->printObjectItemPreserving($item, $printContext->next());
+            $output .= $this->printObjectItemPreserving(
+                $item,
+                $printContext->next(),
+                $i === 0 ? $objectNode->afterOpenBrace : null,
+            );
 
             if ($i < count($objectNode->items) - 1) {
                 $output .= ',';
@@ -136,9 +140,14 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         return '{}';
     }
 
-    private function printObjectItemPreserving(ObjectItemNode $objectItemNode, PrintContext $printContext): string
-    {
-        if (! $this->isChanged($objectItemNode)) {
+    private function printObjectItemPreserving(
+        ObjectItemNode $objectItemNode,
+        PrintContext $printContext,
+        ?string $beforeKey = null,
+    ): string {
+        $beforeKey ??= $objectItemNode->beforeKey;
+
+        if ($beforeKey === $objectItemNode->beforeKey && ! $this->isChanged($objectItemNode)) {
             $originalText = $objectItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
             if (is_string($originalText)) {
@@ -146,7 +155,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             }
         }
 
-        return $objectItemNode->beforeKey
+        return $beforeKey
             . $this->printNode($objectItemNode->key, $printContext)
             . $objectItemNode->betweenKeyAndColon
             . ':'
@@ -171,7 +180,11 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $output = '[';
 
         foreach ($arrayNode->items as $i => $item) {
-            $output .= $this->printArrayItemPreserving($item, $printContext->next());
+            $output .= $this->printArrayItemPreserving(
+                $item,
+                $printContext->next(),
+                $i === 0 ? $arrayNode->afterOpenBracket : null,
+            );
 
             if ($i < count($arrayNode->items) - 1) {
                 $output .= ',';
@@ -217,9 +230,14 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         return '[]';
     }
 
-    private function printArrayItemPreserving(ArrayItemNode $arrayItemNode, PrintContext $printContext): string
-    {
-        if (! $this->isChanged($arrayItemNode)) {
+    private function printArrayItemPreserving(
+        ArrayItemNode $arrayItemNode,
+        PrintContext $printContext,
+        ?string $beforeValue = null,
+    ): string {
+        $beforeValue ??= $arrayItemNode->beforeValue;
+
+        if ($beforeValue === $arrayItemNode->beforeValue && ! $this->isChanged($arrayItemNode)) {
             $originalText = $arrayItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
             if (is_string($originalText)) {
@@ -227,7 +245,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             }
         }
 
-        return $arrayItemNode->beforeValue
+        return $beforeValue
             . $this->printNode($arrayItemNode->value, $printContext)
             . $arrayItemNode->afterValue;
     }

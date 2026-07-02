@@ -7,6 +7,7 @@ namespace Boundwize\JsonRecast\Tests\Parser;
 use Boundwize\JsonRecast\Parser\TokenType;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
+use ReflectionMethod;
 
 final class TokenTypeTest extends TestCase
 {
@@ -16,7 +17,7 @@ final class TokenTypeTest extends TestCase
         $constructor     = $reflectionClass->getConstructor();
 
         $this->assertTrue($reflectionClass->isFinal());
-        $this->assertNotNull($constructor);
+        $this->assertInstanceOf(ReflectionMethod::class, $constructor);
         $this->assertTrue($constructor->isPrivate());
         $this->assertNull($constructor->invoke($reflectionClass->newInstanceWithoutConstructor()));
     }

@@ -10,6 +10,8 @@ jobs:
   build:
     name: PHP ${{ matrix.php-versions }} on ${{ matrix.operating-system }}
     runs-on: ${{ matrix.operating-system }}
+    env:
+      COMPOSER_ROOT_VERSION: dev-main
 
     strategy:
       fail-fast: false

@@ -49,12 +49,12 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-main": "0.1.x-dev"
+            "dev-main": "0.*.x-dev"
         }
     },
     "require-dev": {
         "boundwize/pyrameter": "^0.4.2",
-        "boundwize/structarmed": "^0.14.8",
+        "boundwize/structarmed": "^0.14.9",
         "laminas/laminas-coding-standard": "^3.1",
         "phpstan/phpstan": "^2.2",
         "phpunit/phpunit": "^11.5",

@@ -1,0 +1,63 @@
+name: StructArmed tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  structarmed-tests:
+    name: StructArmed PHPUnit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout JsonRecast
+        uses: actions/checkout@v4
+        with:
+          # On pull_request, checkout the PR branch HEAD instead of GitHub's merge commit.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: jsonrecast
+
+      - name: Checkout StructArmed
+        uses: actions/checkout@v4
+        with:
+          repository: boundwize/structarmed
+          ref: main
+          path: structarmed
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          coverage: none
+
+      - name: Get composer cache directory
+        id: composer-cache
+        working-directory: structarmed
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-structarmed-composer-${{ hashFiles('structarmed/composer.json', 'jsonrecast/composer.json') }}
+          restore-keys: ${{ runner.os }}-structarmed-composer-
+
+      - name: Use JsonRecast from this branch
+        working-directory: structarmed
+        run: |
+          composer config repositories.jsonrecast '{"type":"path","url":"../jsonrecast","options":{"symlink":false,"versions":{"boundwize/jsonrecast":"0.*.x-dev"}}}'
+          composer require boundwize/jsonrecast "0.*.x-dev" --no-update
+
+      - name: Install dependencies
+        working-directory: structarmed
+        run: composer install --ansi --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Run tests
+        working-directory: structarmed
+        run: vendor/bin/phpunit

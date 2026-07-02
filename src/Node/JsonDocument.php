@@ -8,6 +8,8 @@ final class JsonDocument extends AbstractNodeJson
 {
     public function __construct(
         public NodeJson $value,
+        public string $beforeValue = '',
+        public string $afterValue = '',
     ) {
     }
 }

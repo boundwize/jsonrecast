@@ -51,8 +51,8 @@ jobs:
       - name: Use JsonRecast from this branch
         working-directory: structarmed
         run: |
-          composer config repositories.jsonrecast '{"type":"path","url":"../jsonrecast","options":{"symlink":false,"versions":{"boundwize/jsonrecast":"0.1.x-dev"}}}'
-          composer require boundwize/jsonrecast "0.1.x-dev" --no-update
+          composer config repositories.jsonrecast '{"type":"path","url":"../jsonrecast","options":{"symlink":false,"versions":{"boundwize/jsonrecast":"0.*.x-dev"}}}'
+          composer require boundwize/jsonrecast "0.*.x-dev" --no-update
 
       - name: Install dependencies
         working-directory: structarmed

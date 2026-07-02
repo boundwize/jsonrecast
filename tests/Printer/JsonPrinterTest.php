@@ -196,6 +196,31 @@ JSON, $this->replaceStringValue($source, 'old', 'new'));
         $this->assertSame('{"name":"new"}', JsonRecast::print($jsonRecastResult));
     }
 
+    public function testItPrintsObjectSetReplacementFromParsedNode(): void
+    {
+        $jsonDocument = JsonRecast::parse('{"a":"old","b":"new"}');
+
+        $jsonRecastResult = JsonRecast::traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
+            public function leaveNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+            {
+                if (! $nodeJson instanceof ObjectNode || ! $nodeJsonPath->isRoot()) {
+                    return null;
+                }
+
+                $b = $nodeJson->get('b');
+                if (! $b instanceof ObjectItemNode) {
+                    return null;
+                }
+
+                $nodeJson->set('a', $b->value);
+
+                return $nodeJson;
+            }
+        });
+
+        $this->assertSame('{"a":"new","b":"new"}', JsonRecast::print($jsonRecastResult));
+    }
+
     public function testItPreservesAddObjectItemBestEffort(): void
     {
         $source = <<<'JSON'

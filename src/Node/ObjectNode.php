@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Node;
 
+use Boundwize\JsonRecast\Attribute\NodeAttributes;
+
 use function array_splice;
 
 final class ObjectNode extends AbstractNodeJson
@@ -42,6 +44,7 @@ final class ObjectNode extends AbstractNodeJson
             }
 
             $item->value = $nodeJson;
+            $item->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
 
             return;
         }

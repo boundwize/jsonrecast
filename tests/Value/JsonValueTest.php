@@ -36,6 +36,7 @@ final class JsonValueTest extends TestCase
     {
         yield 'fractional float' => [1.5, '1.5'];
         yield 'whole-number float' => [1.0, '1.0'];
+        yield 'negative zero float' => [-0.0, '-0.0'];
         yield 'negative whole-number float' => [-2.0, '-2.0'];
         yield 'scientific notation float' => [1.0E-5, '1.0E-5'];
     }

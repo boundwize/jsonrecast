@@ -6,7 +6,9 @@ namespace Boundwize\JsonRecast\Node;
 
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
 
+use function array_pop;
 use function array_splice;
+use function count;
 
 final class ObjectNode extends AbstractNodeJson
 {
@@ -22,9 +24,9 @@ final class ObjectNode extends AbstractNodeJson
 
     public function get(string $key): ?ObjectItemNode
     {
-        foreach ($this->items as $item) {
-            if ($item->key->value === $key) {
-                return $item;
+        for ($i = count($this->items) - 1; $i >= 0; $i--) {
+            if ($this->items[$i]->key->value === $key) {
+                return $this->items[$i];
             }
         }
 
@@ -38,35 +40,54 @@ final class ObjectNode extends AbstractNodeJson
 
     public function set(string $key, NodeJson $nodeJson): void
     {
-        foreach ($this->items as $item) {
-            if ($item->key->value !== $key) {
-                continue;
-            }
+        $matchingIndexes = [];
 
-            $item->value = $nodeJson;
-            $item->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
-
-            return;
-        }
-
-        $this->items[] = new ObjectItemNode(
-            key: new StringNode($key),
-            value: $nodeJson,
-        );
-    }
-
-    public function remove(string $key): bool
-    {
         foreach ($this->items as $i => $item) {
             if ($item->key->value !== $key) {
                 continue;
             }
 
-            array_splice($this->items, $i, 1);
-
-            return true;
+            $matchingIndexes[] = $i;
         }
 
-        return false;
+        $lastIndex = array_pop($matchingIndexes);
+
+        if ($lastIndex === null) {
+            $this->items[] = new ObjectItemNode(
+                key: new StringNode($key),
+                value: $nodeJson,
+            );
+
+            return;
+        }
+
+        $item = $this->items[$lastIndex];
+
+        for ($i = count($matchingIndexes) - 1; $i >= 0; $i--) {
+            array_splice($this->items, $matchingIndexes[$i], 1);
+        }
+
+        $item->value = $nodeJson;
+        $item->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+    }
+
+    public function remove(string $key): bool
+    {
+        $removed = false;
+
+        for ($i = count($this->items) - 1; $i >= 0; $i--) {
+            if ($this->items[$i]->key->value !== $key) {
+                continue;
+            }
+
+            array_splice($this->items, $i, 1);
+            $removed = true;
+        }
+
+        if ($removed) {
+            $this->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+        }
+
+        return $removed;
     }
 }

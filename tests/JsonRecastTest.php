@@ -16,6 +16,10 @@ use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
+use function json_decode;
+
+use const JSON_THROW_ON_ERROR;
+
 final class JsonRecastTest extends TestCase
 {
     public function testReadmeExampleAddsEditsDeletesAndRemovesEmptyParent(): void
@@ -149,5 +153,31 @@ JSON, JsonRecast::print($jsonRecastResult));
         );
 
         $this->assertSame(" \n{\"name\": \"new\"}\n ", JsonRecast::print($jsonRecastResult));
+    }
+
+    public function testObjectNodeSetUpdatesEffectiveDuplicateKeyValue(): void
+    {
+        $jsonDocument = JsonRecast::parse('{"a":1,"a":2}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('a', new StringNode('changed'));
+
+        $printed = JsonRecast::print($jsonDocument);
+
+        $this->assertSame('{"a":"changed"}', $printed);
+        $this->assertSame(['a' => 'changed'], json_decode($printed, true, 512, JSON_THROW_ON_ERROR));
+    }
+
+    public function testObjectNodeRemoveDeletesEffectiveDuplicateKeyValue(): void
+    {
+        $jsonDocument = JsonRecast::parse('{"a":1,"b":2,"a":3}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->remove('a');
+
+        $printed = JsonRecast::print($jsonDocument);
+
+        $this->assertSame('{"b":2}', $printed);
+        $this->assertSame(['b' => 2], json_decode($printed, true, 512, JSON_THROW_ON_ERROR));
     }
 }

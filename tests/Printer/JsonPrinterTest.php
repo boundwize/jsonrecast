@@ -172,6 +172,30 @@ JSON;
 JSON, $this->replaceStringValue($source, 'old', 'new'));
     }
 
+    public function testItPreservesInPlaceScalarMutationWhenParentNodeIsReturned(): void
+    {
+        $jsonDocument = JsonRecast::parse('{"name":"old"}');
+
+        $jsonRecastResult = JsonRecast::traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+            {
+                if (
+                    ! $nodeJson instanceof ObjectItemNode
+                    || $nodeJson->key->value !== 'name'
+                    || ! $nodeJson->value instanceof StringNode
+                ) {
+                    return null;
+                }
+
+                $nodeJson->value->value = 'new';
+
+                return $nodeJson;
+            }
+        });
+
+        $this->assertSame('{"name":"new"}', JsonRecast::print($jsonRecastResult));
+    }
+
     public function testItPreservesAddObjectItemBestEffort(): void
     {
         $source = <<<'JSON'

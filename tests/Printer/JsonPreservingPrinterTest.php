@@ -183,6 +183,139 @@ JSON,
         $this->assertSame('{"first": 1}', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
     }
 
+    public function testItPrintsInPlaceStringMutationWhenObjectItemIsChanged(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"name":"old"}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $objectItem = $jsonDocument->value->get('name');
+        $this->assertInstanceOf(ObjectItemNode::class, $objectItem);
+        $this->assertInstanceOf(StringNode::class, $objectItem->value);
+        $objectItem->value->value = 'new';
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($objectItem);
+
+        $this->assertSame('{"name":"new"}', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
+    }
+
+    public function testItPrintsInPlaceNumberMutationWhenObjectItemIsChanged(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"count":1}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $objectItem = $jsonDocument->value->get('count');
+        $this->assertInstanceOf(ObjectItemNode::class, $objectItem);
+        $this->assertInstanceOf(NumberNode::class, $objectItem->value);
+        $objectItem->value->rawValue = '2';
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($objectItem);
+
+        $this->assertSame('{"count":2}', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
+    }
+
+    public function testItPrintsInPlaceBooleanMutationWhenObjectItemIsChanged(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"enabled":false}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $objectItem = $jsonDocument->value->get('enabled');
+        $this->assertInstanceOf(ObjectItemNode::class, $objectItem);
+        $this->assertInstanceOf(BooleanNode::class, $objectItem->value);
+        $objectItem->value->value = true;
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($objectItem);
+
+        $this->assertSame('{"enabled":true}', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
+    }
+
+    public function testItPrintsInPlaceStringMutationWhenArrayItemIsChanged(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('["old"]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $arrayItem = $jsonDocument->value->items[0];
+        $this->assertInstanceOf(StringNode::class, $arrayItem->value);
+        $arrayItem->value->value = 'new';
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($arrayItem);
+
+        $this->assertSame('["new"]', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
+    }
+
+    public function testItPrintsNestedInPlaceStringMutationWhenObjectIsChanged(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"meta":{"name":"old"}}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $metaItem = $jsonDocument->value->get('meta');
+        $this->assertInstanceOf(ObjectItemNode::class, $metaItem);
+        $this->assertInstanceOf(ObjectNode::class, $metaItem->value);
+
+        $nameItem = $metaItem->value->get('name');
+        $this->assertInstanceOf(ObjectItemNode::class, $nameItem);
+        $this->assertInstanceOf(StringNode::class, $nameItem->value);
+        $nameItem->value->value = 'new';
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($jsonDocument->value);
+
+        $this->assertSame('{"meta":{"name":"new"}}', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
+    }
+
+    public function testItPreservesUnchangedNestedObjectWhenObjectIsChanged(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"meta":{"name":"old"}}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($jsonDocument->value);
+
+        $this->assertSame('{"meta":{"name":"old"}}', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
+    }
+
+    public function testItPrintsNestedInPlaceStringMutationWhenArrayIsChanged(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"values":["old"]}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $valuesItem = $jsonDocument->value->get('values');
+        $this->assertInstanceOf(ObjectItemNode::class, $valuesItem);
+        $this->assertInstanceOf(ArrayNode::class, $valuesItem->value);
+        $this->assertInstanceOf(StringNode::class, $valuesItem->value->items[0]->value);
+        $valuesItem->value->items[0]->value->value = 'new';
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($jsonDocument->value);
+
+        $this->assertSame('{"values":["new"]}', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
+    }
+
+    public function testItPreservesUnchangedNestedArrayWhenObjectIsChanged(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"values":["old"]}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($jsonDocument->value);
+
+        $this->assertSame('{"values":["old"]}', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
+    }
+
+    public function testItPreservesUnchangedNullWhenObjectIsChanged(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"value":null}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($jsonDocument->value);
+
+        $this->assertSame('{"value":null}', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
+    }
+
     public function testItRejectsInvalidUtf8String(): void
     {
         $this->expectException(RuntimeException::class);

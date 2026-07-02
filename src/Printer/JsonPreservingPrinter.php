@@ -67,9 +67,14 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
     private function printDocument(JsonDocument $jsonDocument, PrintContext $printContext): string
     {
-        $output = $this->printNode($jsonDocument->value, $printContext);
+        $output = $jsonDocument->beforeValue
+            . $this->printNode($jsonDocument->value, $printContext)
+            . $jsonDocument->afterValue;
 
-        if ($jsonDocument->getAttribute(NodeAttributes::TRAILING_NEWLINE) === true) {
+        if (
+            $jsonDocument->afterValue === ''
+            && $jsonDocument->getAttribute(NodeAttributes::TRAILING_NEWLINE) === true
+        ) {
             $output .= $printContext->newline;
         }
 

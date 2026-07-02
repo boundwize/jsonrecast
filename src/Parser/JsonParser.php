@@ -42,14 +42,14 @@ final class JsonParser
         $this->tokens   = (new Lexer())->tokenize($source);
         $this->position = 0;
 
-        $this->readWhitespace();
+        $beforeValue = $this->readWhitespace();
 
         $nodeJson = $this->parseValue();
 
-        $this->readWhitespace();
+        $afterValue = $this->readWhitespace();
         $this->consume(TokenType::EndOfFile);
 
-        $jsonDocument = new JsonDocument($nodeJson);
+        $jsonDocument = new JsonDocument($nodeJson, $beforeValue, $afterValue);
         $this->setSourceMetadata($jsonDocument, 0, strlen($source));
         $jsonDocument->setAttribute(NodeAttributes::SOURCE, $source);
         $jsonDocument->setAttribute(NodeAttributes::NEWLINE, $this->detectNewline($source));

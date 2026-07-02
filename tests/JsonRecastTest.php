@@ -131,4 +131,23 @@ JSON, JsonRecast::print($jsonRecastResult));
             }
         });
     }
+
+    public function testChangedDocumentPreservesRootWhitespace(): void
+    {
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse(" \n{\"name\": \"old\"}\n "),
+            new class extends NodeJsonVisitorAbstract {
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if ($nodeJson instanceof StringNode && $nodeJson->value === 'old') {
+                        return new StringNode('new');
+                    }
+
+                    return null;
+                }
+            },
+        );
+
+        $this->assertSame(" \n{\"name\": \"new\"}\n ", JsonRecast::print($jsonRecastResult));
+    }
 }

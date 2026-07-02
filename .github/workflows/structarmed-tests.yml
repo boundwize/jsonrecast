@@ -19,6 +19,8 @@ jobs:
       - name: Checkout JsonRecast
         uses: actions/checkout@v4
         with:
+          # On pull_request, checkout the PR branch HEAD instead of GitHub's merge commit.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           path: jsonrecast
 
       - name: Checkout StructArmed

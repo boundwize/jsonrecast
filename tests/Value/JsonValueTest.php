@@ -30,6 +30,26 @@ final class JsonValueTest extends TestCase
     }
 
     /**
+     * @return iterable<string, array{float, string}>
+     */
+    public static function finiteFloatProvider(): iterable
+    {
+        yield 'fractional float' => [1.5, '1.5'];
+        yield 'whole-number float' => [1.0, '1.0'];
+        yield 'negative whole-number float' => [-2.0, '-2.0'];
+        yield 'scientific notation float' => [1.0E-5, '1.0E-5'];
+    }
+
+    #[DataProvider('finiteFloatProvider')]
+    public function testItPreservesFiniteFloatRawValue(float $value, string $expectedRawValue): void
+    {
+        $nodeJson = JsonValue::from($value);
+
+        $this->assertInstanceOf(NumberNode::class, $nodeJson);
+        $this->assertSame($expectedRawValue, $nodeJson->rawValue);
+    }
+
+    /**
      * @return iterable<string, array{float}>
      */
     public static function nonFiniteFloatProvider(): iterable

@@ -42,6 +42,53 @@ final class NodeTest extends TestCase
         $this->assertFalse($objectNode->remove('missing'));
     }
 
+    public function testObjectNodeLookupReturnsLastDuplicateKey(): void
+    {
+        $firstNameItem = new ObjectItemNode(new StringNode('name'), new StringNode('first'));
+        $lastNameItem  = new ObjectItemNode(new StringNode('name'), new StringNode('last'));
+        $objectNode    = new ObjectNode([
+            $firstNameItem,
+            new ObjectItemNode(new StringNode('type'), new StringNode('library')),
+            $lastNameItem,
+        ]);
+
+        $this->assertSame($lastNameItem, $objectNode->get('name'));
+        $this->assertTrue($objectNode->has('name'));
+    }
+
+    public function testObjectNodeSetUpdatesLastDuplicateKeyAndRemovesEarlierDuplicates(): void
+    {
+        $objectNode = new ObjectNode([
+            new ObjectItemNode(new StringNode('name'), new StringNode('first')),
+            new ObjectItemNode(new StringNode('type'), new StringNode('library')),
+            new ObjectItemNode(new StringNode('name'), new StringNode('last')),
+        ]);
+
+        $objectNode->set('name', new StringNode('changed'));
+
+        $this->assertCount(2, $objectNode->items);
+        $this->assertSame('type', $objectNode->items[0]->key->value);
+        $this->assertSame('name', $objectNode->items[1]->key->value);
+        $this->assertSame($objectNode->items[1], $objectNode->get('name'));
+        $this->assertInstanceOf(StringNode::class, $objectNode->items[1]->value);
+        $this->assertSame('changed', $objectNode->items[1]->value->value);
+    }
+
+    public function testObjectNodeRemoveRemovesEveryDuplicateKey(): void
+    {
+        $objectNode = new ObjectNode([
+            new ObjectItemNode(new StringNode('name'), new StringNode('first')),
+            new ObjectItemNode(new StringNode('type'), new StringNode('library')),
+            new ObjectItemNode(new StringNode('name'), new StringNode('last')),
+        ]);
+
+        $this->assertTrue($objectNode->remove('name'));
+
+        $this->assertCount(1, $objectNode->items);
+        $this->assertSame('type', $objectNode->items[0]->key->value);
+        $this->assertFalse($objectNode->has('name'));
+    }
+
     public function testArrayNodeReturnsFalseWhenRemovingMissingIndex(): void
     {
         $arrayNode = new ArrayNode([]);

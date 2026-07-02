@@ -45,12 +45,12 @@ final class Lexer
             $column      = $this->column;
 
             $tokens[] = match ($char) {
-                '{' => $this->singleCharacterToken(TokenType::LeftBrace, $startOffset, $line, $column),
-                '}' => $this->singleCharacterToken(TokenType::RightBrace, $startOffset, $line, $column),
-                '[' => $this->singleCharacterToken(TokenType::LeftBracket, $startOffset, $line, $column),
-                ']' => $this->singleCharacterToken(TokenType::RightBracket, $startOffset, $line, $column),
-                ':' => $this->singleCharacterToken(TokenType::Colon, $startOffset, $line, $column),
-                ',' => $this->singleCharacterToken(TokenType::Comma, $startOffset, $line, $column),
+                '{' => $this->singleCharacterToken(TokenType::LEFT_BRACE, $startOffset, $line, $column),
+                '}' => $this->singleCharacterToken(TokenType::RIGHT_BRACE, $startOffset, $line, $column),
+                '[' => $this->singleCharacterToken(TokenType::LEFT_BRACKET, $startOffset, $line, $column),
+                ']' => $this->singleCharacterToken(TokenType::RIGHT_BRACKET, $startOffset, $line, $column),
+                ':' => $this->singleCharacterToken(TokenType::COLON, $startOffset, $line, $column),
+                ',' => $this->singleCharacterToken(TokenType::COMMA, $startOffset, $line, $column),
                 '"' => $this->stringToken($startOffset, $line, $column),
                 ' ', "\t", "\n", "\r" => $this->whitespaceToken($startOffset, $line, $column),
                 default => $this->keywordOrNumberToken($startOffset, $line, $column),
@@ -58,7 +58,7 @@ final class Lexer
         }
 
         $tokens[] = new Token(
-            TokenType::EndOfFile,
+            TokenType::END_OF_FILE,
             '',
             $this->offset,
             $this->offset,
@@ -79,9 +79,9 @@ final class Lexer
 
         foreach (
             [
-                'true'  => TokenType::True,
-                'false' => TokenType::False,
-                'null'  => TokenType::Null,
+                'true'  => TokenType::TRUE,
+                'false' => TokenType::FALSE,
+                'null'  => TokenType::NULL,
             ] as $text => $type
         ) {
             if (substr($this->source, $this->offset, strlen($text)) !== $text) {
@@ -98,7 +98,10 @@ final class Lexer
         throw $this->error('Unexpected character.');
     }
 
-    private function singleCharacterToken(TokenType $tokenType, int $startOffset, int $line, int $column): Token
+    /**
+     * @param TokenType::* $tokenType
+     */
+    private function singleCharacterToken(string $tokenType, int $startOffset, int $line, int $column): Token
     {
         $text = $this->currentChar();
         $this->advance();
@@ -113,7 +116,7 @@ final class Lexer
         }
 
         return new Token(
-            TokenType::Whitespace,
+            TokenType::WHITESPACE,
             substr($this->source, $startOffset, $this->offset - $startOffset),
             $startOffset,
             $this->offset,
@@ -133,7 +136,7 @@ final class Lexer
                 $this->advance();
 
                 return new Token(
-                    TokenType::String,
+                    TokenType::STRING,
                     substr($this->source, $startOffset, $this->offset - $startOffset),
                     $startOffset,
                     $this->offset,
@@ -237,7 +240,7 @@ final class Lexer
         }
 
         return new Token(
-            TokenType::Number,
+            TokenType::NUMBER,
             substr($this->source, $startOffset, $this->offset - $startOffset),
             $startOffset,
             $this->offset,

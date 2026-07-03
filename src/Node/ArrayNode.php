@@ -30,14 +30,14 @@ final class ArrayNode extends AbstractNodeJson
 
     public function insert(int $index, NodeJson $nodeJson): void
     {
-        $index     = $this->normalizeInsertionIndex($index);
-        $itemCount = count($this->items);
-        $newItem   = new ArrayItemNode(
+        $index         = $this->normalizeInsertionIndex($index);
+        $itemCount     = count($this->items);
+        $arrayItemNode = new ArrayItemNode(
             value: $nodeJson,
             beforeValue: $this->beforeValueForInsertedItem($index),
             afterValue: $this->afterValueForInsertedItem($index),
         );
-        $newItem->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+        $arrayItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
 
         if ($index === 0 && $this->items !== []) {
             $this->items[0]->beforeValue = $this->separatorBeforeValue();
@@ -51,7 +51,7 @@ final class ArrayNode extends AbstractNodeJson
             $this->items[$lastIndex]->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         }
 
-        array_splice($this->items, $index, 0, [$newItem]);
+        array_splice($this->items, $index, 0, [$arrayItemNode]);
     }
 
     public function setAt(int $index, NodeJson $nodeJson): bool

@@ -76,6 +76,31 @@ final class NodeTest extends TestCase
         $this->assertSame('changed', $objectNode->items[1]->value->value);
     }
 
+    public function testObjectNodeSetAppendsMissingKeyWithWhitespaceFromMultipleItems(): void
+    {
+        $firstItem  = new ObjectItemNode(new StringNode('name'), new StringNode('jsonrecast'), afterValue: ' ');
+        $secondItem = new ObjectItemNode(
+            key: new StringNode('type'),
+            value: new StringNode('library'),
+            beforeKey: "\n    ",
+            betweenColonAndValue: ' ',
+            afterValue: "\n",
+        );
+        $secondItem->setAttribute(NodeAttributes::ORIGINAL_TEXT, "\n    \"type\": \"library\"\n");
+
+        $objectNode = new ObjectNode([$firstItem, $secondItem], afterOpenBrace: "\n    ", beforeCloseBrace: "\n");
+
+        $objectNode->set('license', new StringNode('MIT'));
+
+        $this->assertCount(3, $objectNode->items);
+        $this->assertSame(' ', $secondItem->afterValue);
+        $this->assertNull($secondItem->getAttribute(NodeAttributes::ORIGINAL_TEXT));
+        $this->assertSame('license', $objectNode->items[2]->key->value);
+        $this->assertSame("\n    ", $objectNode->items[2]->beforeKey);
+        $this->assertSame(' ', $objectNode->items[2]->betweenColonAndValue);
+        $this->assertSame("\n", $objectNode->items[2]->afterValue);
+    }
+
     public function testObjectNodeRemoveRemovesEveryDuplicateKey(): void
     {
         $objectNode = new ObjectNode([
@@ -111,6 +136,37 @@ final class NodeTest extends TestCase
         $this->assertTrue($arrayNode->items[0]->hasAttribute(NodeAttributes::ORIGINAL_TEXT));
         $this->assertNull($arrayNode->items[0]->getAttribute(NodeAttributes::ORIGINAL_TEXT));
         $this->assertFalse($arrayNode->setAt(1, new StringNode('missing')));
+    }
+
+    public function testArrayNodeInsertBeforeFirstItemNormalizesNegativeIndexAndInvalidatesShiftedItem(): void
+    {
+        $arrayItemNode = new ArrayItemNode(new StringNode('existing'), beforeValue: "\n    ");
+        $arrayItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, "\n    \"existing\"");
+
+        $arrayNode = new ArrayNode([$arrayItemNode], afterOpenBracket: "\n    ", beforeCloseBracket: "\n");
+
+        $arrayNode->insert(-10, new StringNode('new'));
+
+        $this->assertCount(2, $arrayNode->items);
+        $this->assertInstanceOf(StringNode::class, $arrayNode->items[0]->value);
+        $this->assertSame('new', $arrayNode->items[0]->value->value);
+        $this->assertSame("\n    ", $arrayNode->items[0]->beforeValue);
+        $this->assertSame('', $arrayNode->items[0]->afterValue);
+        $this->assertSame("\n    ", $arrayItemNode->beforeValue);
+        $this->assertNull($arrayItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT));
+    }
+
+    public function testArrayNodeInsertIntoEmptyArrayClampsOutOfRangeIndex(): void
+    {
+        $arrayNode = new ArrayNode([], afterOpenBracket: ' ', beforeCloseBracket: ' ');
+
+        $arrayNode->insert(99, new StringNode('new'));
+
+        $this->assertCount(1, $arrayNode->items);
+        $this->assertInstanceOf(StringNode::class, $arrayNode->items[0]->value);
+        $this->assertSame('new', $arrayNode->items[0]->value->value);
+        $this->assertSame(' ', $arrayNode->items[0]->beforeValue);
+        $this->assertSame(' ', $arrayNode->items[0]->afterValue);
     }
 
     public function testNumberNodeConvertsRawIntegersAndFloats(): void

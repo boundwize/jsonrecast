@@ -90,9 +90,9 @@ final class ObjectNode extends AbstractNodeJson
 
     private function appendNewItem(string $key, NodeJson $nodeJson): void
     {
-        $itemCount = count($this->items);
-        $lastItem  = $itemCount > 0 ? $this->items[$itemCount - 1] : null;
-        $newItem   = new ObjectItemNode(
+        $itemCount      = count($this->items);
+        $lastItem       = $itemCount > 0 ? $this->items[$itemCount - 1] : null;
+        $objectItemNode = new ObjectItemNode(
             key: new StringNode($key),
             value: $nodeJson,
             beforeKey: $this->beforeKeyForAppendedItem(),
@@ -100,14 +100,14 @@ final class ObjectNode extends AbstractNodeJson
             betweenColonAndValue: $lastItem instanceof ObjectItemNode ? $lastItem->betweenColonAndValue : '',
             afterValue: $lastItem instanceof ObjectItemNode ? $lastItem->afterValue : $this->beforeCloseBrace,
         );
-        $newItem->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+        $objectItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
 
         if ($lastItem instanceof ObjectItemNode) {
             $lastItem->afterValue = $this->separatorAfterValue();
             $lastItem->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         }
 
-        $this->items[] = $newItem;
+        $this->items[] = $objectItemNode;
     }
 
     private function beforeKeyForAppendedItem(): string

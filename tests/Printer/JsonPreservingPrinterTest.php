@@ -59,6 +59,25 @@ JSON,
         );
     }
 
+    public function testItPrettyPrintsContainerWithMultipleNewItems(): void
+    {
+        $objectNode = new ObjectNode([
+            new ObjectItemNode(new StringNode('name'), new StringNode('jsonrecast')),
+            new ObjectItemNode(new StringNode('type'), new StringNode('library')),
+        ]);
+        $objectNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '{}');
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "name": "jsonrecast",
+    "type": "library"
+}
+JSON,
+            (new JsonPreservingPrinter())->print($objectNode),
+        );
+    }
+
     public function testItPrettyPrintsArrayWithNewItem(): void
     {
         $arrayNode = new ArrayNode([
@@ -70,6 +89,25 @@ JSON,
             <<<'JSON'
 [
     "jsonrecast"
+]
+JSON,
+            (new JsonPreservingPrinter())->print($arrayNode),
+        );
+    }
+
+    public function testItPrettyPrintsArrayWithMultipleNewItems(): void
+    {
+        $arrayNode = new ArrayNode([
+            new ArrayItemNode(new StringNode('json')),
+            new ArrayItemNode(new StringNode('recast')),
+        ]);
+        $arrayNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '[]');
+
+        $this->assertSame(
+            <<<'JSON'
+[
+    "json",
+    "recast"
 ]
 JSON,
             (new JsonPreservingPrinter())->print($arrayNode),
@@ -351,7 +389,7 @@ JSON,
         $jsonDocument->value->set('note', new StringNode($note));
 
         $this->assertSame(
-            "{\"city\": \"" . $city . "\",\"note\": \"" . $note . "\"}",
+            '{"city": "' . $city . '","note": "' . $note . '"}',
             (new JsonPreservingPrinter())->print($jsonDocument),
         );
     }

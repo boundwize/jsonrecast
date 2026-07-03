@@ -19,9 +19,11 @@ use Boundwize\JsonRecast\NodeTraverser\NodeChangeSet;
 use RuntimeException;
 
 use function count;
+use function is_int;
 use function is_string;
 use function json_decode;
 use function json_encode;
+use function usort;
 
 use const JSON_UNESCAPED_SLASHES;
 
@@ -113,13 +115,28 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($objectNode);
         $output               = '{';
         $lastIndex            = count($objectNode->items) - 1;
+        $itemsInOriginalOrder = $this->getItemsInOriginalOrder($objectNode->items);
+        $isReordered          = $itemsInOriginalOrder !== null && $itemsInOriginalOrder !== $objectNode->items;
 
         foreach ($objectNode->items as $i => $item) {
+            $beforeKey  = $i === 0 ? $objectNode->afterOpenBrace : null;
+            $afterValue = $i === $lastIndex ? $objectNode->beforeCloseBrace : null;
+
+            if ($isReordered) {
+                if ($i > 0) {
+                    $beforeKey = $itemsInOriginalOrder[$i]->beforeKey;
+                }
+
+                if ($i < $lastIndex) {
+                    $afterValue = $itemsInOriginalOrder[$i]->afterValue;
+                }
+            }
+
             $output .= $this->printObjectItemPreserving(
                 $item,
                 $printContext->next(),
-                $i === 0 ? $objectNode->afterOpenBrace : null,
-                $i === $lastIndex ? $objectNode->beforeCloseBrace : null,
+                $beforeKey,
+                $afterValue,
                 $detectScalarMutation,
             );
 
@@ -220,13 +237,28 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($arrayNode);
         $output               = '[';
         $lastIndex            = count($arrayNode->items) - 1;
+        $itemsInOriginalOrder = $this->getItemsInOriginalOrder($arrayNode->items);
+        $isReordered          = $itemsInOriginalOrder !== null && $itemsInOriginalOrder !== $arrayNode->items;
 
         foreach ($arrayNode->items as $i => $item) {
+            $beforeValue = $i === 0 ? $arrayNode->afterOpenBracket : null;
+            $afterValue  = $i === $lastIndex ? $arrayNode->beforeCloseBracket : null;
+
+            if ($isReordered) {
+                if ($i > 0) {
+                    $beforeValue = $itemsInOriginalOrder[$i]->beforeValue;
+                }
+
+                if ($i < $lastIndex) {
+                    $afterValue = $itemsInOriginalOrder[$i]->afterValue;
+                }
+            }
+
             $output .= $this->printArrayItemPreserving(
                 $item,
                 $printContext->next(),
-                $i === 0 ? $arrayNode->afterOpenBracket : null,
-                $i === $lastIndex ? $arrayNode->beforeCloseBracket : null,
+                $beforeValue,
+                $afterValue,
                 $detectScalarMutation,
             );
 
@@ -335,6 +367,48 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         }
 
         return false;
+    }
+
+    /**
+     * @template T of NodeJson
+     * @param list<T> $items
+     * @return list<T>|null
+     */
+    private function getItemsInOriginalOrder(array $items): ?array
+    {
+        /** @var list<array{item: T, startOffset: int}> $itemsWithStartOffsets */
+        $itemsWithStartOffsets = [];
+
+        foreach ($items as $item) {
+            $startOffset = $item->getAttribute(NodeAttributes::START_OFFSET);
+
+            if (! is_int($startOffset)) {
+                return null;
+            }
+
+            $itemsWithStartOffsets[] = [
+                'item'        => $item,
+                'startOffset' => $startOffset,
+            ];
+        }
+
+        usort(
+            $itemsWithStartOffsets,
+            /**
+             * @param array{item: T, startOffset: int} $left
+             * @param array{item: T, startOffset: int} $right
+             */
+            static fn (array $left, array $right): int => $left['startOffset'] <=> $right['startOffset'],
+        );
+
+        /** @var list<T> $itemsInOriginalOrder */
+        $itemsInOriginalOrder = [];
+
+        foreach ($itemsWithStartOffsets as $itemWithStartOffset) {
+            $itemsInOriginalOrder[] = $itemWithStartOffset['item'];
+        }
+
+        return $itemsInOriginalOrder;
     }
 
     private function isChanged(NodeJson $nodeJson): bool

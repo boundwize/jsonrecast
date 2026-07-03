@@ -38,7 +38,11 @@ final class JsonValueTest extends TestCase
         yield 'whole-number float' => [1.0, '1.0'];
         yield 'negative zero float' => [-0.0, '-0.0'];
         yield 'negative whole-number float' => [-2.0, '-2.0'];
-        yield 'scientific notation float' => [1.0E-5, '1.0E-5'];
+        yield 'scientific notation float' => [1.0E-5, '1.0e-5'];
+        yield 'large scientific notation float' => [1.0E+300, '1.0e+300'];
+        yield 'pi precision' => [3.14159265358979, '3.14159265358979'];
+        yield 'large fractional precision' => [19999999999999.996, '19999999999999.996'];
+        yield 'recurring fractional precision' => [1 / 3, '0.3333333333333333'];
     }
 
     #[DataProvider('finiteFloatProvider')]

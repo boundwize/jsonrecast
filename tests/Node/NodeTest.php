@@ -118,5 +118,10 @@ final class NodeTest extends TestCase
         $this->assertSame(10, (new NumberNode('10'))->toIntOrFloat());
         $this->assertEqualsWithDelta(1.5, (new NumberNode('1.5'))->toIntOrFloat(), PHP_FLOAT_EPSILON);
         $this->assertEqualsWithDelta(100.0, (new NumberNode('1e2'))->toIntOrFloat(), PHP_FLOAT_EPSILON);
+
+        $largeIntegerValue = (new NumberNode('9223372036854775808'))->toIntOrFloat();
+
+        $this->assertIsFloat($largeIntegerValue);
+        $this->assertSame((float) '9223372036854775808', $largeIntegerValue);
     }
 }

@@ -209,6 +209,42 @@ JSON,
         $this->assertSame('{"count":2}', (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItPrintsDirectObjectItemValueReplacementWithExistingParsedNode(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"from":1,"to":0}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $from = $jsonDocument->value->get('from');
+        $to   = $jsonDocument->value->get('to');
+
+        $this->assertInstanceOf(ObjectItemNode::class, $from);
+        $this->assertInstanceOf(ObjectItemNode::class, $to);
+
+        $to->value = $from->value;
+
+        $this->assertSame('{"from":1,"to":1}', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPrintsDirectArrayItemValueReplacementWithExistingParsedNode(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('[1,0]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->items[1]->value = $jsonDocument->value->items[0]->value;
+
+        $this->assertSame('[1,1]', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPrintsDirectDocumentValueReplacementWithExistingParsedNode(): void
+    {
+        $jsonDocument        = (new JsonParser())->parse('0');
+        $replacementDocument = (new JsonParser())->parse('1');
+
+        $jsonDocument->value = $replacementDocument->value;
+
+        $this->assertSame('1', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
     public function testItPrintsDirectBooleanNodeValueMutation(): void
     {
         $jsonDocument = (new JsonParser())->parse('{"enabled":false}');

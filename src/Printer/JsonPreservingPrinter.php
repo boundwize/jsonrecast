@@ -180,7 +180,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             $beforeKey === $objectItemNode->beforeKey
             && $afterValue === $objectItemNode->afterValue
             && ! $this->isChanged($objectItemNode)
-            && (! $detectScalarMutation || ! $this->hasScalarValueChanged($objectItemNode))
+            && ! $detectScalarMutation
         ) {
             $originalText = $objectItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 

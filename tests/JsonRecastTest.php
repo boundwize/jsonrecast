@@ -214,4 +214,17 @@ JSON, JsonRecast::print($jsonRecastResult));
         $this->assertSame('[1, 3]', $printed);
         $this->assertSame([1, 3], json_decode($printed, true, 512, JSON_THROW_ON_ERROR));
     }
+
+    public function testItPrintsDirectParsedStringNodeValueMutation(): void
+    {
+        $jsonDocument = JsonRecast::parse('{"name":"old"}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $objectItem = $jsonDocument->value->get('name');
+        $this->assertInstanceOf(ObjectItemNode::class, $objectItem);
+        $this->assertInstanceOf(StringNode::class, $objectItem->value);
+        $objectItem->value->value = 'new';
+
+        $this->assertSame('{"name":"new"}', JsonRecast::print($jsonDocument));
+    }
 }

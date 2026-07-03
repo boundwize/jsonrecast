@@ -82,6 +82,14 @@ JSON,
         $this->assertSame('["json"]', (new JsonPreservingPrinter())->print($jsonDocument->value));
     }
 
+    public function testItPreservesParsedMultilineEmptyObjectNode(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("{\n        }");
+
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+        $this->assertSame("{\n        }", (new JsonPreservingPrinter())->print($jsonDocument->value));
+    }
+
     public function testItPreservesTrailingNewlineWhenDocumentAfterValueIsEmpty(): void
     {
         $jsonDocument = new JsonDocument(new StringNode('json'));

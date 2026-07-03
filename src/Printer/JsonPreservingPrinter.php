@@ -394,6 +394,10 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
     private function reconstructOriginalObjectText(ObjectNode $objectNode): string
     {
+        if ($objectNode->items === []) {
+            return '{' . $objectNode->beforeCloseBrace . '}';
+        }
+
         $output    = '{';
         $lastIndex = count($objectNode->items) - 1;
 
@@ -419,6 +423,10 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
     private function reconstructOriginalArrayText(ArrayNode $arrayNode): string
     {
+        if ($arrayNode->items === []) {
+            return '[' . $arrayNode->beforeCloseBracket . ']';
+        }
+
         $output    = '[';
         $lastIndex = count($arrayNode->items) - 1;
 

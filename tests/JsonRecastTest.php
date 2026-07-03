@@ -211,6 +211,36 @@ JSON, JsonRecast::print($jsonRecastResult));
         $this->assertSame(['a' => 'changed'], json_decode($printed, true, 512, JSON_THROW_ON_ERROR));
     }
 
+    public function testObjectNodeSetAddsMissingKeyWithoutReformattingInlineDocument(): void
+    {
+        $jsonDocument = JsonRecast::parse('{"existing": "value"}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('newkey', new StringNode('newvalue'));
+
+        $this->assertSame('{"existing": "value","newkey": "newvalue"}', JsonRecast::print($jsonDocument));
+    }
+
+    public function testArrayNodeAppendAddsItemWithoutReformattingInlineDocument(): void
+    {
+        $jsonDocument = JsonRecast::parse('["existing"]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->append(new StringNode('item'));
+
+        $this->assertSame('["existing","item"]', JsonRecast::print($jsonDocument));
+    }
+
+    public function testArrayNodeInsertAddsItemWithoutReformattingInlineDocument(): void
+    {
+        $jsonDocument = JsonRecast::parse('["json", "parser"]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->insert(1, new StringNode('ast'));
+
+        $this->assertSame('["json", "ast", "parser"]', JsonRecast::print($jsonDocument));
+    }
+
     public function testObjectNodeRemoveDeletesEffectiveDuplicateKeyValue(): void
     {
         $jsonDocument = JsonRecast::parse('{"a":1,"b":2,"a":3}');

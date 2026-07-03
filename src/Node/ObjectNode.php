@@ -53,10 +53,7 @@ final class ObjectNode extends AbstractNodeJson
         $lastIndex = array_pop($matchingIndexes);
 
         if ($lastIndex === null) {
-            $this->items[] = new ObjectItemNode(
-                key: new StringNode($key),
-                value: $nodeJson,
-            );
+            $this->appendNewItem($key, $nodeJson);
 
             return;
         }
@@ -89,5 +86,49 @@ final class ObjectNode extends AbstractNodeJson
         }
 
         return $removed;
+    }
+
+    private function appendNewItem(string $key, NodeJson $nodeJson): void
+    {
+        $itemCount = count($this->items);
+        $lastItem  = $itemCount > 0 ? $this->items[$itemCount - 1] : null;
+        $newItem   = new ObjectItemNode(
+            key: new StringNode($key),
+            value: $nodeJson,
+            beforeKey: $this->beforeKeyForAppendedItem(),
+            betweenKeyAndColon: $lastItem instanceof ObjectItemNode ? $lastItem->betweenKeyAndColon : '',
+            betweenColonAndValue: $lastItem instanceof ObjectItemNode ? $lastItem->betweenColonAndValue : '',
+            afterValue: $lastItem instanceof ObjectItemNode ? $lastItem->afterValue : $this->beforeCloseBrace,
+        );
+        $newItem->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+
+        if ($lastItem instanceof ObjectItemNode) {
+            $lastItem->afterValue = $this->separatorAfterValue();
+            $lastItem->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+        }
+
+        $this->items[] = $newItem;
+    }
+
+    private function beforeKeyForAppendedItem(): string
+    {
+        $itemCount = count($this->items);
+
+        if ($itemCount > 1) {
+            return $this->items[$itemCount - 1]->beforeKey;
+        }
+
+        return $this->afterOpenBrace;
+    }
+
+    private function separatorAfterValue(): string
+    {
+        $itemCount = count($this->items);
+
+        if ($itemCount > 1) {
+            return $this->items[$itemCount - 2]->afterValue;
+        }
+
+        return '';
     }
 }

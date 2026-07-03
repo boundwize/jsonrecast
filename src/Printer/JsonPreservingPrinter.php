@@ -117,7 +117,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $output               = '{';
         $lastIndex            = count($objectNode->items) - 1;
         $itemsInOriginalOrder = $this->getItemsInOriginalOrder($objectNode->items);
-        $isReordered          = $itemsInOriginalOrder !== null && $itemsInOriginalOrder !== $objectNode->items;
+        $isReordered          = $itemsInOriginalOrder !== $objectNode->items;
 
         foreach ($objectNode->items as $i => $item) {
             $beforeKey  = $i === 0 ? $objectNode->afterOpenBrace : null;
@@ -239,7 +239,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $output               = '[';
         $lastIndex            = count($arrayNode->items) - 1;
         $itemsInOriginalOrder = $this->getItemsInOriginalOrder($arrayNode->items);
-        $isReordered          = $itemsInOriginalOrder !== null && $itemsInOriginalOrder !== $arrayNode->items;
+        $isReordered          = $itemsInOriginalOrder !== $arrayNode->items;
 
         foreach ($arrayNode->items as $i => $item) {
             $beforeValue = $i === 0 ? $arrayNode->afterOpenBracket : null;
@@ -373,33 +373,35 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     /**
      * @template T of NodeJson
      * @param list<T> $items
-     * @return list<T>|null
+     * @return list<T>
      */
-    private function getItemsInOriginalOrder(array $items): ?array
+    private function getItemsInOriginalOrder(array $items): array
     {
-        /** @var list<array{item: T, startOffset: int}> $itemsWithStartOffsets */
+        /** @var list<array{item: T, startOffset: float, currentIndex: int}> $itemsWithStartOffsets */
         $itemsWithStartOffsets = [];
 
-        foreach ($items as $item) {
+        foreach ($items as $i => $item) {
             $startOffset = $item->getAttribute(NodeAttributes::START_OFFSET);
 
             if (! is_int($startOffset)) {
-                return null;
+                $startOffset = $this->getSyntheticStartOffset($items, $i);
             }
 
             $itemsWithStartOffsets[] = [
-                'item'        => $item,
-                'startOffset' => $startOffset,
+                'item'         => $item,
+                'startOffset'  => (float) $startOffset,
+                'currentIndex' => $i,
             ];
         }
 
         usort(
             $itemsWithStartOffsets,
             /**
-             * @param array{item: T, startOffset: int} $left
-             * @param array{item: T, startOffset: int} $right
+             * @param array{item: T, startOffset: float, currentIndex: int} $left
+             * @param array{item: T, startOffset: float, currentIndex: int} $right
              */
-            static fn (array $left, array $right): int => $left['startOffset'] <=> $right['startOffset'],
+            static fn (array $left, array $right): int => $left['startOffset'] <=> $right['startOffset']
+                ?: $left['currentIndex'] <=> $right['currentIndex'],
         );
 
         /** @var list<T> $itemsInOriginalOrder */
@@ -410,6 +412,69 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         }
 
         return $itemsInOriginalOrder;
+    }
+
+    /**
+     * @param list<NodeJson> $items
+     */
+    private function getSyntheticStartOffset(array $items, int $index): float
+    {
+        $previousOffset = null;
+        $previousIndex  = null;
+
+        for ($i = $index - 1; $i >= 0; $i--) {
+            $startOffset = $items[$i]->getAttribute(NodeAttributes::START_OFFSET);
+
+            if (! is_int($startOffset)) {
+                continue;
+            }
+
+            $previousOffset = $startOffset;
+            $previousIndex  = $i;
+
+            break;
+        }
+
+        $nextOffset = null;
+        $nextIndex  = null;
+        $counter    = count($items);
+
+        for ($i = $index + 1; $i < $counter; $i++) {
+            $startOffset = $items[$i]->getAttribute(NodeAttributes::START_OFFSET);
+
+            if (! is_int($startOffset)) {
+                continue;
+            }
+
+            $nextOffset = $startOffset;
+            $nextIndex  = $i;
+
+            break;
+        }
+
+        if ($previousOffset !== null && $previousIndex !== null && $nextOffset !== null && $nextIndex !== null) {
+            $baseOffset = $previousOffset < $nextOffset ? $previousOffset : $nextOffset;
+            $runLength  = $nextIndex - $previousIndex - 1;
+            $position   = $index - $previousIndex;
+
+            return $baseOffset + ($position / ($runLength + 1));
+        }
+
+        if ($previousOffset !== null && $previousIndex !== null) {
+            $runLength = count($items) - $previousIndex - 1;
+            $position  = $index - $previousIndex;
+
+            return $previousOffset + ($position / ($runLength + 1));
+        }
+
+        if ($nextOffset !== null && $nextIndex !== null) {
+            $runLength = $nextIndex;
+            $position  = $nextIndex - $index;
+
+            return $nextOffset - ($position / ($runLength + 1));
+        }
+
+        return (float) $index;
     }
 
     private function isChanged(NodeJson $nodeJson): bool

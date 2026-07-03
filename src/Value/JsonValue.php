@@ -23,7 +23,10 @@ use function is_finite;
 use function is_float;
 use function is_int;
 use function is_string;
+use function json_encode;
 use function strpbrk;
+
+use const JSON_THROW_ON_ERROR;
 
 final class JsonValue
 {
@@ -43,7 +46,7 @@ final class JsonValue
 
     private static function formatFloat(float $value): string
     {
-        $rawValue = (string) $value;
+        $rawValue = json_encode($value, JSON_THROW_ON_ERROR);
 
         if (strpbrk($rawValue, '.eE') !== false) {
             return $rawValue;

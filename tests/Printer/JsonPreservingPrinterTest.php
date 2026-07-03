@@ -406,6 +406,16 @@ JSON,
         $this->assertSame('{"c":3, "b":2, "a":1}', (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItPreservesInlineWhitespaceWhenObjectItemsAreReordered(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a" : 1,"b":2 , "c" : 3}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->items = array_reverse($jsonDocument->value->items);
+
+        $this->assertSame('{"c" : 3,"b":2 , "a" : 1}', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
     public function testItPreservesMultilineWhitespaceWhenObjectItemsAreReordered(): void
     {
         $jsonDocument = (new JsonParser())->parse(

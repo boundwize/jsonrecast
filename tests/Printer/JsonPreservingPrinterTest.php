@@ -18,7 +18,6 @@ use Boundwize\JsonRecast\NodeTraverser\NodeChangeSet;
 use Boundwize\JsonRecast\Parser\JsonParser;
 use Boundwize\JsonRecast\Printer\JsonPreservingPrinter;
 use PHPUnit\Framework\TestCase;
-use ReflectionMethod;
 use RuntimeException;
 
 final class JsonPreservingPrinterTest extends TestCase

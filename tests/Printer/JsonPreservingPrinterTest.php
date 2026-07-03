@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast\Tests\Printer;
 
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
+use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
 use Boundwize\JsonRecast\Node\JsonDocument;
@@ -56,6 +57,23 @@ JSON,
         );
     }
 
+    public function testItPrettyPrintsArrayWithNewItem(): void
+    {
+        $arrayNode = new ArrayNode([
+            new ArrayItemNode(new StringNode('jsonrecast')),
+        ]);
+        $arrayNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '[]');
+
+        $this->assertSame(
+            <<<'JSON'
+[
+    "jsonrecast"
+]
+JSON,
+            (new JsonPreservingPrinter())->print($arrayNode),
+        );
+    }
+
     public function testItPreservesParsedArrayNode(): void
     {
         $jsonDocument = (new JsonParser())->parse('["json"]');
@@ -84,6 +102,17 @@ JSON,
         $jsonDocument->value = $replacementDocument->value;
 
         $this->assertSame("\n1\t", (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItTreatsNonStringOriginalTextAsNotStale(): void
+    {
+        $jsonDocument = new JsonDocument(new StringNode('json'));
+        $jsonDocument->setAttribute(NodeAttributes::ORIGINAL_TEXT, 123);
+
+        $reflectionMethod = new \ReflectionMethod(JsonPreservingPrinter::class, 'hasStaleOriginalText');
+        $reflectionMethod->setAccessible(true);
+
+        $this->assertFalse($reflectionMethod->invoke(new JsonPreservingPrinter(), $jsonDocument));
     }
 
     public function testItDoesNotReuseCommaWhitespaceWhenFirstInlineArrayItemIsRemoved(): void

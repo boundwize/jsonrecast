@@ -121,8 +121,9 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $isReordered          = $itemsInOriginalOrder !== $objectNode->items;
 
         foreach ($objectNode->items as $i => $item) {
-            $beforeKey  = $i === 0 ? $objectNode->afterOpenBrace : null;
-            $afterValue = $i === $lastIndex ? $objectNode->beforeCloseBrace : null;
+            $beforeKey          = $i === 0 ? $objectNode->afterOpenBrace : null;
+            $afterValue         = $i === $lastIndex ? $objectNode->beforeCloseBrace : null;
+            $afterValueProvider = $item;
 
             if ($isReordered) {
                 if ($i > 0) {
@@ -130,8 +131,19 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 }
 
                 if ($i < $lastIndex) {
-                    $afterValue = $itemsInOriginalOrder[$i]->afterValue;
+                    $afterValueProvider = $itemsInOriginalOrder[$i];
+                    $afterValue         = $afterValueProvider->afterValue;
                 }
+            }
+
+            if ($i < $lastIndex) {
+                $afterValue = $this->normalizeSyntheticObjectAfterValue(
+                    $objectNode->items,
+                    $i,
+                    $afterValue ?? $item->afterValue,
+                    $afterValueProvider,
+                    $objectNode->beforeCloseBrace,
+                );
             }
 
             $output .= $this->printObjectItemPreserving(
@@ -243,8 +255,9 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $isReordered          = $itemsInOriginalOrder !== $arrayNode->items;
 
         foreach ($arrayNode->items as $i => $item) {
-            $beforeValue = $i === 0 ? $arrayNode->afterOpenBracket : null;
-            $afterValue  = $i === $lastIndex ? $arrayNode->beforeCloseBracket : null;
+            $beforeValue        = $i === 0 ? $arrayNode->afterOpenBracket : null;
+            $afterValue         = $i === $lastIndex ? $arrayNode->beforeCloseBracket : null;
+            $afterValueProvider = $item;
 
             if ($isReordered) {
                 if ($i > 0) {
@@ -252,8 +265,19 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 }
 
                 if ($i < $lastIndex) {
-                    $afterValue = $itemsInOriginalOrder[$i]->afterValue;
+                    $afterValueProvider = $itemsInOriginalOrder[$i];
+                    $afterValue         = $afterValueProvider->afterValue;
                 }
+            }
+
+            if ($i < $lastIndex) {
+                $afterValue = $this->normalizeSyntheticArrayAfterValue(
+                    $arrayNode->items,
+                    $i,
+                    $afterValue ?? $item->afterValue,
+                    $afterValueProvider,
+                    $arrayNode->beforeCloseBracket,
+                );
             }
 
             $output .= $this->printArrayItemPreserving(
@@ -333,6 +357,64 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         return $beforeValue
             . $this->printNode($arrayItemNode->value, $printContext, $detectScalarMutation)
             . $afterValue;
+    }
+
+    /**
+     * @param list<ObjectItemNode> $items
+     */
+    private function normalizeSyntheticObjectAfterValue(
+        array $items,
+        int $index,
+        string $afterValue,
+        ObjectItemNode $objectItemNode,
+        string $containerBeforeClose,
+    ): string {
+        if (
+            ! $this->isSyntheticItem($objectItemNode)
+            || $afterValue !== $containerBeforeClose
+        ) {
+            return $afterValue;
+        }
+
+        for ($i = $index + 1, $counter = count($items); $i < $counter; $i++) {
+            if ($items[$i]->afterValue !== $containerBeforeClose) {
+                return $items[$i]->afterValue;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * @param list<ArrayItemNode> $items
+     */
+    private function normalizeSyntheticArrayAfterValue(
+        array $items,
+        int $index,
+        string $afterValue,
+        ArrayItemNode $arrayItemNode,
+        string $containerBeforeClose,
+    ): string {
+        if (
+            ! $this->isSyntheticItem($arrayItemNode)
+            || $afterValue !== $containerBeforeClose
+        ) {
+            return $afterValue;
+        }
+
+        for ($i = $index + 1, $counter = count($items); $i < $counter; $i++) {
+            if ($items[$i]->afterValue !== $containerBeforeClose) {
+                return $items[$i]->afterValue;
+            }
+        }
+
+        return '';
+    }
+
+    private function isSyntheticItem(NodeJson $nodeJson): bool
+    {
+        return ! is_int($nodeJson->getAttribute(NodeAttributes::START_OFFSET))
+            && ! is_string($nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT));
     }
 
     /**

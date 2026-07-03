@@ -147,6 +147,15 @@ JSON,
         $this->assertSame("\"json\"\r\n", (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItPreservesTrailingNewlineWhenDocumentAfterValueDoesNotEndWithNewline(): void
+    {
+        $jsonDocument = new JsonDocument(new StringNode('json'), afterValue: ' ');
+        $jsonDocument->setAttribute(NodeAttributes::NEWLINE, "\n");
+        $jsonDocument->setAttribute(NodeAttributes::TRAILING_NEWLINE, true);
+
+        $this->assertSame("\"json\" \n", (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
     public function testItPreservesDocumentFramingWhitespaceAfterRootValueReplacement(): void
     {
         $jsonDocument        = (new JsonParser())->parse("\n1\t");
@@ -395,6 +404,16 @@ JSON,
         $jsonDocument->value->items = array_reverse($jsonDocument->value->items);
 
         $this->assertSame('{"c":3, "b":2, "a":1}', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPreservesInlineWhitespaceWhenObjectItemsAreReordered(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a" : 1,"b":2 , "c" : 3}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->items = array_reverse($jsonDocument->value->items);
+
+        $this->assertSame('{"c" : 3,"b":2 , "a" : 1}', (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
     public function testItPreservesMultilineWhitespaceWhenObjectItemsAreReordered(): void

@@ -23,6 +23,7 @@ use function is_int;
 use function is_string;
 use function json_decode;
 use function json_encode;
+use function str_ends_with;
 use function usort;
 
 use const JSON_UNESCAPED_SLASHES;
@@ -95,8 +96,8 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             . $jsonDocument->afterValue;
 
         if (
-            $jsonDocument->afterValue === ''
-            && $jsonDocument->getAttribute(NodeAttributes::TRAILING_NEWLINE) === true
+            $jsonDocument->getAttribute(NodeAttributes::TRAILING_NEWLINE) === true
+            && ! str_ends_with($output, $printContext->newline)
         ) {
             $output .= $printContext->newline;
         }

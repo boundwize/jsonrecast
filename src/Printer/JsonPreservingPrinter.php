@@ -347,12 +347,47 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             return true;
         }
 
-        if (! is_string($nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT))) {
-            return true;
-        }
+        $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
         return $this->hasScalarValueChanged($nodeJson)
-            || $this->hasChangedDescendant($nodeJson);
+            || $this->hasStaleOriginalText($nodeJson)
+            || $this->hasChangedDescendant($nodeJson)
+            || ! is_string($originalText);
+    }
+
+    private function hasStaleOriginalText(NodeJson $nodeJson): bool
+    {
+        $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+
+        if (! is_string($originalText)) {
+            return false;
+        }
+
+        $reconstructedOriginalText = match (true) {
+            $nodeJson instanceof JsonDocument => $nodeJson->beforeValue
+                . $this->getOriginalText($nodeJson->value)
+                . $nodeJson->afterValue,
+            $nodeJson instanceof ObjectItemNode => $nodeJson->beforeKey
+                . $this->getOriginalText($nodeJson->key)
+                . $nodeJson->betweenKeyAndColon
+                . ':'
+                . $nodeJson->betweenColonAndValue
+                . $this->getOriginalText($nodeJson->value)
+                . $nodeJson->afterValue,
+            $nodeJson instanceof ArrayItemNode => $nodeJson->beforeValue
+                . $this->getOriginalText($nodeJson->value)
+                . $nodeJson->afterValue,
+            default => null,
+        };
+
+        return is_string($reconstructedOriginalText) && $reconstructedOriginalText !== $originalText;
+    }
+
+    private function getOriginalText(NodeJson $nodeJson): string
+    {
+        $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+
+        return is_string($originalText) ? $originalText : '';
     }
 
     private function isExplicitlyChanged(NodeJson $nodeJson): bool

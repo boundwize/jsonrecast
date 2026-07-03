@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast\Tests\Printer;
 
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
+use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
 use Boundwize\JsonRecast\Node\JsonDocument;
@@ -56,6 +57,23 @@ JSON,
         );
     }
 
+    public function testItPrettyPrintsArrayWithNewItem(): void
+    {
+        $arrayNode = new ArrayNode([
+            new ArrayItemNode(new StringNode('jsonrecast')),
+        ]);
+        $arrayNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '[]');
+
+        $this->assertSame(
+            <<<'JSON'
+[
+    "jsonrecast"
+]
+JSON,
+            (new JsonPreservingPrinter())->print($arrayNode),
+        );
+    }
+
     public function testItPreservesParsedArrayNode(): void
     {
         $jsonDocument = (new JsonParser())->parse('["json"]');
@@ -71,6 +89,27 @@ JSON,
         $jsonDocument->setAttribute(NodeAttributes::TRAILING_NEWLINE, true);
 
         $this->assertSame("\"json\"\r\n", (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPreservesDocumentFramingWhitespaceAfterRootValueReplacement(): void
+    {
+        $jsonDocument        = (new JsonParser())->parse("\n1\t");
+        $replacementDocument = (new JsonParser())->parse('1');
+
+        $this->assertInstanceOf(NumberNode::class, $jsonDocument->value);
+        $this->assertInstanceOf(NumberNode::class, $replacementDocument->value);
+
+        $jsonDocument->value = $replacementDocument->value;
+
+        $this->assertSame("\n1\t", (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPrintsNodeWithNonStringOriginalText(): void
+    {
+        $stringNode = new StringNode('json');
+        $stringNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, 123);
+
+        $this->assertSame('"json"', (new JsonPreservingPrinter())->print($stringNode));
     }
 
     public function testItDoesNotReuseCommaWhitespaceWhenFirstInlineArrayItemIsRemoved(): void
@@ -207,6 +246,42 @@ JSON,
         $objectItem->value->rawValue = '2';
 
         $this->assertSame('{"count":2}', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPrintsDirectObjectItemValueReplacementWithExistingParsedNode(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"from":1,"to":0}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $from = $jsonDocument->value->get('from');
+        $to   = $jsonDocument->value->get('to');
+
+        $this->assertInstanceOf(ObjectItemNode::class, $from);
+        $this->assertInstanceOf(ObjectItemNode::class, $to);
+
+        $to->value = $from->value;
+
+        $this->assertSame('{"from":1,"to":1}', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPrintsDirectArrayItemValueReplacementWithExistingParsedNode(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('[1,0]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->items[1]->value = $jsonDocument->value->items[0]->value;
+
+        $this->assertSame('[1,1]', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPrintsDirectDocumentValueReplacementWithExistingParsedNode(): void
+    {
+        $jsonDocument        = (new JsonParser())->parse('0');
+        $replacementDocument = (new JsonParser())->parse('1');
+
+        $jsonDocument->value = $replacementDocument->value;
+
+        $this->assertSame('1', (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
     public function testItPrintsDirectBooleanNodeValueMutation(): void

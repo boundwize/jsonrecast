@@ -382,6 +382,62 @@ JSON,
         );
     }
 
+    public function testItPreservesMultilineWhitespaceWhenArrayItemsAreRemovedAppendedAndReordered(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+[
+    1,
+    2
+]
+JSON,
+        );
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->removeAt(0);
+        $jsonDocument->value->append(new NumberNode('3'));
+
+        $items                      = $jsonDocument->value->items;
+        $jsonDocument->value->items = [$items[1], $items[0]];
+
+        $this->assertSame(
+            <<<'JSON'
+[
+    3,
+    2
+]
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItDoesNotPrintClosingWhitespaceBeforeArraySeparatorsForSyntheticItems(): void
+    {
+        $items = [
+            new ArrayItemNode(new NumberNode('1'), "\n    ", "\n"),
+            new ArrayItemNode(new NumberNode('2'), "\n    ", "\n"),
+            new ArrayItemNode(new NumberNode('3'), "\n    ", "\n"),
+        ];
+
+        foreach ($items as $item) {
+            $item->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+        }
+
+        $arrayNode = new ArrayNode($items, "\n    ", "\n");
+        $arrayNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '[]');
+
+        $this->assertSame(
+            <<<'JSON'
+[
+    1,
+    2,
+    3
+]
+JSON,
+            (new JsonPreservingPrinter())->print($arrayNode),
+        );
+    }
+
     public function testItPrintsArrayItemsWithoutStartOffsets(): void
     {
         $first = new ArrayItemNode(new NumberNode('1'));
@@ -470,6 +526,62 @@ JSON,
 }
 JSON,
             (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItPreservesMultilineWhitespaceWhenObjectItemsAreRemovedAppendedAndReordered(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "a": 1,
+    "b": 2
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->remove('a');
+        $jsonDocument->value->set('z', new NumberNode('3'));
+
+        $items                      = $jsonDocument->value->items;
+        $jsonDocument->value->items = [$items[1], $items[0]];
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "z": 3,
+    "b": 2
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItDoesNotPrintClosingWhitespaceBeforeObjectSeparatorsForSyntheticItems(): void
+    {
+        $items = [
+            new ObjectItemNode(new StringNode('x'), new NumberNode('1'), "\n    ", '', ' ', "\n"),
+            new ObjectItemNode(new StringNode('y'), new NumberNode('2'), "\n    ", '', ' ', "\n"),
+            new ObjectItemNode(new StringNode('z'), new NumberNode('3'), "\n    ", '', ' ', "\n"),
+        ];
+
+        foreach ($items as $item) {
+            $item->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+        }
+
+        $objectNode = new ObjectNode($items, "\n    ", "\n");
+        $objectNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '{}');
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "x": 1,
+    "y": 2,
+    "z": 3
+}
+JSON,
+            (new JsonPreservingPrinter())->print($objectNode),
         );
     }
 

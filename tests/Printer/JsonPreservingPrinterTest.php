@@ -341,6 +341,34 @@ JSON,
         $this->assertSame('{"name":"new"}', (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItPrintsNewStringNodeWithoutEscapingUnicode(): void
+    {
+        $city         = "M\xC3\xBCnchen";
+        $note         = "Gr\xC3\xBC\xC3\x9Fe";
+        $jsonDocument = (new JsonParser())->parse('{"city": "' . $city . '"}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('note', new StringNode($note));
+
+        $this->assertSame(
+            "{\n    \"city\": \"" . $city . "\",\n    \"note\": \"" . $note . "\"\n}",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItPrintsReplacementStringNodeWithoutEscapingUnicode(): void
+    {
+        $city         = "M\xC3\xBCnchen";
+        $jsonDocument = (new JsonParser())->parse('{"city":"' . $city . '"}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $objectItem = $jsonDocument->value->get('city');
+        $this->assertInstanceOf(ObjectItemNode::class, $objectItem);
+        $objectItem->value = new StringNode($city);
+
+        $this->assertSame('{"city":"' . $city . '"}', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
     public function testItPrintsDirectNumberNodeRawValueMutation(): void
     {
         $jsonDocument = (new JsonParser())->parse('{"count":1}');

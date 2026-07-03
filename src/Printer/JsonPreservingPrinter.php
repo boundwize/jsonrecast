@@ -26,6 +26,7 @@ use function json_encode;
 use function usort;
 
 use const JSON_UNESCAPED_SLASHES;
+use const JSON_UNESCAPED_UNICODE;
 
 final readonly class JsonPreservingPrinter implements JsonPrinter
 {
@@ -637,7 +638,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
     private function encodeString(string $value): string
     {
-        $encoded = json_encode($value, JSON_UNESCAPED_SLASHES);
+        $encoded = json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         if (! is_string($encoded)) {
             throw new RuntimeException('Unable to encode JSON string.');

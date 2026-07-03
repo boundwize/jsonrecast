@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Tests\Parser;
 
+use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
 use Boundwize\JsonRecast\Node\NumberNode;
+use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\Parser\JsonParser;
 use Boundwize\JsonRecast\Parser\ParseError;
 use PHPUnit\Framework\TestCase;
+
+use function strlen;
 
 final class JsonParserTest extends TestCase
 {
@@ -40,6 +44,26 @@ final class JsonParserTest extends TestCase
         $this->assertSame('name', $jsonDocument->value->items[0]->key->value);
         $this->assertInstanceOf(StringNode::class, $jsonDocument->value->items[0]->value);
         $this->assertSame('boundwize', $jsonDocument->value->items[0]->value->value);
+    }
+
+    public function testItParsesUtf8WithByteBasedSourceOffsets(): void
+    {
+        $city         = "M\xC3\xBCnchen";
+        $source       = '{"city":"' . $city . '","note":1}';
+        $jsonDocument = (new JsonParser())->parse($source);
+
+        $this->assertSame(strlen($source), $jsonDocument->getAttribute(NodeAttributes::END_OFFSET));
+        $this->assertSame($source, $jsonDocument->getAttribute(NodeAttributes::ORIGINAL_TEXT));
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $cityItem = $jsonDocument->value->get('city');
+        $this->assertInstanceOf(ObjectItemNode::class, $cityItem);
+        $this->assertInstanceOf(StringNode::class, $cityItem->value);
+
+        $this->assertSame($city, $cityItem->value->value);
+        $this->assertSame(8, $cityItem->value->getAttribute(NodeAttributes::START_OFFSET));
+        $this->assertSame(18, $cityItem->value->getAttribute(NodeAttributes::END_OFFSET));
+        $this->assertSame('"' . $city . '"', $cityItem->value->getAttribute(NodeAttributes::ORIGINAL_TEXT));
     }
 
     public function testItParsesArray(): void

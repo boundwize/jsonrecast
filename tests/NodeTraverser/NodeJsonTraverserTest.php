@@ -312,11 +312,11 @@ JSON, (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
         $this->assertTrue($visitor->sawNameValue);
     }
 
-    public function testObjectValuePathUsesOriginalKeyWhenKeyIsRenamedDuringTraversal(): void
+    public function testObjectValuePathUsesCurrentKeyWhenKeyIsRenamedOnItemEnter(): void
     {
         $jsonDocument = (new JsonParser())->parse('{"old":{"target":"value"}}');
         $visitor      = new class extends NodeJsonVisitorAbstract {
-            public bool $sawOriginalPath = false;
+            public bool $sawCurrentPath = false;
 
             public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
             {
@@ -329,9 +329,9 @@ JSON, (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
                 if (
                     $nodeJson instanceof StringNode
                     && $nodeJson->value === 'value'
-                    && $nodeJsonPath->matches(['old', 'target'])
+                    && $nodeJsonPath->matches(['new', 'target'])
                 ) {
-                    $this->sawOriginalPath = true;
+                    $this->sawCurrentPath = true;
                 }
 
                 return null;
@@ -340,7 +340,96 @@ JSON, (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
 
         $nodeJsonTraversalResult = $this->traverse($jsonDocument, $visitor);
 
-        $this->assertTrue($visitor->sawOriginalPath);
+        $this->assertTrue($visitor->sawCurrentPath);
+        $this->assertSame(
+            <<<'JSON'
+{
+    "new": {
+        "target": "value"
+    }
+}
+JSON,
+            (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node),
+        );
+    }
+
+    public function testObjectValueLeavePathUsesCurrentKeyWhenKeyIsRenamedOnItemEnter(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"old":{"target":"value"}}');
+        $visitor      = new class extends NodeJsonVisitorAbstract {
+            public bool $sawCurrentPath = false;
+
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+            {
+                if ($nodeJson instanceof ObjectItemNode && $nodeJson->key->value === 'old') {
+                    $nodeJson->key = new StringNode('new');
+
+                    return $nodeJson;
+                }
+
+                return null;
+            }
+
+            public function leaveNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+            {
+                if (
+                    $nodeJson instanceof StringNode
+                    && $nodeJson->value === 'value'
+                    && $nodeJsonPath->matches(['new', 'target'])
+                ) {
+                    $this->sawCurrentPath = true;
+                }
+
+                return null;
+            }
+        };
+
+        $nodeJsonTraversalResult = $this->traverse($jsonDocument, $visitor);
+
+        $this->assertTrue($visitor->sawCurrentPath);
+        $this->assertSame(
+            <<<'JSON'
+{
+    "new": {
+        "target": "value"
+    }
+}
+JSON,
+            (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node),
+        );
+    }
+
+    public function testObjectValuePathUsesCurrentKeyWhenKeyIsRenamedOnKeyLeave(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"old":{"target":"value"}}');
+        $visitor      = new class extends NodeJsonVisitorAbstract {
+            public bool $sawCurrentPath = false;
+
+            public function leaveNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+            {
+                if (
+                    $nodeJson instanceof StringNode
+                    && $nodeJson->value === 'old'
+                    && $nodeJsonPath->isRoot()
+                ) {
+                    return new StringNode('new');
+                }
+
+                if (
+                    $nodeJson instanceof StringNode
+                    && $nodeJson->value === 'value'
+                    && $nodeJsonPath->matches(['new', 'target'])
+                ) {
+                    $this->sawCurrentPath = true;
+                }
+
+                return null;
+            }
+        };
+
+        $nodeJsonTraversalResult = $this->traverse($jsonDocument, $visitor);
+
+        $this->assertTrue($visitor->sawCurrentPath);
         $this->assertSame(
             <<<'JSON'
 {

@@ -83,11 +83,8 @@ final class NodeJsonTraverser
     /**
      * @return NodeJson|NodeJsonVisitor::REMOVE_NODE
      */
-    private function traverseNode(
-        NodeJson $nodeJson,
-        NodeJsonPath $nodeJsonPath,
-        ?string $objectItemSourceKey = null,
-    ): NodeJson|int {
+    private function traverseNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): NodeJson|int
+    {
         foreach ($this->visitors as $visitor) {
             $result = $visitor->enterNode($nodeJson, $nodeJsonPath);
 
@@ -107,11 +104,7 @@ final class NodeJsonTraverser
         } elseif ($nodeJson instanceof ObjectNode) {
             $this->traverseObject($nodeJson, $nodeJsonPath);
         } elseif ($nodeJson instanceof ObjectItemNode) {
-            $this->traverseObjectItem(
-                $nodeJson,
-                $nodeJsonPath,
-                $objectItemSourceKey ?? $nodeJson->key->value,
-            );
+            $this->traverseObjectItem($nodeJson, $nodeJsonPath);
         } elseif ($nodeJson instanceof ArrayNode) {
             $this->traverseArray($nodeJson, $nodeJsonPath);
         } elseif ($nodeJson instanceof ArrayItemNode) {
@@ -151,12 +144,7 @@ final class NodeJsonTraverser
         $i = 0;
 
         while ($i < count($objectNode->items)) {
-            $objectItemSourceKey = $objectNode->items[$i]->key->value;
-            $result              = $this->traverseNode(
-                $objectNode->items[$i],
-                $nodeJsonPath,
-                $objectItemSourceKey,
-            );
+            $result = $this->traverseNode($objectNode->items[$i], $nodeJsonPath);
 
             if ($result === NodeJsonVisitor::REMOVE_NODE) {
                 array_splice($objectNode->items, $i, 1);
@@ -173,11 +161,8 @@ final class NodeJsonTraverser
         }
     }
 
-    private function traverseObjectItem(
-        ObjectItemNode $objectItemNode,
-        NodeJsonPath $nodeJsonPath,
-        string $objectItemSourceKey,
-    ): void {
+    private function traverseObjectItem(ObjectItemNode $objectItemNode, NodeJsonPath $nodeJsonPath): void
+    {
         $keyResult = $this->traverseNode($objectItemNode->key, $nodeJsonPath);
 
         if ($keyResult === NodeJsonVisitor::REMOVE_NODE) {
@@ -190,7 +175,7 @@ final class NodeJsonTraverser
 
         $objectItemNode->key = $keyResult;
 
-        $valuePath   = $nodeJsonPath->childObjectKey($objectItemSourceKey);
+        $valuePath   = $nodeJsonPath->childObjectKey($objectItemNode->key->value);
         $valueResult = $this->traverseNode($objectItemNode->value, $valuePath);
 
         if ($valueResult === NodeJsonVisitor::REMOVE_NODE) {

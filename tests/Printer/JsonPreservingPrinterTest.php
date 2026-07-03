@@ -20,6 +20,8 @@ use Boundwize\JsonRecast\Printer\JsonPreservingPrinter;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
+use function array_reverse;
+
 final class JsonPreservingPrinterTest extends TestCase
 {
     public function testItPrintsNewScalarNodes(): void
@@ -236,6 +238,94 @@ JSON,
         $nodeChangeSet->markChanged($jsonDocument->value);
 
         $this->assertSame('{"first": 1}', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
+    }
+
+    public function testItPreservesCommaWhitespaceWhenArrayItemsAreReordered(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('[1, 2, 3]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->items = array_reverse($jsonDocument->value->items);
+
+        $this->assertSame('[3, 2, 1]', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPreservesMultilineWhitespaceWhenArrayItemsAreReordered(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+[
+    1,
+    2,
+    3
+]
+JSON,
+        );
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->items = array_reverse($jsonDocument->value->items);
+
+        $this->assertSame(
+            <<<'JSON'
+[
+    3,
+    2,
+    1
+]
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItPrintsArrayItemsWithoutStartOffsets(): void
+    {
+        $first = new ArrayItemNode(new NumberNode('1'));
+        $first->setAttribute(NodeAttributes::ORIGINAL_TEXT, '1');
+
+        $second = new ArrayItemNode(new NumberNode('2'), ' ');
+        $second->setAttribute(NodeAttributes::ORIGINAL_TEXT, ' 2');
+
+        $arrayNode = new ArrayNode([$second, $first]);
+        $arrayNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '[1, 2]');
+
+        $this->assertSame('[2,1]', (new JsonPreservingPrinter())->print($arrayNode));
+    }
+
+    public function testItPreservesCommaWhitespaceWhenObjectItemsAreReordered(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a":1, "b":2, "c":3}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->items = array_reverse($jsonDocument->value->items);
+
+        $this->assertSame('{"c":3, "b":2, "a":1}', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPreservesMultilineWhitespaceWhenObjectItemsAreReordered(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "a": 1,
+    "b": 2,
+    "c": 3
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->items = array_reverse($jsonDocument->value->items);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "c": 3,
+    "b": 2,
+    "a": 1
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
     }
 
     public function testItPrintsDirectStringNodeValueMutation(): void

@@ -176,6 +176,27 @@ JSON, JsonRecast::print($jsonRecastResult));
         $this->assertSame('["new","new"]', JsonRecast::print($jsonRecastResult));
     }
 
+    public function testItPrintsObjectItemValueReplacementFromParsedNode(): void
+    {
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse('{"a":"old","b":"new"}'),
+            new class extends NodeJsonVisitorAbstract {
+                public function leaveNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if (! $nodeJson instanceof ObjectNode || ! $nodeJsonPath->isRoot()) {
+                        return null;
+                    }
+
+                    $nodeJson->items[0]->value = $nodeJson->items[1]->value;
+
+                    return $nodeJson;
+                }
+            },
+        );
+
+        $this->assertSame('{"a":"new","b":"new"}', JsonRecast::print($jsonRecastResult));
+    }
+
     public function testObjectNodeSetUpdatesEffectiveDuplicateKeyValue(): void
     {
         $jsonDocument = JsonRecast::parse('{"a":1,"a":2}');

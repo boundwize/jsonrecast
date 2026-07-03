@@ -77,6 +77,21 @@ TXT,
         $this->assertStringContainsString('floatValue: 1.5', $dump);
     }
 
+    public function testItFormatsUnicodeValuesWithoutEscapingThem(): void
+    {
+        $city       = "M\xC3\xBCnchen";
+        $note       = "Gr\xC3\xBC\xC3\x9Fe";
+        $stringNode = new StringNode($note);
+        $stringNode->setAttribute('city', $city);
+        $stringNode->setAttribute('localized', ['note' => $note]);
+
+        $dump = (new AstDumper(includeAttributes: true))->dump($stringNode);
+
+        $this->assertStringContainsString('StringNode(value: "' . $note . '")', $dump);
+        $this->assertStringContainsString('city: "' . $city . '"', $dump);
+        $this->assertStringContainsString('localized: {"note":"' . $note . '"}', $dump);
+    }
+
     public function testItOmitsEmptyAttributes(): void
     {
         $this->assertSame(

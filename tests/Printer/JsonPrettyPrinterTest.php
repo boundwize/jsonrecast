@@ -34,6 +34,13 @@ final class JsonPrettyPrinterTest extends TestCase
         $this->assertSame('[]', $jsonPrettyPrinter->print(new ArrayNode([])));
     }
 
+    public function testItPrintsStringNodeWithoutEscapingUnicode(): void
+    {
+        $value = "Gr\xC3\xBC\xC3\x9Fe";
+
+        $this->assertSame('"' . $value . '"', (new JsonPrettyPrinter())->print(new StringNode($value)));
+    }
+
     public function testItRejectsInvalidUtf8String(): void
     {
         $this->expectException(RuntimeException::class);

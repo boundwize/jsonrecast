@@ -16,6 +16,7 @@ use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
+use function array_reverse;
 use function json_decode;
 
 use const JSON_THROW_ON_ERROR;
@@ -247,5 +248,31 @@ JSON, JsonRecast::print($jsonRecastResult));
         $objectItem->value->value = 'new';
 
         $this->assertSame('{"name":"new"}', JsonRecast::print($jsonDocument));
+    }
+
+    public function testItPrintsDirectArrayItemReordering(): void
+    {
+        $jsonDocument = JsonRecast::parse('[1,2]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->items = array_reverse($jsonDocument->value->items);
+
+        $printed = JsonRecast::print($jsonDocument);
+
+        $this->assertSame('[2,1]', $printed);
+        $this->assertSame([2, 1], json_decode($printed, true, 512, JSON_THROW_ON_ERROR));
+    }
+
+    public function testItPrintsDirectObjectItemReordering(): void
+    {
+        $jsonDocument = JsonRecast::parse('{"a":1,"b":2}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->items = array_reverse($jsonDocument->value->items);
+
+        $printed = JsonRecast::print($jsonDocument);
+
+        $this->assertSame('{"b":2,"a":1}', $printed);
+        $this->assertSame(['b' => 2, 'a' => 1], json_decode($printed, true, 512, JSON_THROW_ON_ERROR));
     }
 }

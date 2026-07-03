@@ -90,6 +90,14 @@ JSON,
         $this->assertSame("{\n        }", (new JsonPreservingPrinter())->print($jsonDocument->value));
     }
 
+    public function testItPreservesParsedMultilineEmptyArrayNode(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("[\n        ]");
+
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+        $this->assertSame("[\n        ]", (new JsonPreservingPrinter())->print($jsonDocument->value));
+    }
+
     public function testItPreservesTrailingNewlineWhenDocumentAfterValueIsEmpty(): void
     {
         $jsonDocument = new JsonDocument(new StringNode('json'));

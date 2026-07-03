@@ -367,6 +367,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             $nodeJson instanceof JsonDocument => $nodeJson->beforeValue
                 . $this->getOriginalText($nodeJson->value)
                 . $nodeJson->afterValue,
+            $nodeJson instanceof ObjectNode => $this->reconstructOriginalObjectText($nodeJson),
             $nodeJson instanceof ObjectItemNode => $nodeJson->beforeKey
                 . $this->getOriginalText($nodeJson->key)
                 . $nodeJson->betweenKeyAndColon
@@ -374,6 +375,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 . $nodeJson->betweenColonAndValue
                 . $this->getOriginalText($nodeJson->value)
                 . $nodeJson->afterValue,
+            $nodeJson instanceof ArrayNode => $this->reconstructOriginalArrayText($nodeJson),
             $nodeJson instanceof ArrayItemNode => $nodeJson->beforeValue
                 . $this->getOriginalText($nodeJson->value)
                 . $nodeJson->afterValue,
@@ -388,6 +390,60 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
         return is_string($originalText) ? $originalText : '';
+    }
+
+    private function reconstructOriginalObjectText(ObjectNode $objectNode): string
+    {
+        if ($objectNode->items === []) {
+            return '{' . $objectNode->beforeCloseBrace . '}';
+        }
+
+        $output    = '{';
+        $lastIndex = count($objectNode->items) - 1;
+
+        foreach ($objectNode->items as $i => $item) {
+            $beforeKey  = $i === 0 ? $objectNode->afterOpenBrace : $item->beforeKey;
+            $afterValue = $i === $lastIndex ? $objectNode->beforeCloseBrace : $item->afterValue;
+
+            $output .= $beforeKey
+                . $this->getOriginalText($item->key)
+                . $item->betweenKeyAndColon
+                . ':'
+                . $item->betweenColonAndValue
+                . $this->getOriginalText($item->value)
+                . $afterValue;
+
+            if ($i < $lastIndex) {
+                $output .= ',';
+            }
+        }
+
+        return $output . '}';
+    }
+
+    private function reconstructOriginalArrayText(ArrayNode $arrayNode): string
+    {
+        if ($arrayNode->items === []) {
+            return '[' . $arrayNode->beforeCloseBracket . ']';
+        }
+
+        $output    = '[';
+        $lastIndex = count($arrayNode->items) - 1;
+
+        foreach ($arrayNode->items as $i => $item) {
+            $beforeValue = $i === 0 ? $arrayNode->afterOpenBracket : $item->beforeValue;
+            $afterValue  = $i === $lastIndex ? $arrayNode->beforeCloseBracket : $item->afterValue;
+
+            $output .= $beforeValue
+                . $this->getOriginalText($item->value)
+                . $afterValue;
+
+            if ($i < $lastIndex) {
+                $output .= ',';
+            }
+        }
+
+        return $output . ']';
     }
 
     private function isExplicitlyChanged(NodeJson $nodeJson): bool

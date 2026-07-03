@@ -20,6 +20,12 @@ final class NumberNode extends AbstractNodeJson
             return (float) $this->rawValue;
         }
 
-        return (int) $this->rawValue;
+        $intValue = (int) $this->rawValue;
+
+        if ((string) $intValue === $this->rawValue || ($this->rawValue === '-0' && $intValue === 0)) {
+            return $intValue;
+        }
+
+        return (float) $this->rawValue;
     }
 }

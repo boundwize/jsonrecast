@@ -73,6 +73,19 @@ JSON,
         $this->assertSame("\"json\"\r\n", (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItPreservesDocumentFramingWhitespaceAfterRootValueReplacement(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("\n1\t");
+        $replacementDocument = (new JsonParser())->parse('1');
+
+        $this->assertInstanceOf(NumberNode::class, $jsonDocument->value);
+        $this->assertInstanceOf(NumberNode::class, $replacementDocument->value);
+
+        $jsonDocument->value = $replacementDocument->value;
+
+        $this->assertSame("\n1\t", (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
     public function testItDoesNotReuseCommaWhitespaceWhenFirstInlineArrayItemIsRemoved(): void
     {
         $jsonDocument = (new JsonParser())->parse('["first", "second"]');

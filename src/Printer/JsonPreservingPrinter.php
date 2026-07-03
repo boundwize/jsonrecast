@@ -365,7 +365,9 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         }
 
         $reconstructedOriginalText = match (true) {
-            $nodeJson instanceof JsonDocument => $this->getOriginalText($nodeJson->value),
+            $nodeJson instanceof JsonDocument => $nodeJson->beforeValue
+                . $this->getOriginalText($nodeJson->value)
+                . $nodeJson->afterValue,
             $nodeJson instanceof ObjectItemNode => $nodeJson->beforeKey
                 . $this->getOriginalText($nodeJson->key)
                 . $nodeJson->betweenKeyAndColon

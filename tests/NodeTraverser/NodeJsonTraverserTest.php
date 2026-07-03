@@ -7,7 +7,9 @@ namespace Boundwize\JsonRecast\Tests\NodeTraverser;
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
+use Boundwize\JsonRecast\Node\JsonDocument;
 use Boundwize\JsonRecast\Node\NodeJson;
+use Boundwize\JsonRecast\Node\NumberNode;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
@@ -81,6 +83,37 @@ final class NodeJsonTraverserTest extends TestCase
         });
 
         $this->assertTrue($nodeJsonTraversalResult->changeSet->isChanged($objectNode));
+    }
+
+    public function testDocumentReplacementKeepsExistingFramingAttributes(): void
+    {
+        $jsonDocument = new JsonDocument(new NumberNode('1'), afterValue: ' ');
+        $jsonDocument->setAttribute(NodeAttributes::NEWLINE, "\r\n");
+        $jsonDocument->setAttribute(NodeAttributes::TRAILING_NEWLINE, true);
+
+        $nodeJsonTraversalResult = $this->traverse(
+            (new JsonParser())->parse("0\n"),
+            new class ($jsonDocument) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly JsonDocument $jsonDocument,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if (! $nodeJson instanceof JsonDocument || ! $nodeJsonPath->isRoot()) {
+                        return null;
+                    }
+
+                    return $this->jsonDocument;
+                }
+            },
+        );
+
+        $this->assertSame($jsonDocument, $nodeJsonTraversalResult->node);
+        $this->assertSame("\r\n", $jsonDocument->getAttribute(NodeAttributes::NEWLINE));
+        $this->assertTrue($jsonDocument->getAttribute(NodeAttributes::TRAILING_NEWLINE));
+        $this->assertSame(' ', $jsonDocument->afterValue);
     }
 
     public function testNoHasChangedAttributeExists(): void

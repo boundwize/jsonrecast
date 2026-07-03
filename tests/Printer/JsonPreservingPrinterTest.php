@@ -147,6 +147,15 @@ JSON,
         $this->assertSame("\"json\"\r\n", (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItPreservesTrailingNewlineWhenDocumentAfterValueDoesNotEndWithNewline(): void
+    {
+        $jsonDocument = new JsonDocument(new StringNode('json'), afterValue: ' ');
+        $jsonDocument->setAttribute(NodeAttributes::NEWLINE, "\n");
+        $jsonDocument->setAttribute(NodeAttributes::TRAILING_NEWLINE, true);
+
+        $this->assertSame("\"json\" \n", (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
     public function testItPreservesDocumentFramingWhitespaceAfterRootValueReplacement(): void
     {
         $jsonDocument        = (new JsonParser())->parse("\n1\t");

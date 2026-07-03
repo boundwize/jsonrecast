@@ -6,7 +6,9 @@ namespace Boundwize\JsonRecast\Tests;
 
 use Boundwize\JsonRecast\JsonRecast;
 use Boundwize\JsonRecast\Node\ArrayNode;
+use Boundwize\JsonRecast\Node\JsonDocument;
 use Boundwize\JsonRecast\Node\NodeJson;
+use Boundwize\JsonRecast\Node\NumberNode;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
@@ -154,6 +156,25 @@ JSON, JsonRecast::print($jsonRecastResult));
         );
 
         $this->assertSame(" \n{\"name\": \"new\"}\n ", JsonRecast::print($jsonRecastResult));
+    }
+
+    public function testDocumentReplacementPreservesRootTrailingWhitespace(): void
+    {
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse("0\n\n"),
+            new class extends NodeJsonVisitorAbstract {
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if (! $nodeJson instanceof JsonDocument || ! $nodeJsonPath->isRoot()) {
+                        return null;
+                    }
+
+                    return new JsonDocument(new NumberNode('1'));
+                }
+            },
+        );
+
+        $this->assertSame("1\n\n", JsonRecast::print($jsonRecastResult));
     }
 
     public function testItPrintsArrayItemReplacementFromParsedNode(): void

@@ -347,13 +347,12 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             return true;
         }
 
-        if (! is_string($nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT))) {
-            return true;
-        }
+        $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
         return $this->hasScalarValueChanged($nodeJson)
             || $this->hasStaleOriginalText($nodeJson)
-            || $this->hasChangedDescendant($nodeJson);
+            || $this->hasChangedDescendant($nodeJson)
+            || ! is_string($originalText);
     }
 
     private function hasStaleOriginalText(NodeJson $nodeJson): bool

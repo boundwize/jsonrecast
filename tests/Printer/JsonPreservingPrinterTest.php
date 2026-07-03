@@ -105,14 +105,12 @@ JSON,
         $this->assertSame("\n1\t", (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
-    public function testItTreatsNonStringOriginalTextAsNotStale(): void
+    public function testItPrintsNodeWithNonStringOriginalText(): void
     {
-        $jsonDocument = new JsonDocument(new StringNode('json'));
-        $jsonDocument->setAttribute(NodeAttributes::ORIGINAL_TEXT, 123);
+        $stringNode = new StringNode('json');
+        $stringNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, 123);
 
-        $reflectionMethod = new ReflectionMethod(JsonPreservingPrinter::class, 'hasStaleOriginalText');
-
-        $this->assertFalse($reflectionMethod->invoke(new JsonPreservingPrinter(), $jsonDocument));
+        $this->assertSame('"json"', (new JsonPreservingPrinter())->print($stringNode));
     }
 
     public function testItDoesNotReuseCommaWhitespaceWhenFirstInlineArrayItemIsRemoved(): void

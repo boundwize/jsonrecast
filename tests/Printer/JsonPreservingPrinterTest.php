@@ -18,6 +18,7 @@ use Boundwize\JsonRecast\NodeTraverser\NodeChangeSet;
 use Boundwize\JsonRecast\Parser\JsonParser;
 use Boundwize\JsonRecast\Printer\JsonPreservingPrinter;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
 use RuntimeException;
 
 final class JsonPreservingPrinterTest extends TestCase
@@ -93,7 +94,7 @@ JSON,
 
     public function testItPreservesDocumentFramingWhitespaceAfterRootValueReplacement(): void
     {
-        $jsonDocument = (new JsonParser())->parse("\n1\t");
+        $jsonDocument        = (new JsonParser())->parse("\n1\t");
         $replacementDocument = (new JsonParser())->parse('1');
 
         $this->assertInstanceOf(NumberNode::class, $jsonDocument->value);
@@ -109,8 +110,7 @@ JSON,
         $jsonDocument = new JsonDocument(new StringNode('json'));
         $jsonDocument->setAttribute(NodeAttributes::ORIGINAL_TEXT, 123);
 
-        $reflectionMethod = new \ReflectionMethod(JsonPreservingPrinter::class, 'hasStaleOriginalText');
-        $reflectionMethod->setAccessible(true);
+        $reflectionMethod = new ReflectionMethod(JsonPreservingPrinter::class, 'hasStaleOriginalText');
 
         $this->assertFalse($reflectionMethod->invoke(new JsonPreservingPrinter(), $jsonDocument));
     }

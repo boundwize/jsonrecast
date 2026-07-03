@@ -351,7 +351,8 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             return true;
         }
 
-        return $this->hasChangedDescendant($nodeJson);
+        return $this->hasScalarValueChanged($nodeJson)
+            || $this->hasChangedDescendant($nodeJson);
     }
 
     private function isExplicitlyChanged(NodeJson $nodeJson): bool

@@ -183,6 +183,57 @@ JSON,
         $this->assertSame('{"first": 1}', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
     }
 
+    public function testItPrintsDirectStringNodeValueMutation(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"name":"old"}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $objectItem = $jsonDocument->value->get('name');
+        $this->assertInstanceOf(ObjectItemNode::class, $objectItem);
+        $this->assertInstanceOf(StringNode::class, $objectItem->value);
+        $objectItem->value->value = 'new';
+
+        $this->assertSame('{"name":"new"}', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPrintsDirectNumberNodeRawValueMutation(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"count":1}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $objectItem = $jsonDocument->value->get('count');
+        $this->assertInstanceOf(ObjectItemNode::class, $objectItem);
+        $this->assertInstanceOf(NumberNode::class, $objectItem->value);
+        $objectItem->value->rawValue = '2';
+
+        $this->assertSame('{"count":2}', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPrintsDirectBooleanNodeValueMutation(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"enabled":false}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $objectItem = $jsonDocument->value->get('enabled');
+        $this->assertInstanceOf(ObjectItemNode::class, $objectItem);
+        $this->assertInstanceOf(BooleanNode::class, $objectItem->value);
+        $objectItem->value->value = true;
+
+        $this->assertSame('{"enabled":true}', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPrintsDirectStringNodeValueMutationInArray(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('["old"]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $arrayItem = $jsonDocument->value->items[0];
+        $this->assertInstanceOf(StringNode::class, $arrayItem->value);
+        $arrayItem->value->value = 'new';
+
+        $this->assertSame('["new"]', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
     public function testItPrintsInPlaceStringMutationWhenObjectItemIsChanged(): void
     {
         $jsonDocument = (new JsonParser())->parse('{"name":"old"}');

@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Boundwize\JsonRecast\Node;
+namespace Boundwize\JsonRecast\Node\Helper;
 
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
+use Boundwize\JsonRecast\Node\NodeJson;
 
 use function is_float;
 use function is_int;

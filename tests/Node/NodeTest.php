@@ -169,6 +169,24 @@ final class NodeTest extends TestCase
         $this->assertSame(' ', $arrayNode->items[0]->afterValue);
     }
 
+    public function testArrayNodeAppendUsesPhysicalLastItemStyleWhenExistingItemsHaveNoNumericStartOffsets(): void
+    {
+        $firstItem = new ArrayItemNode(new StringNode('first'), beforeValue: ' ', afterValue: ' | ');
+        $lastItem  = new ArrayItemNode(new StringNode('second'), beforeValue: '\t', afterValue: "\n");
+
+        $arrayNode = new ArrayNode([$firstItem, $lastItem], afterOpenBracket: ' ', beforeCloseBracket: "\n");
+
+        $arrayNode->append(new StringNode('third'));
+
+        $this->assertCount(3, $arrayNode->items);
+        $this->assertSame(' | ', $lastItem->afterValue);
+        $this->assertNull($lastItem->getAttribute(NodeAttributes::ORIGINAL_TEXT));
+        $this->assertInstanceOf(StringNode::class, $arrayNode->items[2]->value);
+        $this->assertSame('third', $arrayNode->items[2]->value->value);
+        $this->assertSame('\t', $arrayNode->items[2]->beforeValue);
+        $this->assertSame("\n", $arrayNode->items[2]->afterValue);
+    }
+
     public function testNumberNodeConvertsRawIntegersAndFloats(): void
     {
         $this->assertSame(10, (new NumberNode('10'))->toIntOrFloat());

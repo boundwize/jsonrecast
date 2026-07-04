@@ -9,6 +9,8 @@ use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use function array_pop;
 use function array_splice;
 use function count;
+use function is_float;
+use function is_int;
 
 final class ObjectNode extends AbstractNodeJson
 {
@@ -101,6 +103,7 @@ final class ObjectNode extends AbstractNodeJson
             afterValue: $lastItem instanceof ObjectItemNode ? $lastItem->afterValue : $this->beforeCloseBrace,
         );
         $objectItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+        $objectItemNode->setAttribute(NodeAttributes::START_OFFSET, $this->startOffsetForAppendedItem());
 
         if ($lastItem instanceof ObjectItemNode) {
             $lastItem->afterValue = $this->separatorAfterValue();
@@ -130,5 +133,29 @@ final class ObjectNode extends AbstractNodeJson
         }
 
         return '';
+    }
+
+    private function startOffsetForAppendedItem(): float
+    {
+        for ($i = count($this->items) - 1; $i >= 0; $i--) {
+            $startOffset = $this->getNumericStartOffset($this->items[$i]);
+
+            if ($startOffset !== null) {
+                return $startOffset + 1;
+            }
+        }
+
+        return (float) count($this->items);
+    }
+
+    private function getNumericStartOffset(ObjectItemNode $objectItemNode): ?float
+    {
+        $startOffset = $objectItemNode->getAttribute(NodeAttributes::START_OFFSET);
+
+        if (is_int($startOffset) || is_float($startOffset)) {
+            return (float) $startOffset;
+        }
+
+        return null;
     }
 }

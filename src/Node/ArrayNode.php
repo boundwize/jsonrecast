@@ -106,7 +106,7 @@ final class ArrayNode extends AbstractNodeJson
             return $this->items[$index]->beforeValue;
         }
 
-        return $this->separatorBeforeValue();
+        return $this->beforeValueForAppendedItem();
     }
 
     private function afterValueForInsertedItem(int $index): string
@@ -146,6 +146,17 @@ final class ArrayNode extends AbstractNodeJson
         return '';
     }
 
+    private function beforeValueForAppendedItem(): string
+    {
+        $itemCount = count($this->items);
+
+        if ($itemCount > 1) {
+            return $this->styleDonorForAppendedItem()?->beforeValue ?? $this->items[$itemCount - 1]->beforeValue;
+        }
+
+        return $this->separatorBeforeValue();
+    }
+
     private function startOffsetForInsertedItem(int $index): float
     {
         $previousOffset = null;
@@ -174,7 +185,17 @@ final class ArrayNode extends AbstractNodeJson
         }
 
         if ($previousOffset !== null) {
-            return $previousOffset + 1;
+            $maxStartOffset = $previousOffset;
+
+            for ($i = 0, $itemCount = count($this->items); $i < $itemCount; $i++) {
+                $startOffset = $this->getNumericStartOffset($this->items[$i]);
+
+                if ($startOffset !== null) {
+                    $maxStartOffset = max($maxStartOffset, $startOffset);
+                }
+            }
+
+            return $maxStartOffset + 1;
         }
 
         if ($nextOffset !== null) {
@@ -193,5 +214,26 @@ final class ArrayNode extends AbstractNodeJson
         }
 
         return null;
+    }
+
+    private function styleDonorForAppendedItem(): ?ArrayItemNode
+    {
+        $styleDonor     = null;
+        $maxStartOffset = null;
+
+        foreach ($this->items as $item) {
+            $startOffset = $this->getNumericStartOffset($item);
+
+            if ($startOffset === null) {
+                continue;
+            }
+
+            if ($maxStartOffset === null || $startOffset > $maxStartOffset) {
+                $maxStartOffset = $startOffset;
+                $styleDonor     = $item;
+            }
+        }
+
+        return $styleDonor;
     }
 }

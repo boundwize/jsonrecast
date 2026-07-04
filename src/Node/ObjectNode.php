@@ -11,6 +11,7 @@ use function array_splice;
 use function count;
 use function is_float;
 use function is_int;
+use function max;
 
 final class ObjectNode extends AbstractNodeJson
 {
@@ -94,13 +95,14 @@ final class ObjectNode extends AbstractNodeJson
     {
         $itemCount      = count($this->items);
         $lastItem       = $itemCount > 0 ? $this->items[$itemCount - 1] : null;
+        $styleDonor     = $this->styleDonorForAppendedItem() ?? $lastItem;
         $objectItemNode = new ObjectItemNode(
             key: new StringNode($key),
             value: $nodeJson,
             beforeKey: $this->beforeKeyForAppendedItem(),
-            betweenKeyAndColon: $lastItem instanceof ObjectItemNode ? $lastItem->betweenKeyAndColon : '',
-            betweenColonAndValue: $lastItem instanceof ObjectItemNode ? $lastItem->betweenColonAndValue : '',
-            afterValue: $lastItem instanceof ObjectItemNode ? $lastItem->afterValue : $this->beforeCloseBrace,
+            betweenKeyAndColon: $styleDonor?->betweenKeyAndColon ?? '',
+            betweenColonAndValue: $styleDonor?->betweenColonAndValue ?? '',
+            afterValue: $styleDonor?->afterValue ?? $this->beforeCloseBrace,
         );
         $objectItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         $objectItemNode->setAttribute(NodeAttributes::START_OFFSET, $this->startOffsetForAppendedItem());
@@ -118,10 +120,31 @@ final class ObjectNode extends AbstractNodeJson
         $itemCount = count($this->items);
 
         if ($itemCount > 1) {
-            return $this->items[$itemCount - 1]->beforeKey;
+            return ($this->styleDonorForAppendedItem() ?? $this->items[$itemCount - 1])->beforeKey;
         }
 
         return $this->afterOpenBrace;
+    }
+
+    private function styleDonorForAppendedItem(): ?ObjectItemNode
+    {
+        $styleDonor     = null;
+        $maxStartOffset = null;
+
+        foreach ($this->items as $item) {
+            $startOffset = $this->getNumericStartOffset($item);
+
+            if ($startOffset === null) {
+                continue;
+            }
+
+            if ($maxStartOffset === null || $startOffset > $maxStartOffset) {
+                $maxStartOffset = $startOffset;
+                $styleDonor     = $item;
+            }
+        }
+
+        return $styleDonor;
     }
 
     private function separatorAfterValue(): string
@@ -137,12 +160,18 @@ final class ObjectNode extends AbstractNodeJson
 
     private function startOffsetForAppendedItem(): float
     {
+        $maxStartOffset = null;
+
         for ($i = count($this->items) - 1; $i >= 0; $i--) {
             $startOffset = $this->getNumericStartOffset($this->items[$i]);
 
             if ($startOffset !== null) {
-                return $startOffset + 1;
+                $maxStartOffset = $maxStartOffset === null ? $startOffset : max($maxStartOffset, $startOffset);
             }
+        }
+
+        if ($maxStartOffset !== null) {
+            return $maxStartOffset + 1;
         }
 
         return (float) count($this->items);

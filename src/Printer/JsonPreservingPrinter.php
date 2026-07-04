@@ -371,6 +371,14 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         string $containerBeforeClose,
     ): string {
         if (
+            $afterValue === $containerBeforeClose
+            && isset($items[$index + 1])
+            && $this->isSyntheticItem($items[$index + 1])
+        ) {
+            return $this->separatorAfterValueBeforeSyntheticItem($items, $index, $containerBeforeClose);
+        }
+
+        if (
             ! $this->isSyntheticItem($objectItemNode)
             || $afterValue !== $containerBeforeClose
         ) {
@@ -397,6 +405,14 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         string $containerBeforeClose,
     ): string {
         if (
+            $afterValue === $containerBeforeClose
+            && isset($items[$index + 1])
+            && $this->isSyntheticItem($items[$index + 1])
+        ) {
+            return $this->separatorAfterValueBeforeSyntheticItem($items, $index, $containerBeforeClose);
+        }
+
+        if (
             ! $this->isSyntheticItem($arrayItemNode)
             || $afterValue !== $containerBeforeClose
         ) {
@@ -404,6 +420,20 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         }
 
         for ($i = $index + 1, $counter = count($items); $i < $counter; $i++) {
+            if ($items[$i]->afterValue !== $containerBeforeClose) {
+                return $items[$i]->afterValue;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * @param list<NodeJson> $items
+     */
+    private function separatorAfterValueBeforeSyntheticItem(array $items, int $index, string $containerBeforeClose): string
+    {
+        for ($i = $index - 1; $i >= 0; $i--) {
             if ($items[$i]->afterValue !== $containerBeforeClose) {
                 return $items[$i]->afterValue;
             }

@@ -300,6 +300,18 @@ JSON,
         $this->assertSame('[3, 2, 1]', (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItPreservesCommaWhitespaceWhenInlineArrayItemsAreReorderedAndNewItemIsAppended(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('[1, 2, 3]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $items                      = $jsonDocument->value->items;
+        $jsonDocument->value->items = [$items[2], $items[1], $items[0]];
+        $jsonDocument->value->append(new NumberNode('4'));
+
+        $this->assertSame('[3, 2, 1, 4]', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
     public function testItPreservesMultilineWhitespaceWhenArrayItemsAreReordered(): void
     {
         $jsonDocument = (new JsonParser())->parse(
@@ -484,6 +496,18 @@ JSON,
         $jsonDocument->value->items = array_reverse($jsonDocument->value->items);
 
         $this->assertSame('{"c":3, "b":2, "a":1}', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPreservesCommaWhitespaceWhenInlineObjectItemsAreReorderedAndNewItemIsAppended(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a": 1, "b": 2, "c": 3}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $items                      = $jsonDocument->value->items;
+        $jsonDocument->value->items = [$items[2], $items[1], $items[0]];
+        $jsonDocument->value->set('d', new NumberNode('4'));
+
+        $this->assertSame('{"c": 3, "b": 2, "a": 1, "d": 4}', (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
     public function testItPreservesInlineWhitespaceWhenObjectItemsAreReordered(): void

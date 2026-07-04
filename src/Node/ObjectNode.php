@@ -9,12 +9,12 @@ use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use function array_pop;
 use function array_splice;
 use function count;
-use function is_float;
-use function is_int;
 use function max;
 
 final class ObjectNode extends AbstractNodeJson
 {
+    use AppendedItemStyleDonorTrait;
+
     /**
      * @param list<ObjectItemNode> $items
      */
@@ -95,7 +95,7 @@ final class ObjectNode extends AbstractNodeJson
     {
         $itemCount      = count($this->items);
         $lastItem       = $itemCount > 0 ? $this->items[$itemCount - 1] : null;
-        $styleDonor     = $this->styleDonorForAppendedItem() ?? $lastItem;
+        $styleDonor     = $this->styleDonorForAppendedItem($this->items) ?? $lastItem;
         $objectItemNode = new ObjectItemNode(
             key: new StringNode($key),
             value: $nodeJson,
@@ -120,31 +120,10 @@ final class ObjectNode extends AbstractNodeJson
         $itemCount = count($this->items);
 
         if ($itemCount > 1) {
-            return ($this->styleDonorForAppendedItem() ?? $this->items[$itemCount - 1])->beforeKey;
+            return ($this->styleDonorForAppendedItem($this->items) ?? $this->items[$itemCount - 1])->beforeKey;
         }
 
         return $this->afterOpenBrace;
-    }
-
-    private function styleDonorForAppendedItem(): ?ObjectItemNode
-    {
-        $styleDonor     = null;
-        $maxStartOffset = null;
-
-        foreach ($this->items as $item) {
-            $startOffset = $this->getNumericStartOffset($item);
-
-            if ($startOffset === null) {
-                continue;
-            }
-
-            if ($maxStartOffset === null || $startOffset > $maxStartOffset) {
-                $maxStartOffset = $startOffset;
-                $styleDonor     = $item;
-            }
-        }
-
-        return $styleDonor;
     }
 
     private function separatorAfterValue(): string
@@ -163,7 +142,7 @@ final class ObjectNode extends AbstractNodeJson
         $maxStartOffset = null;
 
         for ($i = count($this->items) - 1; $i >= 0; $i--) {
-            $startOffset = $this->getNumericStartOffset($this->items[$i]);
+            $startOffset = $this->numericStartOffsetOf($this->items[$i]);
 
             if ($startOffset !== null) {
                 $maxStartOffset = $maxStartOffset === null ? $startOffset : max($maxStartOffset, $startOffset);
@@ -175,16 +154,5 @@ final class ObjectNode extends AbstractNodeJson
         }
 
         return (float) count($this->items);
-    }
-
-    private function getNumericStartOffset(ObjectItemNode $objectItemNode): ?float
-    {
-        $startOffset = $objectItemNode->getAttribute(NodeAttributes::START_OFFSET);
-
-        if (is_int($startOffset) || is_float($startOffset)) {
-            return (float) $startOffset;
-        }
-
-        return null;
     }
 }

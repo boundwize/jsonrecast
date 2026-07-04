@@ -9,12 +9,12 @@ use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use function array_key_exists;
 use function array_splice;
 use function count;
-use function is_float;
-use function is_int;
 use function max;
 
 final class ArrayNode extends AbstractNodeJson
 {
+    use AppendedItemStyleDonorTrait;
+
     /**
      * @param list<ArrayItemNode> $items
      */
@@ -151,7 +151,7 @@ final class ArrayNode extends AbstractNodeJson
         $itemCount = count($this->items);
 
         if ($itemCount > 1) {
-            $styleDonor = $this->styleDonorForAppendedItem() ?? $this->items[$itemCount - 1];
+            $styleDonor = $this->styleDonorForAppendedItem($this->items) ?? $this->items[$itemCount - 1];
 
             return $styleDonor->beforeValue;
         }
@@ -164,7 +164,7 @@ final class ArrayNode extends AbstractNodeJson
         $previousOffset = null;
 
         for ($i = $index - 1; $i >= 0; $i--) {
-            $previousOffset = $this->getNumericStartOffset($this->items[$i]);
+            $previousOffset = $this->numericStartOffsetOf($this->items[$i]);
 
             if ($previousOffset !== null) {
                 break;
@@ -175,7 +175,7 @@ final class ArrayNode extends AbstractNodeJson
         $itemCount  = count($this->items);
 
         for ($i = $index; $i < $itemCount; $i++) {
-            $nextOffset = $this->getNumericStartOffset($this->items[$i]);
+            $nextOffset = $this->numericStartOffsetOf($this->items[$i]);
 
             if ($nextOffset !== null) {
                 break;
@@ -190,7 +190,7 @@ final class ArrayNode extends AbstractNodeJson
             $maxStartOffset = $previousOffset;
 
             for ($i = 0, $itemCount = count($this->items); $i < $itemCount; $i++) {
-                $startOffset = $this->getNumericStartOffset($this->items[$i]);
+                $startOffset = $this->numericStartOffsetOf($this->items[$i]);
 
                 if ($startOffset !== null) {
                     $maxStartOffset = max($maxStartOffset, $startOffset);
@@ -205,37 +205,5 @@ final class ArrayNode extends AbstractNodeJson
         }
 
         return (float) $index;
-    }
-
-    private function getNumericStartOffset(ArrayItemNode $arrayItemNode): ?float
-    {
-        $startOffset = $arrayItemNode->getAttribute(NodeAttributes::START_OFFSET);
-
-        if (is_int($startOffset) || is_float($startOffset)) {
-            return (float) $startOffset;
-        }
-
-        return null;
-    }
-
-    private function styleDonorForAppendedItem(): ?ArrayItemNode
-    {
-        $styleDonor     = null;
-        $maxStartOffset = null;
-
-        foreach ($this->items as $item) {
-            $startOffset = $this->getNumericStartOffset($item);
-
-            if ($startOffset === null) {
-                continue;
-            }
-
-            if ($maxStartOffset === null || $startOffset > $maxStartOffset) {
-                $maxStartOffset = $startOffset;
-                $styleDonor     = $item;
-            }
-        }
-
-        return $styleDonor;
     }
 }

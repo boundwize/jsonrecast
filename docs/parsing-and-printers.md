@@ -7,7 +7,7 @@ nav_order: 6
 # Parsing And Printers
 {: .no_toc }
 
-JsonRecast separates parsing, preserving printing, and normalized pretty printing.
+JsonRecast separates parsing, format-preserving printing, and normalized pretty printing.
 
 ## Contents
 {: .no_toc }

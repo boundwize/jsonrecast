@@ -65,7 +65,7 @@ final readonly class AstDumper
         }
 
         if ($nodeJson instanceof ObjectNode) {
-            $this->appendObjectItems($lines, $nodeJson, $level + 1);
+            $this->appendItems($lines, $nodeJson->items, $level + 1);
 
             return $lines;
         }
@@ -78,7 +78,7 @@ final readonly class AstDumper
         }
 
         if ($nodeJson instanceof ArrayNode) {
-            $this->appendArrayItems($lines, $nodeJson, $level + 1);
+            $this->appendItems($lines, $nodeJson->items, $level + 1);
 
             return $lines;
         }
@@ -107,11 +107,12 @@ final readonly class AstDumper
     }
 
     /**
-     * @param list<string> $lines
+     * @param list<string>   $lines
+     * @param list<NodeJson> $items
      */
-    private function appendObjectItems(array &$lines, ObjectNode $objectNode, int $level): void
+    private function appendItems(array &$lines, array $items, int $level): void
     {
-        if ($objectNode->items === []) {
+        if ($items === []) {
             $lines[] = $this->line($level, 'items: []');
 
             return;
@@ -119,25 +120,7 @@ final readonly class AstDumper
 
         $lines[] = $this->line($level, 'items:');
 
-        foreach ($objectNode->items as $index => $item) {
-            $this->appendNode($lines, $item, $level + 1, '[' . $index . ']');
-        }
-    }
-
-    /**
-     * @param list<string> $lines
-     */
-    private function appendArrayItems(array &$lines, ArrayNode $arrayNode, int $level): void
-    {
-        if ($arrayNode->items === []) {
-            $lines[] = $this->line($level, 'items: []');
-
-            return;
-        }
-
-        $lines[] = $this->line($level, 'items:');
-
-        foreach ($arrayNode->items as $index => $item) {
+        foreach ($items as $index => $item) {
             $this->appendNode($lines, $item, $level + 1, '[' . $index . ']');
         }
     }

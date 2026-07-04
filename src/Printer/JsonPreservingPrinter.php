@@ -138,7 +138,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             }
 
             if ($i < $lastIndex) {
-                $afterValue = $this->normalizeSyntheticObjectAfterValue(
+                $afterValue = $this->normalizeSyntheticAfterValue(
                     $objectNode->items,
                     $i,
                     $afterValue ?? $item->afterValue,
@@ -272,7 +272,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             }
 
             if ($i < $lastIndex) {
-                $afterValue = $this->normalizeSyntheticArrayAfterValue(
+                $afterValue = $this->normalizeSyntheticAfterValue(
                     $arrayNode->items,
                     $i,
                     $afterValue ?? $item->afterValue,
@@ -361,13 +361,13 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     }
 
     /**
-     * @param list<ObjectItemNode> $items
+     * @param list<ArrayItemNode|ObjectItemNode> $items
      */
-    private function normalizeSyntheticObjectAfterValue(
+    private function normalizeSyntheticAfterValue(
         array $items,
         int $index,
         string $afterValue,
-        ObjectItemNode $objectItemNode,
+        ArrayItemNode|ObjectItemNode $itemNode,
         string $containerBeforeClose,
     ): string {
         if (
@@ -379,41 +379,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         }
 
         if (
-            ! $this->isSyntheticItem($objectItemNode)
-            || $afterValue !== $containerBeforeClose
-        ) {
-            return $afterValue;
-        }
-
-        for ($i = $index + 1, $counter = count($items); $i < $counter; $i++) {
-            if ($items[$i]->afterValue !== $containerBeforeClose) {
-                return $items[$i]->afterValue;
-            }
-        }
-
-        return '';
-    }
-
-    /**
-     * @param list<ArrayItemNode> $items
-     */
-    private function normalizeSyntheticArrayAfterValue(
-        array $items,
-        int $index,
-        string $afterValue,
-        ArrayItemNode $arrayItemNode,
-        string $containerBeforeClose,
-    ): string {
-        if (
-            $afterValue === $containerBeforeClose
-            && isset($items[$index + 1])
-            && $this->isSyntheticItem($items[$index + 1])
-        ) {
-            return $this->separatorAfterValueBeforeSyntheticItem($items, $index, $containerBeforeClose);
-        }
-
-        if (
-            ! $this->isSyntheticItem($arrayItemNode)
+            ! $this->isSyntheticItem($itemNode)
             || $afterValue !== $containerBeforeClose
         ) {
             return $afterValue;

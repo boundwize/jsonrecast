@@ -984,6 +984,19 @@ JSON,
         $this->assertSame('[1, "x"]', (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItPreservesSeparatorWhenInsertingIntoSingleItemArray(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('[1]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->insert(0, new StringNode('x'));
+
+        $this->assertSame(
+            '["x", 1]',
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItRejectsInvalidUtf8String(): void
     {
         $this->expectException(RuntimeException::class);

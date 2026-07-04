@@ -42,7 +42,7 @@ final class ArrayNode extends AbstractNodeJson
         $arrayItemNode->setAttribute(NodeAttributes::START_OFFSET, $this->startOffsetForInsertedItem($index));
 
         if ($index === 0 && $this->items !== []) {
-            $this->items[0]->beforeValue = $this->items[count($this->items) - 1]->beforeValue;
+            $this->items[0]->beforeValue = $this->beforeValueForAppendedItem();
             $this->items[0]->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         }
 

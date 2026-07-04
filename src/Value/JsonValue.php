@@ -17,11 +17,13 @@ use InvalidArgumentException;
 
 use function array_is_list;
 use function array_map;
+use function get_object_vars;
 use function is_array;
 use function is_bool;
 use function is_finite;
 use function is_float;
 use function is_int;
+use function is_object;
 use function is_string;
 use function json_encode;
 use function strpbrk;
@@ -40,6 +42,7 @@ final class JsonValue
             is_bool($value) => new BooleanNode($value),
             $value === null => new NullNode(),
             is_array($value) => self::fromArray($value),
+            is_object($value) => self::fromObject($value),
             default => throw new InvalidArgumentException('Unsupported JSON value.'),
         };
     }
@@ -62,7 +65,7 @@ final class JsonValue
     {
         if (array_is_list($value)) {
             return new ArrayNode(array_map(
-                static fn (mixed $item): ArrayItemNode => new ArrayItemNode(self::from($item)),
+                static fn(mixed $item): ArrayItemNode => new ArrayItemNode(self::from($item)),
                 $value,
             ));
         }
@@ -70,6 +73,20 @@ final class JsonValue
         $items = [];
 
         foreach ($value as $key => $item) {
+            $items[] = new ObjectItemNode(
+                key: new StringNode((string) $key),
+                value: self::from($item),
+            );
+        }
+
+        return new ObjectNode($items);
+    }
+
+    private static function fromObject(object $value): ObjectNode
+    {
+        $items = [];
+
+        foreach (get_object_vars($value) as $key => $item) {
             $items[] = new ObjectItemNode(
                 key: new StringNode((string) $key),
                 value: self::from($item),

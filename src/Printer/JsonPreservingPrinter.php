@@ -431,8 +431,11 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     /**
      * @param list<NodeJson> $items
      */
-    private function separatorAfterValueBeforeSyntheticItem(array $items, int $index, string $containerBeforeClose): string
-    {
+    private function separatorAfterValueBeforeSyntheticItem(
+        array $items,
+        int $index,
+        string $containerBeforeClose
+    ): string {
         for ($i = $index - 1; $i >= 0; $i--) {
             if ($items[$i]->afterValue !== $containerBeforeClose) {
                 return $items[$i]->afterValue;

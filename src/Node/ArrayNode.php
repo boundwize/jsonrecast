@@ -127,7 +127,7 @@ final class ArrayNode extends AbstractNodeJson
     {
         $itemCount = count($this->items);
 
-        if ($itemCount > 1) {
+        if ($itemCount >= 1) {
             return $this->items[$itemCount - 1]->beforeValue;
         }
 
@@ -149,7 +149,7 @@ final class ArrayNode extends AbstractNodeJson
     {
         $itemCount = count($this->items);
 
-        if ($itemCount > 1) {
+        if ($itemCount >= 1) {
             $styleDonor = StartOffsetHelper::findStyleDonor($this->items) ?? $this->items[$itemCount - 1];
 
             return $styleDonor->beforeValue;

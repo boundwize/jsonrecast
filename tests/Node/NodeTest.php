@@ -187,6 +187,46 @@ final class NodeTest extends TestCase
         $this->assertSame("\n", $arrayNode->items[2]->afterValue);
     }
 
+    public function testObjectNodeSetAppendsMissingKeyWithWhitespaceFromSingleItem(): void
+    {
+        $objectItemNode = new ObjectItemNode(
+            key: new StringNode('a'),
+            value: new NumberNode('1'),
+            beforeKey: ' ',
+            betweenColonAndValue: ' ',
+            afterValue: '',
+        );
+        $objectItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, ' "a": 1');
+
+        $objectNode = new ObjectNode([$objectItemNode], afterOpenBrace: '', beforeCloseBrace: '');
+
+        $objectNode->set('b', new StringNode('hello'));
+
+        $this->assertCount(2, $objectNode->items);
+        // The new item must inherit the single existing item's beforeKey (' ')
+        $this->assertSame(' ', $objectNode->items[1]->beforeKey);
+        $this->assertSame(' ', $objectNode->items[1]->betweenColonAndValue);
+        $this->assertSame('b', $objectNode->items[1]->key->value);
+        $this->assertInstanceOf(StringNode::class, $objectNode->items[1]->value);
+        $this->assertSame('hello', $objectNode->items[1]->value->value);
+    }
+
+    public function testArrayNodeAppendPreservesBeforeValueFromSingleExistingItem(): void
+    {
+        $arrayItemNode = new ArrayItemNode(new NumberNode('1'), beforeValue: ' ', afterValue: '');
+        $arrayItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, ' 1');
+
+        $arrayNode = new ArrayNode([$arrayItemNode], afterOpenBracket: '', beforeCloseBracket: '');
+
+        $arrayNode->append(new StringNode('x'));
+
+        $this->assertCount(2, $arrayNode->items);
+        // The appended item must inherit the single existing item's beforeValue (' ')
+        $this->assertSame(' ', $arrayNode->items[1]->beforeValue);
+        $this->assertInstanceOf(StringNode::class, $arrayNode->items[1]->value);
+        $this->assertSame('x', $arrayNode->items[1]->value->value);
+    }
+
     public function testNumberNodeConvertsRawIntegersAndFloats(): void
     {
         $this->assertSame(10, (new NumberNode('10'))->toIntOrFloat());

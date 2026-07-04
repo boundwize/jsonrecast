@@ -10,6 +10,9 @@ use Boundwize\JsonRecast\Node\NodeJson;
 use function is_float;
 use function is_int;
 
+/**
+ * @internal
+ */
 final readonly class StartOffsetHelper
 {
     public static function getNumericStartOffset(NodeJson $nodeJson): ?float

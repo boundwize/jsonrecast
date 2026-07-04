@@ -14,6 +14,7 @@ use Boundwize\JsonRecast\Value\JsonValue;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 
 use const INF;
 use const NAN;
@@ -107,5 +108,38 @@ final class JsonValueTest extends TestCase
         $this->assertInstanceOf(ArrayNode::class, $nested);
         $this->assertInstanceOf(StringNode::class, $nested->items[0]->value);
         $this->assertSame('json', $nested->items[0]->value->value);
+    }
+
+    public function testItPreservesEmptyObjectValueFromPhpData(): void
+    {
+        $nodeJson = JsonValue::from([
+            'config' => new stdClass(),
+        ]);
+
+        $this->assertInstanceOf(ObjectNode::class, $nodeJson);
+
+        $config = $nodeJson->items[0]->value;
+
+        $this->assertInstanceOf(ObjectNode::class, $config);
+    }
+
+    public function testItCreatesEmptyObjectNode(): void
+    {
+        $nodeJson = JsonValue::from(new stdClass());
+        $this->assertInstanceOf(ObjectNode::class, $nodeJson);
+        $this->assertCount(0, $nodeJson->items);
+    }
+
+    public function testItCreatesObjectNodeFromStdClassWithProperties(): void
+    {
+        $obj      = new stdClass();
+        $obj->foo = 'bar';
+
+        $nodeJson = JsonValue::from($obj);
+        $this->assertInstanceOf(ObjectNode::class, $nodeJson);
+        $this->assertCount(1, $nodeJson->items);
+        $this->assertSame('foo', $nodeJson->items[0]->key->value);
+        $this->assertInstanceOf(StringNode::class, $nodeJson->items[0]->value);
+        $this->assertSame('bar', $nodeJson->items[0]->value->value);
     }
 }

@@ -739,7 +739,7 @@ JSON,
         $jsonDocument->value->set('note', new StringNode($note));
 
         $this->assertSame(
-            '{"city": "' . $city . '","note": "' . $note . '"}',
+            '{"city": "' . $city . '", "note": "' . $note . '"}',
             (new JsonPreservingPrinter())->print($jsonDocument),
         );
     }
@@ -962,6 +962,39 @@ JSON,
         $nodeChangeSet->markChanged($jsonDocument->value);
 
         $this->assertSame('{"value":null}', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
+    }
+
+    public function testItPreservesCommaWhitespaceWhenNewKeyIsAddedToSingleItemInlineObject(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a": 1}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('b', new StringNode('hello'));
+
+        $this->assertSame('{"a": 1, "b": "hello"}', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPreservesCommaWhitespaceWhenNewItemIsAppendedToSingleItemInlineArray(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('[1]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->append(new StringNode('x'));
+
+        $this->assertSame('[1, "x"]', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPreservesSeparatorWhenInsertingIntoSingleItemArray(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('[1]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->insert(0, new StringNode('x'));
+
+        $this->assertSame(
+            '["x", 1]',
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
     }
 
     public function testItRejectsInvalidUtf8String(): void

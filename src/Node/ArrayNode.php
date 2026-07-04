@@ -42,7 +42,7 @@ final class ArrayNode extends AbstractNodeJson
         $arrayItemNode->setAttribute(NodeAttributes::START_OFFSET, $this->startOffsetForInsertedItem($index));
 
         if ($index === 0 && $this->items !== []) {
-            $this->items[0]->beforeValue = $this->separatorBeforeValue();
+            $this->items[0]->beforeValue = $this->beforeValueForAppendedItem();
             $this->items[0]->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         }
 
@@ -123,17 +123,6 @@ final class ArrayNode extends AbstractNodeJson
         return $this->separatorAfterValue();
     }
 
-    private function separatorBeforeValue(): string
-    {
-        $itemCount = count($this->items);
-
-        if ($itemCount > 1) {
-            return $this->items[$itemCount - 1]->beforeValue;
-        }
-
-        return $this->afterOpenBracket;
-    }
-
     private function separatorAfterValue(): string
     {
         $itemCount = count($this->items);
@@ -147,15 +136,16 @@ final class ArrayNode extends AbstractNodeJson
 
     private function beforeValueForAppendedItem(): string
     {
-        $itemCount = count($this->items);
+        $itemCount  = count($this->items);
+        $styleDonor = StartOffsetHelper::findStyleDonor($this->items) ?? $this->items[$itemCount - 1];
 
-        if ($itemCount > 1) {
-            $styleDonor = StartOffsetHelper::findStyleDonor($this->items) ?? $this->items[$itemCount - 1];
-
+        if ($styleDonor->beforeValue !== '' || $itemCount > 1) {
             return $styleDonor->beforeValue;
         }
 
-        return $this->separatorBeforeValue();
+        // Single item at position 0: beforeValue equals afterOpenBracket ('' for inline).
+        // A new item needs the separator space, so default to ' '.
+        return ' ';
     }
 
     private function startOffsetForInsertedItem(int $index): float

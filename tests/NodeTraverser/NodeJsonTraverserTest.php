@@ -26,6 +26,7 @@ use Closure;
 use LogicException;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
+use stdClass;
 
 use function is_int;
 
@@ -590,6 +591,51 @@ JSON,
                 return new StringNode($this->new);
             }
         });
+    }
+
+    public function testVisitorReplacesWithObjectValue(): void
+    {
+        $nodeJsonTraversalResult = $this->mutateRootObject(
+            '{"name":"boundwize/jsonrecast"}',
+            static function (ObjectNode $objectNode): void {
+                $objectNode->set('config', JsonValue::from(new stdClass()));
+            },
+        );
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "name": "boundwize/jsonrecast",
+    "config": {}
+}
+JSON,
+            (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node),
+        );
+    }
+
+    public function testVisitorReplacesWithObjectValueWithProperties(): void
+    {
+        $obj      = new stdClass();
+        $obj->foo = 'bar';
+
+        $nodeJsonTraversalResult = $this->mutateRootObject(
+            '{"name":"boundwize/jsonrecast"}',
+            static function (ObjectNode $objectNode) use ($obj): void {
+                $objectNode->set('config', JsonValue::from($obj));
+            },
+        );
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "name": "boundwize/jsonrecast",
+    "config": {
+        "foo": "bar"
+    }
+}
+JSON,
+            (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node),
+        );
     }
 
     /**

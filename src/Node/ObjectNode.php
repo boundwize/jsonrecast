@@ -100,9 +100,9 @@ final class ObjectNode extends AbstractNodeJson
             key: new StringNode($key),
             value: $nodeJson,
             beforeKey: $this->beforeKeyForAppendedItem(),
-            betweenKeyAndColon: $styleDonor?->betweenKeyAndColon ?? '',
-            betweenColonAndValue: $styleDonor?->betweenColonAndValue ?? '',
-            afterValue: $styleDonor?->afterValue ?? $this->beforeCloseBrace,
+            betweenKeyAndColon: $styleDonor !== null ? $styleDonor->betweenKeyAndColon : '',
+            betweenColonAndValue: $styleDonor !== null ? $styleDonor->betweenColonAndValue : '',
+            afterValue: $styleDonor !== null ? $styleDonor->afterValue : $this->beforeCloseBrace,
         );
         $objectItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         $objectItemNode->setAttribute(NodeAttributes::START_OFFSET, $this->startOffsetForAppendedItem());

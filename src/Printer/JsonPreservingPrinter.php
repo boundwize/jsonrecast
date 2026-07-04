@@ -429,7 +429,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     }
 
     /**
-     * @param list<NodeJson> $items
+     * @param list<ArrayItemNode|ObjectItemNode> $items
      */
     private function separatorAfterValueBeforeSyntheticItem(
         array $items,

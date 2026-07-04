@@ -151,7 +151,9 @@ final class ArrayNode extends AbstractNodeJson
         $itemCount = count($this->items);
 
         if ($itemCount > 1) {
-            return $this->styleDonorForAppendedItem()?->beforeValue ?? $this->items[$itemCount - 1]->beforeValue;
+            $styleDonor = $this->styleDonorForAppendedItem() ?? $this->items[$itemCount - 1];
+
+            return $styleDonor->beforeValue;
         }
 
         return $this->separatorBeforeValue();

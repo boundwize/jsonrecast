@@ -964,6 +964,26 @@ JSON,
         $this->assertSame('{"value":null}', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
     }
 
+    public function testItPreservesCommaWhitespaceWhenNewKeyIsAddedToSingleItemInlineObject(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a": 1}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('b', new StringNode('hello'));
+
+        $this->assertSame('{"a": 1, "b": "hello"}', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPreservesCommaWhitespaceWhenNewItemIsAppendedToSingleItemInlineArray(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('[1]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->append(new StringNode('x'));
+
+        $this->assertSame('[1, "x"]', (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
     public function testItRejectsInvalidUtf8String(): void
     {
         $this->expectException(RuntimeException::class);

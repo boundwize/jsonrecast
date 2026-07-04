@@ -249,4 +249,29 @@ final class NodeTest extends TestCase
         $this->assertIsFloat($largeNegativeIntegerValue);
         $this->assertSame((float) '-9223372036854775809', $largeNegativeIntegerValue);
     }
+
+    public function testObjectNodeSetAppendsToEmptyObjectUsingAfterOpenBraceAsBeforeKey(): void
+    {
+        $objectNode = new ObjectNode([], afterOpenBrace: ' ', beforeCloseBrace: ' ');
+
+        $objectNode->set('a', new StringNode('hello'));
+
+        $this->assertCount(1, $objectNode->items);
+        // Empty object falls back to afterOpenBrace for the first item's beforeKey
+        $this->assertSame(' ', $objectNode->items[0]->beforeKey);
+        $this->assertSame('a', $objectNode->items[0]->key->value);
+    }
+
+    public function testArrayNodeAppendToEmptyArrayUsesAfterOpenBracketAsBeforeValue(): void
+    {
+        $arrayNode = new ArrayNode([], afterOpenBracket: ' ', beforeCloseBracket: ' ');
+
+        $arrayNode->append(new StringNode('x'));
+
+        $this->assertCount(1, $arrayNode->items);
+        // Empty array falls back to afterOpenBracket for the first item's beforeValue
+        $this->assertSame(' ', $arrayNode->items[0]->beforeValue);
+        $this->assertInstanceOf(StringNode::class, $arrayNode->items[0]->value);
+        $this->assertSame('x', $arrayNode->items[0]->value->value);
+    }
 }

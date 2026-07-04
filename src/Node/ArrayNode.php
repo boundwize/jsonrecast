@@ -125,13 +125,7 @@ final class ArrayNode extends AbstractNodeJson
 
     private function separatorBeforeValue(): string
     {
-        $itemCount = count($this->items);
-
-        if ($itemCount >= 1) {
-            return $this->items[$itemCount - 1]->beforeValue;
-        }
-
-        return $this->afterOpenBracket;
+        return $this->items[count($this->items) - 1]->beforeValue;
     }
 
     private function separatorAfterValue(): string
@@ -147,15 +141,10 @@ final class ArrayNode extends AbstractNodeJson
 
     private function beforeValueForAppendedItem(): string
     {
-        $itemCount = count($this->items);
+        $itemCount  = count($this->items);
+        $styleDonor = StartOffsetHelper::findStyleDonor($this->items) ?? $this->items[$itemCount - 1];
 
-        if ($itemCount >= 1) {
-            $styleDonor = StartOffsetHelper::findStyleDonor($this->items) ?? $this->items[$itemCount - 1];
-
-            return $styleDonor->beforeValue;
-        }
-
-        return $this->separatorBeforeValue();
+        return $styleDonor->beforeValue;
     }
 
     private function startOffsetForInsertedItem(int $index): float

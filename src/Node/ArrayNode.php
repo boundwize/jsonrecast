@@ -139,7 +139,13 @@ final class ArrayNode extends AbstractNodeJson
         $itemCount  = count($this->items);
         $styleDonor = StartOffsetHelper::findStyleDonor($this->items) ?? $this->items[$itemCount - 1];
 
-        return $styleDonor->beforeValue;
+        if ($styleDonor->beforeValue !== '' || $itemCount > 1) {
+            return $styleDonor->beforeValue;
+        }
+
+        // Single item at position 0: beforeValue equals afterOpenBracket ('' for inline).
+        // A new item needs the separator space, so default to ' '.
+        return ' ';
     }
 
     private function startOffsetForInsertedItem(int $index): float

@@ -118,8 +118,14 @@ final class ObjectNode extends AbstractNodeJson
     {
         $itemCount = count($this->items);
 
-        if ($itemCount >= 1) {
+        if ($itemCount > 1) {
             return (StartOffsetHelper::findStyleDonor($this->items) ?? $this->items[$itemCount - 1])->beforeKey;
+        }
+
+        if ($itemCount === 1) {
+            $firstItemBeforeKey = $this->items[0]->beforeKey;
+
+            return $firstItemBeforeKey !== '' ? $firstItemBeforeKey : ' ';
         }
 
         return $this->afterOpenBrace;

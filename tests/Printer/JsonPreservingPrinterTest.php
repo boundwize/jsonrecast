@@ -739,7 +739,7 @@ JSON,
         $jsonDocument->value->set('note', new StringNode($note));
 
         $this->assertSame(
-            '{"city": "' . $city . '","note": "' . $note . '"}',
+            '{"city": "' . $city . '", "note": "' . $note . '"}',
             (new JsonPreservingPrinter())->print($jsonDocument),
         );
     }

@@ -239,7 +239,7 @@ JSON, JsonRecast::print($jsonRecastResult));
 
         $jsonDocument->value->set('newkey', new StringNode('newvalue'));
 
-        $this->assertSame('{"existing": "value","newkey": "newvalue"}', JsonRecast::print($jsonDocument));
+        $this->assertSame('{"existing": "value", "newkey": "newvalue"}', JsonRecast::print($jsonDocument));
     }
 
     public function testArrayNodeAppendAddsItemWithoutReformattingInlineDocument(): void
@@ -249,7 +249,7 @@ JSON, JsonRecast::print($jsonRecastResult));
 
         $jsonDocument->value->append(new StringNode('item'));
 
-        $this->assertSame('["existing","item"]', JsonRecast::print($jsonDocument));
+        $this->assertSame('["existing", "item"]', JsonRecast::print($jsonDocument));
     }
 
     public function testArrayNodeInsertAddsItemWithoutReformattingInlineDocument(): void

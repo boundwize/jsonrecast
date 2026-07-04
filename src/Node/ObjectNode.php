@@ -9,8 +9,6 @@ use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use function array_pop;
 use function array_splice;
 use function count;
-use function is_float;
-use function is_int;
 use function max;
 
 final class ObjectNode extends AbstractNodeJson

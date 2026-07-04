@@ -665,7 +665,7 @@ JSON,
         $this->assertSame(
             ' ',
             $this->invokeJsonPreservingPrinterMethod(
-                'normalizeSyntheticObjectAfterValue',
+                'normalizeSyntheticAfterValue',
                 [[$synthetic, $parsed], 0, "\n", $synthetic, "\n"],
             ),
         );
@@ -682,7 +682,7 @@ JSON,
         $this->assertSame(
             ' ',
             $this->invokeJsonPreservingPrinterMethod(
-                'normalizeSyntheticArrayAfterValue',
+                'normalizeSyntheticAfterValue',
                 [[$synthetic, $parsed], 0, "\n", $synthetic, "\n"],
             ),
         );

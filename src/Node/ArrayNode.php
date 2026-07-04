@@ -9,6 +9,8 @@ use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use function array_key_exists;
 use function array_splice;
 use function count;
+use function is_float;
+use function is_int;
 use function max;
 
 final class ArrayNode extends AbstractNodeJson
@@ -38,6 +40,7 @@ final class ArrayNode extends AbstractNodeJson
             afterValue: $this->afterValueForInsertedItem($index),
         );
         $arrayItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+        $arrayItemNode->setAttribute(NodeAttributes::START_OFFSET, $this->startOffsetForInsertedItem($index));
 
         if ($index === 0 && $this->items !== []) {
             $this->items[0]->beforeValue = $this->separatorBeforeValue();
@@ -141,5 +144,54 @@ final class ArrayNode extends AbstractNodeJson
         }
 
         return '';
+    }
+
+    private function startOffsetForInsertedItem(int $index): float
+    {
+        $previousOffset = null;
+
+        for ($i = $index - 1; $i >= 0; $i--) {
+            $previousOffset = $this->getNumericStartOffset($this->items[$i]);
+
+            if ($previousOffset !== null) {
+                break;
+            }
+        }
+
+        $nextOffset = null;
+        $itemCount  = count($this->items);
+
+        for ($i = $index; $i < $itemCount; $i++) {
+            $nextOffset = $this->getNumericStartOffset($this->items[$i]);
+
+            if ($nextOffset !== null) {
+                break;
+            }
+        }
+
+        if ($previousOffset !== null && $nextOffset !== null) {
+            return ($previousOffset + $nextOffset) / 2;
+        }
+
+        if ($previousOffset !== null) {
+            return $previousOffset + 1;
+        }
+
+        if ($nextOffset !== null) {
+            return $nextOffset - 1;
+        }
+
+        return (float) $index;
+    }
+
+    private function getNumericStartOffset(ArrayItemNode $arrayItemNode): ?float
+    {
+        $startOffset = $arrayItemNode->getAttribute(NodeAttributes::START_OFFSET);
+
+        if (is_int($startOffset) || is_float($startOffset)) {
+            return (float) $startOffset;
+        }
+
+        return null;
     }
 }

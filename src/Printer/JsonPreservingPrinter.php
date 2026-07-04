@@ -19,6 +19,7 @@ use Boundwize\JsonRecast\NodeTraverser\NodeChangeSet;
 use RuntimeException;
 
 use function count;
+use function is_float;
 use function is_int;
 use function is_string;
 use function json_decode;
@@ -466,7 +467,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         foreach ($items as $i => $item) {
             $startOffset = $item->getAttribute(NodeAttributes::START_OFFSET);
 
-            if (! is_int($startOffset)) {
+            if (! is_int($startOffset) && ! is_float($startOffset)) {
                 $startOffset = $this->getSyntheticStartOffset($items, $i);
             }
 
@@ -508,7 +509,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         for ($i = $index - 1; $i >= 0; $i--) {
             $startOffset = $items[$i]->getAttribute(NodeAttributes::START_OFFSET);
 
-            if (! is_int($startOffset)) {
+            if (! is_int($startOffset) && ! is_float($startOffset)) {
                 continue;
             }
 
@@ -525,7 +526,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         for ($i = $index + 1; $i < $counter; $i++) {
             $startOffset = $items[$i]->getAttribute(NodeAttributes::START_OFFSET);
 
-            if (! is_int($startOffset)) {
+            if (! is_int($startOffset) && ! is_float($startOffset)) {
                 continue;
             }
 

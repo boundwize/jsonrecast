@@ -18,9 +18,12 @@ use Boundwize\JsonRecast\NodeTraverser\NodeChangeSet;
 use Boundwize\JsonRecast\Parser\JsonParser;
 use Boundwize\JsonRecast\Printer\JsonPreservingPrinter;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
 use RuntimeException;
 
 use function array_reverse;
+
+use const PHP_FLOAT_EPSILON;
 
 final class JsonPreservingPrinterTest extends TestCase
 {
@@ -411,6 +414,27 @@ JSON,
         );
     }
 
+    public function testItPreservesInlineWhitespaceWhenChangedArrayItemsAreRemovedAppendedAndReordered(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('[1, 2, 3]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->removeAt(1);
+        $jsonDocument->value->append(new NumberNode('9'));
+        $jsonDocument->value->append(new NumberNode('8'));
+
+        $items                      = $jsonDocument->value->items;
+        $jsonDocument->value->items = [$items[2], $items[3], $items[0], $items[1]];
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($jsonDocument->value);
+
+        $this->assertSame(
+            '[9, 8, 1, 3]',
+            (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument),
+        );
+    }
+
     public function testItDoesNotPrintClosingWhitespaceBeforeArraySeparatorsForSyntheticItems(): void
     {
         $items = [
@@ -558,6 +582,27 @@ JSON,
         );
     }
 
+    public function testItPreservesInlineWhitespaceWhenChangedObjectItemsAreRemovedAppendedAndReordered(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a": 1, "b": 2, "c": 3}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->remove('b');
+        $jsonDocument->value->set('x', new NumberNode('9'));
+        $jsonDocument->value->set('y', new NumberNode('8'));
+
+        $items                      = $jsonDocument->value->items;
+        $jsonDocument->value->items = [$items[2], $items[3], $items[0], $items[1]];
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($jsonDocument->value);
+
+        $this->assertSame(
+            '{"x": 9, "y": 8, "a": 1, "c": 3}',
+            (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument),
+        );
+    }
+
     public function testItDoesNotPrintClosingWhitespaceBeforeObjectSeparatorsForSyntheticItems(): void
     {
         $items = [
@@ -583,6 +628,68 @@ JSON,
 JSON,
             (new JsonPreservingPrinter())->print($objectNode),
         );
+    }
+
+    public function testItReusesNextSeparatorWhitespaceForSyntheticObjectItems(): void
+    {
+        $synthetic = new ObjectItemNode(new StringNode('x'), new NumberNode('1'), '', '', '', "\n");
+        $synthetic->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+
+        $parsed = new ObjectItemNode(new StringNode('y'), new NumberNode('2'), ' ', '', '', ' ');
+        $parsed->setAttribute(NodeAttributes::ORIGINAL_TEXT, '"y":2');
+
+        $this->assertSame(
+            ' ',
+            $this->invokeJsonPreservingPrinterMethod(
+                'normalizeSyntheticObjectAfterValue',
+                [[$synthetic, $parsed], 0, "\n", $synthetic, "\n"],
+            ),
+        );
+    }
+
+    public function testItReusesNextSeparatorWhitespaceForSyntheticArrayItems(): void
+    {
+        $synthetic = new ArrayItemNode(new NumberNode('1'), '', "\n");
+        $synthetic->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+
+        $parsed = new ArrayItemNode(new NumberNode('2'), ' ', ' ');
+        $parsed->setAttribute(NodeAttributes::ORIGINAL_TEXT, '2');
+
+        $this->assertSame(
+            ' ',
+            $this->invokeJsonPreservingPrinterMethod(
+                'normalizeSyntheticArrayAfterValue',
+                [[$synthetic, $parsed], 0, "\n", $synthetic, "\n"],
+            ),
+        );
+    }
+
+    public function testItComputesSyntheticStartOffsetsForNeighborFallbacks(): void
+    {
+        $previous = new ArrayItemNode(new NumberNode('1'));
+        $previous->setAttribute(NodeAttributes::START_OFFSET, 10);
+
+        $next = new ArrayItemNode(new NumberNode('3'));
+        $next->setAttribute(NodeAttributes::START_OFFSET, 20);
+
+        $between    = new ArrayItemNode(new NumberNode('2'));
+        $beforeOnly = new ArrayItemNode(new NumberNode('4'));
+        $afterOnly  = new ArrayItemNode(new NumberNode('5'));
+
+        $this->assertEqualsWithDelta(10.5, $this->invokeJsonPreservingPrinterMethod(
+            'getSyntheticStartOffset',
+            [[$previous, $between, $next], 1],
+        ), PHP_FLOAT_EPSILON);
+
+        $this->assertEqualsWithDelta(10.5, $this->invokeJsonPreservingPrinterMethod(
+            'getSyntheticStartOffset',
+            [[$previous, $beforeOnly], 1],
+        ), PHP_FLOAT_EPSILON);
+
+        $this->assertEqualsWithDelta(19.5, $this->invokeJsonPreservingPrinterMethod(
+            'getSyntheticStartOffset',
+            [[$afterOnly, $next], 0],
+        ), PHP_FLOAT_EPSILON);
     }
 
     public function testItPrintsDirectStringNodeValueMutation(): void
@@ -839,5 +946,15 @@ JSON,
         $this->expectExceptionMessage('Unable to encode JSON string.');
 
         (new JsonPreservingPrinter())->print(new StringNode("\xB1"));
+    }
+
+    /**
+     * @param list<mixed> $arguments
+     */
+    private function invokeJsonPreservingPrinterMethod(string $methodName, array $arguments): mixed
+    {
+        $reflectionMethod = new ReflectionMethod(JsonPreservingPrinter::class, $methodName);
+
+        return $reflectionMethod->invokeArgs(new JsonPreservingPrinter(), $arguments);
     }
 }

@@ -1005,6 +1005,26 @@ JSON,
         (new JsonPreservingPrinter())->print(new StringNode("\xB1"));
     }
 
+    public function testItPreservesBeforeCloseBraceWhenLastKeyIsRemoved(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("{\n    \"a\": 1\n}");
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->remove('a');
+
+        $this->assertSame("{\n}", (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPreservesBeforeCloseBracketWhenLastItemIsRemoved(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("[\n    1\n]");
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->removeAt(0);
+
+        $this->assertSame("[\n]", (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
     /**
      * @param list<mixed> $arguments
      */

@@ -115,6 +115,10 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             return $this->printObjectBestEffort($objectNode, $printContext, $detectScalarMutation);
         }
 
+        if ($objectNode->items === []) {
+            return $this->printEmptyObject($objectNode);
+        }
+
         $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($objectNode);
         $output               = '{';
         $lastIndex            = count($objectNode->items) - 1;
@@ -247,6 +251,10 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     ): string {
         if ($this->shouldPrintContainerBestEffort($arrayNode, $arrayNode->items)) {
             return $this->printArrayBestEffort($arrayNode, $printContext, $detectScalarMutation);
+        }
+
+        if ($arrayNode->items === []) {
+            return $this->printEmptyArray($arrayNode);
         }
 
         $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($arrayNode);

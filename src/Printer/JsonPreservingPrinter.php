@@ -34,7 +34,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 {
     public function __construct(
         private ?NodeChangeSet $nodeChangeSet = null,
-        private string $indent = '    ',
+        private ?string $indent = null,
     ) {
     }
 
@@ -43,8 +43,12 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $newline = $nodeJson instanceof JsonDocument && is_string($nodeJson->getAttribute(NodeAttributes::NEWLINE))
             ? $nodeJson->getAttribute(NodeAttributes::NEWLINE)
             : "\n";
+        $indent  = $this->indent
+            ?? ($nodeJson instanceof JsonDocument && is_string($nodeJson->getAttribute(NodeAttributes::INDENT))
+                ? $nodeJson->getAttribute(NodeAttributes::INDENT)
+                : '    ');
 
-        return $this->printNode($nodeJson, new PrintContext($this->indent, $newline));
+        return $this->printNode($nodeJson, new PrintContext($indent, $newline));
     }
 
     private function printNode(

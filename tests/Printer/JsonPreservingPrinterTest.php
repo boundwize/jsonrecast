@@ -1034,4 +1034,27 @@ JSON,
 
         return $reflectionMethod->invokeArgs(new JsonPreservingPrinter(), $arguments);
     }
+
+    public function testItUsesEmptyDocumentIndentWhenPrintingNewContainers(): void
+    {
+        $jsonDocument = new JsonDocument(new ObjectNode([
+            new ObjectItemNode(new StringNode('keywords'), new ArrayNode([
+                new ArrayItemNode(new StringNode('json')),
+                new ArrayItemNode(new StringNode('ast')),
+            ])),
+        ]));
+        $jsonDocument->setAttribute(NodeAttributes::INDENT, '');
+
+        $this->assertSame(
+            <<<'JSON'
+    {
+    "keywords": [
+    "json",
+    "ast"
+    ]
+    }
+    JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
 }

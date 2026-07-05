@@ -15,6 +15,7 @@ use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodePath\NodeJsonPath;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitor;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
+use Boundwize\JsonRecast\Value\JsonValue;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -260,6 +261,49 @@ JSON, JsonRecast::print($jsonRecastResult));
         $jsonDocument->value->insert(1, new StringNode('ast'));
 
         $this->assertSame('["json", "ast", "parser"]', JsonRecast::print($jsonDocument));
+    }
+
+    public function testItPrintsNewNestedArrayWithDetectedDocumentIndentation(): void
+    {
+        $jsonDocument = JsonRecast::parse(<<<'JSON'
+{
+  "a": 1,
+  "b": [
+    1,
+    2
+  ]
+}
+JSON);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('b', JsonValue::from([10, 20, 30]));
+
+        $this->assertSame(
+            <<<'JSON'
+{
+  "a": 1,
+  "b": [
+    10,
+    20,
+    30
+  ]
+}
+JSON,
+            JsonRecast::print($jsonDocument),
+        );
+    }
+
+    public function testItPrintsNewNestedObjectWithDetectedTabDocumentIndentation(): void
+    {
+        $jsonDocument = JsonRecast::parse("{\n\t\"a\": 1,\n\t\"c\": {\n\t\t\"old\": true\n\t}\n}");
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('c', JsonValue::from(['x' => 1, 'y' => 2]));
+
+        $this->assertSame(
+            "{\n\t\"a\": 1,\n\t\"c\": {\n\t\t\"x\": 1,\n\t\t\"y\": 2\n\t}\n}",
+            JsonRecast::print($jsonDocument),
+        );
     }
 
     public function testObjectNodeRemoveDeletesEffectiveDuplicateKeyValue(): void

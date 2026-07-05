@@ -362,10 +362,6 @@ final class JsonParser
 
                 $candidate = substr($childIndent, strlen($lineIndent));
 
-                if ($candidate === '') {
-                    continue;
-                }
-
                 if ($indent === null || strlen($candidate) < strlen($indent)) {
                     $indent = $candidate;
                 }

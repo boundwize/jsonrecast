@@ -354,13 +354,13 @@ final class JsonParser
     {
         $indent = null;
 
-        foreach ($lineIndents as $parentIndent) {
+        foreach ($lineIndents as $lineIndent) {
             foreach ($lineIndents as $childIndent) {
-                if ($parentIndent === $childIndent || ! str_starts_with($childIndent, $parentIndent)) {
+                if ($lineIndent === $childIndent || ! str_starts_with($childIndent, $lineIndent)) {
                     continue;
                 }
 
-                $candidate = substr($childIndent, strlen($parentIndent));
+                $candidate = substr($childIndent, strlen($lineIndent));
 
                 if ($candidate === '') {
                     continue;

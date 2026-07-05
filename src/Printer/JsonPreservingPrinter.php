@@ -43,7 +43,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $newline = $nodeJson instanceof JsonDocument && is_string($nodeJson->getAttribute(NodeAttributes::NEWLINE))
             ? $nodeJson->getAttribute(NodeAttributes::NEWLINE)
             : "\n";
-        $indent = $this->indent
+        $indent  = $this->indent
             ?? ($nodeJson instanceof JsonDocument && is_string($nodeJson->getAttribute(NodeAttributes::INDENT))
                 ? $nodeJson->getAttribute(NodeAttributes::INDENT)
                 : '    ');

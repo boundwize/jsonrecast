@@ -16,6 +16,8 @@ final class NodeAttributes
 
     public const NEWLINE = 'newline';
 
+    public const INDENT = 'indent';
+
     public const TRAILING_NEWLINE = 'trailingNewline';
 
     private function __construct()

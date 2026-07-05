@@ -110,6 +110,7 @@ Built-in attribute names are available in `Boundwize\JsonRecast\Attribute\NodeAt
 | `ORIGINAL_TEXT` | Exact source substring for the node. |
 | `SOURCE` | Full source string, stored on the document. |
 | `NEWLINE` | Detected newline sequence, stored on the document. |
+| `INDENT` | Detected indentation unit, stored on the document and used when printing newly-created nested structures. |
 | `TRAILING_NEWLINE` | Whether the document ended with a newline. |
 
 Attributes are useful for tooling and debugging. JsonRecast does not use a mutable "has changed" node attribute; changes are tracked in the traversal result.

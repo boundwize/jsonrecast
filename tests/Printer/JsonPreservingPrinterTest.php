@@ -17,6 +17,7 @@ use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeTraverser\NodeChangeSet;
 use Boundwize\JsonRecast\Parser\JsonParser;
 use Boundwize\JsonRecast\Printer\JsonPreservingPrinter;
+use Boundwize\JsonRecast\Value\JsonValue;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 use RuntimeException;
@@ -1054,6 +1055,68 @@ JSON,
     ]
     }
     JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItReindentsPreservedSubtreeWhenNestedDeeper(): void
+    {
+        $json = <<<'JSON'
+        {
+          "a": 1,
+          "b": 2
+        }
+        JSON;
+        $jsonDocument = (new JsonParser())->parse($json);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $original = $jsonDocument->value;
+        $wrapper  = JsonValue::from(['meta' => null]);
+        $this->assertInstanceOf(ObjectNode::class, $wrapper);
+        $wrapper->set('meta', $original);
+        $jsonDocument->value = $wrapper;
+
+        $jsonResult = <<<'JSON'
+        {
+          "meta": {
+            "a": 1,
+            "b": 2
+          }
+        }
+        JSON;
+        $this->assertSame(
+            $jsonResult,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItDedentsPreservedSubtreeWhenMovedShallower(): void
+    {
+        $json = <<<'JSON'
+        {
+          "meta": {
+            "a": 1,
+            "b": 2
+          }
+        }
+        JSON;
+        $jsonDocument = (new JsonParser())->parse($json);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $inner = $jsonDocument->value->get('meta');
+        $this->assertNotNull($inner);
+        $jsonDocument->value = $inner->value;
+
+
+        $jsonResult = <<<'JSON'
+        {
+          "a": 1,
+          "b": 2
+        }
+        JSON;
+
+        $this->assertSame(
+            $jsonResult,
             (new JsonPreservingPrinter())->print($jsonDocument),
         );
     }

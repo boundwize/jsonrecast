@@ -24,7 +24,12 @@ use function is_int;
 use function is_string;
 use function json_decode;
 use function json_encode;
+use function preg_match_all;
+use function preg_replace_callback;
 use function str_ends_with;
+use function str_starts_with;
+use function strlen;
+use function substr;
 use function usort;
 
 use const JSON_UNESCAPED_SLASHES;
@@ -43,7 +48,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $newline = $nodeJson instanceof JsonDocument && is_string($nodeJson->getAttribute(NodeAttributes::NEWLINE))
             ? $nodeJson->getAttribute(NodeAttributes::NEWLINE)
             : "\n";
-        $indent  = $this->indent
+        $indent = $this->indent
             ?? ($nodeJson instanceof JsonDocument && is_string($nodeJson->getAttribute(NodeAttributes::INDENT))
                 ? $nodeJson->getAttribute(NodeAttributes::INDENT)
                 : '    ');
@@ -65,7 +70,9 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 is_string($originalText)
                 && (! $detectScalarMutation || ! $this->hasScalarValueChanged($nodeJson))
             ) {
-                return $originalText;
+                return $nodeJson instanceof JsonDocument
+                    ? $originalText
+                    : $this->reindentOriginalText($nodeJson, $originalText, $printContext);
             }
         }
 
@@ -115,12 +122,12 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         PrintContext $printContext,
         bool $detectScalarMutation,
     ): string {
-        if ($this->shouldPrintContainerBestEffort($objectNode, $objectNode->items)) {
-            return $this->printObjectBestEffort($objectNode, $printContext, $detectScalarMutation);
-        }
-
         if ($objectNode->items === []) {
             return $this->printEmptyObject($objectNode);
+        }
+
+        if ($this->shouldPrintContainerBestEffort($objectNode, $objectNode->items)) {
+            return $this->printObjectBestEffort($objectNode, $printContext, $detectScalarMutation);
         }
 
         $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($objectNode);
@@ -176,10 +183,6 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         PrintContext $printContext,
         bool $detectScalarMutation,
     ): string {
-        if ($objectNode->items === []) {
-            return $this->printEmptyObject($objectNode);
-        }
-
         $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($objectNode);
         $output               = '{';
 
@@ -225,7 +228,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             $originalText = $objectItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
             if (is_string($originalText)) {
-                return $originalText;
+                return $this->reindentOriginalText($objectItemNode, $originalText, $printContext);
             }
         }
 
@@ -253,12 +256,12 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         PrintContext $printContext,
         bool $detectScalarMutation,
     ): string {
-        if ($this->shouldPrintContainerBestEffort($arrayNode, $arrayNode->items)) {
-            return $this->printArrayBestEffort($arrayNode, $printContext, $detectScalarMutation);
-        }
-
         if ($arrayNode->items === []) {
             return $this->printEmptyArray($arrayNode);
+        }
+
+        if ($this->shouldPrintContainerBestEffort($arrayNode, $arrayNode->items)) {
+            return $this->printArrayBestEffort($arrayNode, $printContext, $detectScalarMutation);
         }
 
         $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($arrayNode);
@@ -314,10 +317,6 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         PrintContext $printContext,
         bool $detectScalarMutation,
     ): string {
-        if ($arrayNode->items === []) {
-            return $this->printEmptyArray($arrayNode);
-        }
-
         $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($arrayNode);
         $output               = '[';
 
@@ -363,7 +362,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             $originalText = $arrayItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
             if (is_string($originalText)) {
-                return $originalText;
+                return $this->reindentOriginalText($arrayItemNode, $originalText, $printContext);
             }
         }
 
@@ -427,6 +426,74 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     {
         return ! is_int($nodeJson->getAttribute(NodeAttributes::START_OFFSET))
             && ! is_string($nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT));
+    }
+
+    private function reindentOriginalText(
+        NodeJson $nodeJson,
+        string $originalText,
+        PrintContext $printContext,
+    ): string {
+        if (
+            $printContext->indentation() === ''
+            && $nodeJson->getAttribute(NodeAttributes::START_OFFSET) === 0
+        ) {
+            return $originalText;
+        }
+
+        return $this->reindentOriginalTextToContext($originalText, $printContext);
+    }
+
+    private function reindentOriginalTextToContext(string $originalText, PrintContext $printContext): string
+    {
+        $sourceIndent = $this->detectOriginalBaseIndent($originalText);
+
+        if ($sourceIndent === null) {
+            return $originalText;
+        }
+
+        $targetIndent = $printContext->indentation();
+
+        if ($sourceIndent === $targetIndent) {
+            return $originalText;
+        }
+
+        $reindentedOriginalText = preg_replace_callback(
+            '/(\r\n|\r|\n)([ \t]*)(?=\S)/',
+            /**
+             * @param array{0: string, 1: string, 2: string} $matches
+             */
+            static function (array $matches) use ($sourceIndent, $targetIndent): string {
+                $lineIndent = $matches[2];
+
+                if ($sourceIndent !== '' && ! str_starts_with($lineIndent, $sourceIndent)) {
+                    return $matches[0];
+                }
+
+                return $matches[1] . $targetIndent . substr($lineIndent, strlen($sourceIndent));
+            },
+            $originalText,
+        );
+
+        return is_string($reindentedOriginalText) ? $reindentedOriginalText : $originalText;
+    }
+
+    private function detectOriginalBaseIndent(string $originalText): ?string
+    {
+        preg_match_all('/(?:\r\n|\r|\n)([ \t]*)(?=\S)/', $originalText, $matches);
+
+        if ($matches[1] === []) {
+            return null;
+        }
+
+        $baseIndent = $matches[1][0];
+
+        foreach ($matches[1] as $lineIndent) {
+            if (strlen($lineIndent) < strlen($baseIndent)) {
+                $baseIndent = $lineIndent;
+            }
+        }
+
+        return $baseIndent;
     }
 
     /**

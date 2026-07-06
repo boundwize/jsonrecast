@@ -1026,6 +1026,52 @@ JSON,
         $this->assertSame("[\n]", (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItPrintsObjectBestEffortWhenChangedContainerHasItemWithoutOriginalTextAttribute(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a":1}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        // Appended directly (bypassing set()), so it never receives an
+        // ORIGINAL_TEXT attribute at all (not even a null one).
+        $jsonDocument->value->items[] = new ObjectItemNode(new StringNode('b'), new NumberNode('2'));
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($jsonDocument->value);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "a": 1,
+    "b": 2
+}
+JSON,
+            (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument),
+        );
+    }
+
+    public function testItPrintsArrayBestEffortWhenChangedContainerHasItemWithoutOriginalTextAttribute(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('[1]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        // Appended directly (bypassing append()), so it never receives an
+        // ORIGINAL_TEXT attribute at all (not even a null one).
+        $jsonDocument->value->items[] = new ArrayItemNode(new NumberNode('2'));
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($jsonDocument->value);
+
+        $this->assertSame(
+            <<<'JSON'
+[
+    1,
+    2
+]
+JSON,
+            (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument),
+        );
+    }
+
     /**
      * @param list<mixed> $arguments
      */
@@ -1061,7 +1107,7 @@ JSON,
 
     public function testItReindentsPreservedSubtreeWhenNestedDeeper(): void
     {
-        $json = <<<'JSON'
+        $json         = <<<'JSON'
         {
           "a": 1,
           "b": 2
@@ -1071,10 +1117,10 @@ JSON,
         $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
 
         $original = $jsonDocument->value;
-        $wrapper  = JsonValue::from(['meta' => null]);
-        $this->assertInstanceOf(ObjectNode::class, $wrapper);
-        $wrapper->set('meta', $original);
-        $jsonDocument->value = $wrapper;
+        $nodeJson = JsonValue::from(['meta' => null]);
+        $this->assertInstanceOf(ObjectNode::class, $nodeJson);
+        $nodeJson->set('meta', $original);
+        $jsonDocument->value = $nodeJson;
 
         $jsonResult = <<<'JSON'
         {
@@ -1092,7 +1138,7 @@ JSON,
 
     public function testItDedentsPreservedSubtreeWhenMovedShallower(): void
     {
-        $json = <<<'JSON'
+        $json         = <<<'JSON'
         {
           "meta": {
             "a": 1,
@@ -1104,9 +1150,8 @@ JSON,
         $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
 
         $inner = $jsonDocument->value->get('meta');
-        $this->assertNotNull($inner);
+        $this->assertInstanceOf(ObjectItemNode::class, $inner);
         $jsonDocument->value = $inner->value;
-
 
         $jsonResult = <<<'JSON'
         {
@@ -1118,6 +1163,50 @@ JSON,
         $this->assertSame(
             $jsonResult,
             (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItKeepsPreservedSubtreeIndentWhenLevelIsUnchanged(): void
+    {
+        $json         = <<<'JSON'
+{
+  "meta": {
+    "a": 1,
+    "b": 2
+  }
+}
+JSON;
+        $jsonDocument = (new JsonParser())->parse($json);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($jsonDocument->value);
+
+        $this->assertSame($json, (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
+    }
+
+    public function testItLeavesMixedIndentLinesThatDoNotShareBaseIndentWhenNestedDeeper(): void
+    {
+        $json         = "{\n\t\"a\": 1,\n  \"b\": 2\n  }";
+        $jsonDocument = (new JsonParser())->parse($json);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $original = $jsonDocument->value;
+        $nodeJson = JsonValue::from(['meta' => null]);
+        $this->assertInstanceOf(ObjectNode::class, $nodeJson);
+        $nodeJson->set('meta', $original);
+        $jsonDocument->value = $nodeJson;
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "meta": {
+    "a": 1,
+  "b": 2
+  }
+}
+JSON,
+            (new JsonPreservingPrinter(indent: '    '))->print($jsonDocument),
         );
     }
 }

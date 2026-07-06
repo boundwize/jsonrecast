@@ -440,11 +440,6 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             return $originalText;
         }
 
-        return $this->reindentOriginalTextToContext($originalText, $printContext);
-    }
-
-    private function reindentOriginalTextToContext(string $originalText, PrintContext $printContext): string
-    {
         $sourceIndent = $this->detectOriginalBaseIndent($originalText);
 
         if ($sourceIndent === null) {
@@ -457,6 +452,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             return $originalText;
         }
 
+        /** @var string $reindentedOriginalText */
         $reindentedOriginalText = preg_replace_callback(
             '/(\r\n|\r|\n)([ \t]*)(?=\S)/',
             /**
@@ -474,7 +470,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             $originalText,
         );
 
-        return is_string($reindentedOriginalText) ? $reindentedOriginalText : $originalText;
+        return $reindentedOriginalText;
     }
 
     private function detectOriginalBaseIndent(string $originalText): ?string

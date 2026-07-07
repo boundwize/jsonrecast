@@ -424,6 +424,42 @@ JSON,
         );
     }
 
+    public function testMovingStringWithEscapedNewlineIntoInlineEmptyArrayStaysInline(): void
+    {
+        $jsonDocument = JsonRecast::parse(
+            <<<'JSON'
+{
+  "a": ["hello\nworld"],
+  "b": []
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $aItem = $jsonDocument->value->get('a');
+        $bItem = $jsonDocument->value->get('b');
+
+        $this->assertInstanceOf(ObjectItemNode::class, $aItem);
+        $this->assertInstanceOf(ObjectItemNode::class, $bItem);
+        $this->assertInstanceOf(ArrayNode::class, $aItem->value);
+        $this->assertInstanceOf(ArrayNode::class, $bItem->value);
+
+        $node = $aItem->value->items[0]->value;
+
+        $aItem->value->removeAt(0);
+        $bItem->value->append($node);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+  "a": [],
+  "b": ["hello\nworld"]
+}
+JSON,
+            JsonRecast::print($jsonDocument),
+        );
+    }
+
     public function testItPrintsDirectParsedStringNodeValueMutation(): void
     {
         $jsonDocument = JsonRecast::parse('{"name":"old"}');

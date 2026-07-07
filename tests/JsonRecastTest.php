@@ -386,7 +386,7 @@ JSON,
         $this->assertStringContainsString('"temperature_delta": -0', $printed);
     }
 
-    public function testVisitorRebuiltNegativeZeroLosesSignOnPrint(): void
+    public function testVisitorRebuiltNegativeZeroPreservesSignOnPrint(): void
     {
         $json = <<<'JSON'
         {

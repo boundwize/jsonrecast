@@ -25,6 +25,7 @@ use function is_string;
 use function json_decode;
 use function json_encode;
 use function preg_split;
+use function str_contains;
 use function str_ends_with;
 use function str_repeat;
 use function strlen;
@@ -264,6 +265,16 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 $arrayNode->beforeCloseBracket,
             );
 
+            if (
+                $lastIndex === 0
+                && $beforeValue === ''
+                && $afterValue === ''
+                && $this->shouldPrintInsertedMultilineArrayItemOnOwnLine($item)
+            ) {
+                $beforeValue = $printContext->newline . $printContext->childIndentation();
+                $afterValue  = $printContext->newline . $printContext->indentation();
+            }
+
             $output .= $this->printArrayItemPreserving(
                 $item,
                 $printContext->next(),
@@ -432,6 +443,18 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     {
         return ! is_int($nodeJson->getAttribute(NodeAttributes::START_OFFSET))
             && ! is_string($nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT));
+    }
+
+    private function shouldPrintInsertedMultilineArrayItemOnOwnLine(ArrayItemNode $arrayItemNode): bool
+    {
+        if (! $this->isSyntheticItem($arrayItemNode)) {
+            return false;
+        }
+
+        $originalText = $arrayItemNode->value->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+
+        return is_string($originalText)
+            && (str_contains($originalText, "\n") || str_contains($originalText, "\r"));
     }
 
     private function reindentOriginalText(

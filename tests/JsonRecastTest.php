@@ -370,4 +370,53 @@ JSON,
         $this->assertSame('{"b":2,"a":1}', $printed);
         $this->assertSame(['b' => 2, 'a' => 1], json_decode($printed, true, 512, JSON_THROW_ON_ERROR));
     }
+
+    public function testUntouchedNegativeZeroIsPreservedVerbatim(): void
+    {
+        $json = <<<'JSON'
+        {
+            "temperature_delta": -0,
+            "label": "no change"
+        }
+        JSON;
+
+        $jsonDocument = JsonRecast::parse($json);
+        $printed      = JsonRecast::print($jsonDocument);
+
+        $this->assertStringContainsString('"temperature_delta": -0', $printed);
+    }
+
+    public function testVisitorRebuiltNegativeZeroPreservesSignOnPrint(): void
+    {
+        $json = <<<'JSON'
+        {
+            "temperature_delta": -0,
+            "label": "no change"
+        }
+        JSON;
+
+        $jsonDocument = JsonRecast::parse($json);
+
+        $jsonRecastResult = JsonRecast::traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+            {
+                if (! $nodeJson instanceof NumberNode) {
+                    return null;
+                }
+
+                // Simulates any "read value, rebuild node" visitor --
+                // e.g. rounding, scaling, or clamping a numeric field.
+                $value = $nodeJson->toIntOrFloat() * 1;
+
+                return new NumberNode((string) $value);
+            }
+        });
+
+        $printed = JsonRecast::print($jsonRecastResult);
+
+        $this->assertStringContainsString(
+            '"temperature_delta": -0',
+            $printed,
+        );
+    }
 }

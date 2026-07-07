@@ -13,6 +13,9 @@ use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use PHPUnit\Framework\TestCase;
 
+use function json_encode;
+
+use const JSON_PRESERVE_ZERO_FRACTION;
 use const PHP_FLOAT_EPSILON;
 
 final class NodeTest extends TestCase
@@ -232,6 +235,18 @@ final class NodeTest extends TestCase
         $this->assertSame(10, (new NumberNode('10'))->toIntOrFloat());
         $this->assertEqualsWithDelta(1.5, (new NumberNode('1.5'))->toIntOrFloat(), PHP_FLOAT_EPSILON);
         $this->assertEqualsWithDelta(100.0, (new NumberNode('1e2'))->toIntOrFloat(), PHP_FLOAT_EPSILON);
+    }
+
+    public function testNumberNodePreservesNegativeZeroWhenConverted(): void
+    {
+        foreach (['-0', '-0.0', '-0e0', '-0.0e10'] as $rawValue) {
+            $value = (new NumberNode($rawValue))->toIntOrFloat();
+
+            $this->assertIsFloat($value);
+            $this->assertSame('-0.0', json_encode($value, JSON_PRESERVE_ZERO_FRACTION), $rawValue);
+            // Visitor rebuilds commonly stringify converted numbers before creating a replacement node.
+            $this->assertSame('-0', (string) $value, $rawValue);
+        }
     }
 
     public function testNumberNodeToIntOrFloatDoesNotClampPositiveLargeInteger(): void

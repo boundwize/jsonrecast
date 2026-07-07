@@ -16,13 +16,17 @@ final class NumberNode extends AbstractNodeJson
 
     public function toIntOrFloat(): int|float
     {
+        if ($this->rawValue === '-0') {
+            return (float) $this->rawValue;
+        }
+
         if (str_contains($this->rawValue, '.') || stripos($this->rawValue, 'e') !== false) {
             return (float) $this->rawValue;
         }
 
         $intValue = (int) $this->rawValue;
 
-        if ((string) $intValue === $this->rawValue || ($this->rawValue === '-0' && $intValue === 0)) {
+        if ((string) $intValue === $this->rawValue) {
             return $intValue;
         }
 

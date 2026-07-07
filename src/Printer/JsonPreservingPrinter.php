@@ -243,7 +243,10 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         PrintContext $printContext,
         bool $detectScalarMutation,
     ): string {
-        if ($this->shouldPrintContainerBestEffort($arrayNode, $arrayNode->items)) {
+        if (
+            $this->shouldPrintContainerBestEffort($arrayNode, $arrayNode->items)
+            || $this->shouldPrintInsertedMultilineArrayItemsBestEffort($arrayNode)
+        ) {
             return $this->printArrayBestEffort($arrayNode, $printContext, $detectScalarMutation);
         }
 
@@ -264,16 +267,6 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 $arrayNode->afterOpenBracket,
                 $arrayNode->beforeCloseBracket,
             );
-
-            if (
-                $lastIndex === 0
-                && $beforeValue === ''
-                && $afterValue === ''
-                && $this->shouldPrintInsertedMultilineArrayItemOnOwnLine($item)
-            ) {
-                $beforeValue = $printContext->newline . $printContext->childIndentation();
-                $afterValue  = $printContext->newline . $printContext->indentation();
-            }
 
             $output .= $this->printArrayItemPreserving(
                 $item,
@@ -445,16 +438,28 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             && ! is_string($nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT));
     }
 
-    private function shouldPrintInsertedMultilineArrayItemOnOwnLine(ArrayItemNode $arrayItemNode): bool
+    private function shouldPrintInsertedMultilineArrayItemsBestEffort(ArrayNode $arrayNode): bool
     {
-        if (! $this->isSyntheticItem($arrayItemNode)) {
+        if ($arrayNode->afterOpenBracket !== '' || $arrayNode->beforeCloseBracket !== '') {
             return false;
         }
 
-        $originalText = $arrayItemNode->value->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+        foreach ($arrayNode->items as $item) {
+            if (! $this->isSyntheticItem($item)) {
+                continue;
+            }
 
-        return is_string($originalText)
-            && (str_contains($originalText, "\n") || str_contains($originalText, "\r"));
+            $originalText = $item->value->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+
+            if (
+                is_string($originalText)
+                && (str_contains($originalText, "\n") || str_contains($originalText, "\r"))
+            ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function reindentOriginalText(

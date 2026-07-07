@@ -29,4 +29,14 @@ final readonly class PrintContext
     {
         return str_repeat($this->indent, $this->level + 1);
     }
+
+    public function indentUnit(): string
+    {
+        return $this->indent;
+    }
+
+    public function level(): int
+    {
+        return $this->level;
+    }
 }

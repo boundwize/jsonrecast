@@ -24,7 +24,12 @@ use function is_int;
 use function is_string;
 use function json_decode;
 use function json_encode;
+use function preg_split;
 use function str_ends_with;
+use function str_repeat;
+use function strlen;
+use function substr;
+use function trim;
 use function usort;
 
 use const JSON_UNESCAPED_SLASHES;
@@ -65,7 +70,9 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 is_string($originalText)
                 && (! $detectScalarMutation || ! $this->hasScalarValueChanged($nodeJson))
             ) {
-                return $originalText;
+                return $nodeJson instanceof JsonDocument
+                    ? $originalText
+                    : $this->reindentOriginalText($nodeJson, $originalText, $printContext);
             }
         }
 
@@ -225,7 +232,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             $originalText = $objectItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
             if (is_string($originalText)) {
-                return $originalText;
+                return $this->reindentOriginalText($objectItemNode, $originalText, $printContext);
             }
         }
 
@@ -363,7 +370,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             $originalText = $arrayItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
             if (is_string($originalText)) {
-                return $originalText;
+                return $this->reindentOriginalText($arrayItemNode, $originalText, $printContext);
             }
         }
 
@@ -427,6 +434,60 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     {
         return ! is_int($nodeJson->getAttribute(NodeAttributes::START_OFFSET))
             && ! is_string($nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT));
+    }
+
+    private function reindentOriginalText(
+        NodeJson $nodeJson,
+        string $originalText,
+        PrintContext $printContext,
+    ): string {
+        $originalDepth = $nodeJson->getAttribute(NodeAttributes::DEPTH);
+
+        if (! is_int($originalDepth)) {
+            return $originalText;
+        }
+
+        $delta = $printContext->level() - $originalDepth;
+
+        if ($delta === 0 || $printContext->indentUnit() === '') {
+            return $originalText;
+        }
+
+        /** @var list<string> $lines */
+        $lines = preg_split('/(?<=\r\n|\r|\n)/', $originalText);
+
+        $output       = $lines[0];
+        $addPrefix    = $delta > 0 ? str_repeat($printContext->indentUnit(), $delta) : '';
+        $removeLength = $delta < 0 ? strlen($printContext->indentUnit()) * -$delta : 0;
+
+        for ($i = 1, $count = count($lines); $i < $count; $i++) {
+            $line = $lines[$i];
+
+            if (trim($line) === '') {
+                $output .= $line;
+
+                continue;
+            }
+
+            if ($delta > 0) {
+                $output .= $addPrefix . $line;
+
+                continue;
+            }
+
+            $stripLength = 0;
+            while (
+                $stripLength < $removeLength
+                && isset($line[$stripLength])
+                && ($line[$stripLength] === ' ' || $line[$stripLength] === "\t")
+            ) {
+                $stripLength++;
+            }
+
+            $output .= substr($line, $stripLength);
+        }
+
+        return $output;
     }
 
     /**

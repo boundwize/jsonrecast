@@ -380,8 +380,8 @@ JSON,
         }
         JSON;
 
-        $document = JsonRecast::parse($json);
-        $printed  = JsonRecast::print($document);
+        $jsonDocument = JsonRecast::parse($json);
+        $printed      = JsonRecast::print($jsonDocument);
 
         $this->assertStringContainsString('"temperature_delta": -0', $printed);
     }
@@ -395,24 +395,24 @@ JSON,
         }
         JSON;
 
-        $document = JsonRecast::parse($json);
+        $jsonDocument = JsonRecast::parse($json);
 
-        $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstract {
-            public function enterNode(NodeJson $node, NodeJsonPath $path): ?NodeJson
+        $jsonRecastResult = JsonRecast::traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
             {
-                if (!$node instanceof NumberNode) {
+                if (! $nodeJson instanceof NumberNode) {
                     return null;
                 }
 
                 // Simulates any "read value, rebuild node" visitor --
                 // e.g. rounding, scaling, or clamping a numeric field.
-                $value = $node->toIntOrFloat() * 1;
+                $value = $nodeJson->toIntOrFloat() * 1;
 
                 return new NumberNode((string) $value);
             }
         });
 
-        $printed = JsonRecast::print($result);
+        $printed = JsonRecast::print($jsonRecastResult);
 
         $this->assertStringContainsString(
             '"temperature_delta": -0',

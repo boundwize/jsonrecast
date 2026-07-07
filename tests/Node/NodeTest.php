@@ -234,6 +234,14 @@ final class NodeTest extends TestCase
         $this->assertEqualsWithDelta(100.0, (new NumberNode('1e2'))->toIntOrFloat(), PHP_FLOAT_EPSILON);
     }
 
+    public function testNumberNodePreservesNegativeZeroWhenConverted(): void
+    {
+        $value = (new NumberNode('-0'))->toIntOrFloat();
+
+        $this->assertIsFloat($value);
+        $this->assertSame('-0', (string) $value);
+    }
+
     public function testNumberNodeToIntOrFloatDoesNotClampPositiveLargeInteger(): void
     {
         $largeIntegerValue = (new NumberNode('9223372036854775808'))->toIntOrFloat();

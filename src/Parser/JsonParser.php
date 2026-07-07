@@ -187,7 +187,7 @@ final class JsonParser
         }
     }
 
-    private function parseString(int $depth = 0): StringNode
+    private function parseString(int $depth): StringNode
     {
         $token = $this->consume(TokenType::STRING);
 
@@ -207,7 +207,7 @@ final class JsonParser
         return $stringNode;
     }
 
-    private function parseNumber(int $depth = 0): NumberNode
+    private function parseNumber(int $depth): NumberNode
     {
         $token      = $this->consume(TokenType::NUMBER);
         $numberNode = new NumberNode($token->text);
@@ -216,7 +216,7 @@ final class JsonParser
         return $numberNode;
     }
 
-    private function parseTrue(int $depth = 0): BooleanNode
+    private function parseTrue(int $depth): BooleanNode
     {
         $token       = $this->consume(TokenType::TRUE);
         $booleanNode = new BooleanNode(true);
@@ -225,7 +225,7 @@ final class JsonParser
         return $booleanNode;
     }
 
-    private function parseFalse(int $depth = 0): BooleanNode
+    private function parseFalse(int $depth): BooleanNode
     {
         $token       = $this->consume(TokenType::FALSE);
         $booleanNode = new BooleanNode(false);
@@ -234,7 +234,7 @@ final class JsonParser
         return $booleanNode;
     }
 
-    private function parseNull(int $depth = 0): NullNode
+    private function parseNull(int $depth): NullNode
     {
         $token    = $this->consume(TokenType::NULL);
         $nullNode = new NullNode();

@@ -134,33 +134,15 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $output               = '{';
         $lastIndex            = count($objectNode->items) - 1;
         $itemsInOriginalOrder = $this->getItemsInOriginalOrder($objectNode->items);
-        $isReordered          = $itemsInOriginalOrder !== $objectNode->items;
 
         foreach ($objectNode->items as $i => $item) {
-            $beforeKey          = $i === 0 ? $objectNode->afterOpenBrace : null;
-            $afterValue         = $i === $lastIndex ? $objectNode->beforeCloseBrace : null;
-            $afterValueProvider = $item;
-
-            if ($isReordered) {
-                if ($i > 0) {
-                    $beforeKey = $itemsInOriginalOrder[$i]->beforeKey;
-                }
-
-                if ($i < $lastIndex) {
-                    $afterValueProvider = $itemsInOriginalOrder[$i];
-                    $afterValue         = $afterValueProvider->afterValue;
-                }
-            }
-
-            if ($i < $lastIndex) {
-                $afterValue = $this->normalizeSyntheticAfterValue(
-                    $objectNode->items,
-                    $i,
-                    $afterValue ?? $item->afterValue,
-                    $afterValueProvider,
-                    $objectNode->beforeCloseBrace,
-                );
-            }
+            [$beforeKey, $afterValue] = $this->getItemLayout(
+                $objectNode->items,
+                $i,
+                $itemsInOriginalOrder,
+                $objectNode->afterOpenBrace,
+                $objectNode->beforeCloseBrace,
+            );
 
             $output .= $this->printObjectItemPreserving(
                 $item,
@@ -170,7 +152,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 $detectScalarMutation,
             );
 
-            if ($i < count($objectNode->items) - 1) {
+            if ($i < $lastIndex) {
                 $output .= ',';
             }
         }
@@ -272,33 +254,15 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $output               = '[';
         $lastIndex            = count($arrayNode->items) - 1;
         $itemsInOriginalOrder = $this->getItemsInOriginalOrder($arrayNode->items);
-        $isReordered          = $itemsInOriginalOrder !== $arrayNode->items;
 
         foreach ($arrayNode->items as $i => $item) {
-            $beforeValue        = $i === 0 ? $arrayNode->afterOpenBracket : null;
-            $afterValue         = $i === $lastIndex ? $arrayNode->beforeCloseBracket : null;
-            $afterValueProvider = $item;
-
-            if ($isReordered) {
-                if ($i > 0) {
-                    $beforeValue = $itemsInOriginalOrder[$i]->beforeValue;
-                }
-
-                if ($i < $lastIndex) {
-                    $afterValueProvider = $itemsInOriginalOrder[$i];
-                    $afterValue         = $afterValueProvider->afterValue;
-                }
-            }
-
-            if ($i < $lastIndex) {
-                $afterValue = $this->normalizeSyntheticAfterValue(
-                    $arrayNode->items,
-                    $i,
-                    $afterValue ?? $item->afterValue,
-                    $afterValueProvider,
-                    $arrayNode->beforeCloseBracket,
-                );
-            }
+            [$beforeValue, $afterValue] = $this->getItemLayout(
+                $arrayNode->items,
+                $i,
+                $itemsInOriginalOrder,
+                $arrayNode->afterOpenBracket,
+                $arrayNode->beforeCloseBracket,
+            );
 
             $output .= $this->printArrayItemPreserving(
                 $item,
@@ -308,7 +272,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 $detectScalarMutation,
             );
 
-            if ($i < count($arrayNode->items) - 1) {
+            if ($i < $lastIndex) {
                 $output .= ',';
             }
         }
@@ -381,6 +345,43 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
     /**
      * @param list<ArrayItemNode|ObjectItemNode> $items
+     * @param list<ArrayItemNode|ObjectItemNode> $itemsInOriginalOrder
+     * @return array{?string, ?string}
+     */
+    private function getItemLayout(
+        array $items,
+        int $index,
+        array $itemsInOriginalOrder,
+        string $containerAfterOpen,
+        string $containerBeforeClose,
+    ): array {
+        $item        = $items[$index];
+        $lastIndex   = count($items) - 1;
+        $layoutDonor = $itemsInOriginalOrder === $items ? $item : $itemsInOriginalOrder[$index];
+        $beforeValue = $index === 0 ? $containerAfterOpen : null;
+        $afterValue  = $index === $lastIndex ? $containerBeforeClose : $layoutDonor->afterValue;
+
+        if ($index > 0 && $layoutDonor !== $item) {
+            $beforeValue = $layoutDonor instanceof ObjectItemNode
+                ? $layoutDonor->beforeKey
+                : $layoutDonor->beforeValue;
+        }
+
+        if ($index < $lastIndex) {
+            $afterValue = $this->normalizeSyntheticAfterValue(
+                $items,
+                $index,
+                $afterValue,
+                $layoutDonor,
+                $containerBeforeClose,
+            );
+        }
+
+        return [$beforeValue, $afterValue];
+    }
+
+    /**
+     * @param list<ArrayItemNode|ObjectItemNode> $items
      */
     private function normalizeSyntheticAfterValue(
         array $items,
@@ -394,13 +395,10 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             && isset($items[$index + 1])
             && $this->isSyntheticItem($items[$index + 1])
         ) {
-            return $this->separatorAfterValueBeforeSyntheticItem($items, $index, $containerBeforeClose);
+            return $this->findSeparatorBeforeIndex($items, $index, $containerBeforeClose);
         }
 
-        if (
-            ! $this->isSyntheticItem($itemNode)
-            || $afterValue !== $containerBeforeClose
-        ) {
+        if (! $this->isSyntheticItem($itemNode) || $afterValue !== $containerBeforeClose) {
             return $afterValue;
         }
 
@@ -416,7 +414,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     /**
      * @param list<ArrayItemNode|ObjectItemNode> $items
      */
-    private function separatorAfterValueBeforeSyntheticItem(
+    private function findSeparatorBeforeIndex(
         array $items,
         int $index,
         string $containerBeforeClose

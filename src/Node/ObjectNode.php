@@ -11,6 +11,7 @@ use function array_pop;
 use function array_splice;
 use function count;
 use function max;
+use function str_contains;
 
 final class ObjectNode extends AbstractNodeJson
 {
@@ -95,12 +96,13 @@ final class ObjectNode extends AbstractNodeJson
         $itemCount      = count($this->items);
         $lastItem       = $itemCount > 0 ? $this->items[$itemCount - 1] : null;
         $styleDonor     = StartOffsetHelper::findStyleDonor($this->items) ?? $lastItem;
+        $beforeKey      = $this->beforeKeyForAppendedItem();
         $objectItemNode = new ObjectItemNode(
             key: new StringNode($key),
             value: $nodeJson,
-            beforeKey: $this->beforeKeyForAppendedItem(),
+            beforeKey: $beforeKey,
             betweenKeyAndColon: $styleDonor !== null ? $styleDonor->betweenKeyAndColon : '',
-            betweenColonAndValue: $styleDonor !== null ? $styleDonor->betweenColonAndValue : '',
+            betweenColonAndValue: $styleDonor !== null ? $styleDonor->betweenColonAndValue : ' ',
             afterValue: $styleDonor !== null ? $styleDonor->afterValue : $this->beforeCloseBrace,
         );
         $objectItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
@@ -109,6 +111,8 @@ final class ObjectNode extends AbstractNodeJson
         if ($lastItem instanceof ObjectItemNode) {
             $lastItem->afterValue = $this->separatorAfterValue();
             $lastItem->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+        } else {
+            $this->afterOpenBrace = $beforeKey;
         }
 
         $this->items[] = $objectItemNode;
@@ -126,6 +130,10 @@ final class ObjectNode extends AbstractNodeJson
             $firstItemBeforeKey = $this->items[0]->beforeKey;
 
             return $firstItemBeforeKey !== '' ? $firstItemBeforeKey : ' ';
+        }
+
+        if (str_contains($this->afterOpenBrace, "\n") || str_contains($this->afterOpenBrace, "\r")) {
+            return $this->afterOpenBrace . '    ';
         }
 
         return $this->afterOpenBrace;

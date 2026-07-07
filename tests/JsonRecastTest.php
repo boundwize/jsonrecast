@@ -547,4 +547,30 @@ JSON,
             $printed,
         );
     }
+
+    public function testObjectNodeSetFormatsFirstItemAddedToParsedEmptyMultilineObject(): void
+    {
+        $jsonDocument = JsonRecast::parse("{\n}");
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('name', new StringNode('jsonrecast'));
+
+        $this->assertSame(
+            "{\n    \"name\": \"jsonrecast\"\n}",
+            JsonRecast::print($jsonDocument),
+        );
+    }
+
+    public function testArrayNodeAppendFormatsFirstItemAddedToParsedEmptyMultilineArray(): void
+    {
+        $jsonDocument = JsonRecast::parse("[\n]");
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->append(new StringNode('jsonrecast'));
+
+        $this->assertSame(
+            "[\n    \"jsonrecast\"\n]",
+            JsonRecast::print($jsonDocument),
+        );
+    }
 }

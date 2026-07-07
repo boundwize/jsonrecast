@@ -11,6 +11,7 @@ use function array_key_exists;
 use function array_splice;
 use function count;
 use function max;
+use function str_contains;
 
 final class ArrayNode extends AbstractNodeJson
 {
@@ -33,9 +34,10 @@ final class ArrayNode extends AbstractNodeJson
     {
         $index         = $this->normalizeInsertionIndex($index);
         $itemCount     = count($this->items);
+        $beforeValue   = $this->beforeValueForInsertedItem($index);
         $arrayItemNode = new ArrayItemNode(
             value: $nodeJson,
-            beforeValue: $this->beforeValueForInsertedItem($index),
+            beforeValue: $beforeValue,
             afterValue: $this->afterValueForInsertedItem($index),
         );
         $arrayItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
@@ -51,6 +53,10 @@ final class ArrayNode extends AbstractNodeJson
 
             $this->items[$lastIndex]->afterValue = $this->separatorAfterValue();
             $this->items[$lastIndex]->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+        }
+
+        if ($itemCount === 0) {
+            $this->afterOpenBracket = $beforeValue;
         }
 
         array_splice($this->items, $index, 0, [$arrayItemNode]);
@@ -98,6 +104,13 @@ final class ArrayNode extends AbstractNodeJson
     private function beforeValueForInsertedItem(int $index): string
     {
         if ($index === 0) {
+            if (
+                $this->items === []
+                && (str_contains($this->afterOpenBracket, "\n") || str_contains($this->afterOpenBracket, "\r"))
+            ) {
+                return $this->afterOpenBracket . '    ';
+            }
+
             return $this->afterOpenBracket;
         }
 

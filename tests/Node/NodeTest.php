@@ -274,7 +274,20 @@ final class NodeTest extends TestCase
         $this->assertCount(1, $objectNode->items);
         // Empty object falls back to afterOpenBrace for the first item's beforeKey
         $this->assertSame(' ', $objectNode->items[0]->beforeKey);
+        $this->assertSame(' ', $objectNode->items[0]->betweenColonAndValue);
         $this->assertSame('a', $objectNode->items[0]->key->value);
+    }
+
+    public function testObjectNodeSetAppendsToEmptyMultilineObjectWithDefaultIndent(): void
+    {
+        $objectNode = new ObjectNode([], afterOpenBrace: "\n", beforeCloseBrace: "\n");
+
+        $objectNode->set('a', new StringNode('hello'));
+
+        $this->assertCount(1, $objectNode->items);
+        $this->assertSame("\n    ", $objectNode->items[0]->beforeKey);
+        $this->assertSame(' ', $objectNode->items[0]->betweenColonAndValue);
+        $this->assertSame("\n", $objectNode->items[0]->afterValue);
     }
 
     public function testArrayNodeAppendToEmptyArrayUsesAfterOpenBracketAsBeforeValue(): void
@@ -288,5 +301,17 @@ final class NodeTest extends TestCase
         $this->assertSame(' ', $arrayNode->items[0]->beforeValue);
         $this->assertInstanceOf(StringNode::class, $arrayNode->items[0]->value);
         $this->assertSame('x', $arrayNode->items[0]->value->value);
+    }
+
+    public function testArrayNodeAppendToEmptyMultilineArrayUsesDefaultIndent(): void
+    {
+        $arrayNode = new ArrayNode([], afterOpenBracket: "\n", beforeCloseBracket: "\n");
+
+        $arrayNode->append(new StringNode('x'));
+
+        $this->assertCount(1, $arrayNode->items);
+        $this->assertSame("\n    ", $arrayNode->afterOpenBracket);
+        $this->assertSame("\n    ", $arrayNode->items[0]->beforeValue);
+        $this->assertSame("\n", $arrayNode->items[0]->afterValue);
     }
 }

@@ -25,6 +25,7 @@ use function is_string;
 use function json_decode;
 use function json_encode;
 use function preg_split;
+use function str_contains;
 use function str_ends_with;
 use function str_repeat;
 use function strlen;
@@ -242,7 +243,10 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         PrintContext $printContext,
         bool $detectScalarMutation,
     ): string {
-        if ($this->shouldPrintContainerBestEffort($arrayNode, $arrayNode->items)) {
+        if (
+            $this->shouldPrintContainerBestEffort($arrayNode, $arrayNode->items)
+            || $this->shouldPrintInsertedMultilineArrayItemsBestEffort($arrayNode)
+        ) {
             return $this->printArrayBestEffort($arrayNode, $printContext, $detectScalarMutation);
         }
 
@@ -432,6 +436,30 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     {
         return ! is_int($nodeJson->getAttribute(NodeAttributes::START_OFFSET))
             && ! is_string($nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT));
+    }
+
+    private function shouldPrintInsertedMultilineArrayItemsBestEffort(ArrayNode $arrayNode): bool
+    {
+        if ($arrayNode->afterOpenBracket !== '' || $arrayNode->beforeCloseBracket !== '') {
+            return false;
+        }
+
+        foreach ($arrayNode->items as $item) {
+            if (! $this->isSyntheticItem($item)) {
+                continue;
+            }
+
+            $originalText = $item->value->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+
+            if (
+                is_string($originalText)
+                && (str_contains($originalText, "\n") || str_contains($originalText, "\r"))
+            ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function reindentOriginalText(

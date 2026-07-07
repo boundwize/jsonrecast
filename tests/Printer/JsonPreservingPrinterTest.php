@@ -180,6 +180,14 @@ JSON,
         $this->assertSame('"json"', (new JsonPreservingPrinter())->print($stringNode));
     }
 
+    public function testItPreservesOriginalTextWithoutDepthMetadata(): void
+    {
+        $numberNode = new NumberNode('1');
+        $numberNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '1');
+
+        $this->assertSame('1', (new JsonPreservingPrinter())->print($numberNode));
+    }
+
     public function testItDoesNotReuseCommaWhitespaceWhenFirstInlineArrayItemIsRemoved(): void
     {
         $jsonDocument = (new JsonParser())->parse('["first", "second"]');
@@ -923,6 +931,99 @@ JSON,
         $nodeChangeSet->markChanged($jsonDocument->value);
 
         $this->assertSame('{"meta":{"name":"old"}}', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
+    }
+
+    public function testItReindentsParsedMultilineObjectMovedDeeper(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "template": {
+        "name": "json",
+
+        "meta": {
+            "active": true
+        }
+    },
+    "target": {
+        "nested": {}
+    }
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $templateItem = $jsonDocument->value->get('template');
+        $targetItem   = $jsonDocument->value->get('target');
+        $this->assertInstanceOf(ObjectItemNode::class, $templateItem);
+        $this->assertInstanceOf(ObjectItemNode::class, $targetItem);
+        $this->assertInstanceOf(ObjectNode::class, $templateItem->value);
+        $this->assertInstanceOf(ObjectNode::class, $targetItem->value);
+
+        $nestedItem = $targetItem->value->get('nested');
+        $this->assertInstanceOf(ObjectItemNode::class, $nestedItem);
+        $nestedItem->value = $templateItem->value;
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "template": {
+        "name": "json",
+
+        "meta": {
+            "active": true
+        }
+    },
+    "target": {
+        "nested": {
+            "name": "json",
+
+            "meta": {
+                "active": true
+            }
+        }
+    }
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItReindentsParsedMultilineObjectMovedShallower(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "template": {
+        "name": "json",
+
+        "meta": {
+            "active": true
+        }
+    }
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $templateItem = $jsonDocument->value->get('template');
+        $this->assertInstanceOf(ObjectItemNode::class, $templateItem);
+        $this->assertInstanceOf(ObjectNode::class, $templateItem->value);
+
+        $jsonDocument->value = $templateItem->value;
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "name": "json",
+
+    "meta": {
+        "active": true
+    }
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
     }
 
     public function testItPrintsNestedInPlaceStringMutationWhenArrayIsChanged(): void

@@ -20,6 +20,8 @@ final class NodeAttributes
 
     public const TRAILING_NEWLINE = 'trailingNewline';
 
+    public const DEPTH = 'depth';
+
     private function __construct()
     {
     }

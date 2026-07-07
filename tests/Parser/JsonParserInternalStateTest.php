@@ -23,7 +23,7 @@ final class JsonParserInternalStateTest extends TestCase
         $this->expectException(ParseError::class);
         $this->expectExceptionMessage('Expected JSON string.');
 
-        $this->invokeParserMethod($jsonParser, 'parseString');
+        $this->invokeParserMethod($jsonParser, 'parseString', 0);
     }
 
     public function testCurrentTokenFallsBackToEndOfFileToken(): void

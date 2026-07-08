@@ -14,9 +14,9 @@ use RuntimeException;
 
 final class JsonRecast
 {
-    public static function parse(string $source): JsonDocument
+    public static function parse(string $source, int $maximumDepth = JsonParser::DEFAULT_MAXIMUM_DEPTH): JsonDocument
     {
-        return (new JsonParser())->parse($source);
+        return (new JsonParser($maximumDepth))->parse($source);
     }
 
     public static function traverse(JsonDocument $jsonDocument, NodeJsonVisitor $nodeJsonVisitor): JsonRecastResult

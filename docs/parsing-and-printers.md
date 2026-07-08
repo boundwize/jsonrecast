@@ -51,6 +51,28 @@ try {
 
 `ParseError` also exposes the zero-based source `$offset`.
 
+## Maximum Depth
+
+JsonRecast limits JSON nesting depth to `512` by default, matching PHP's `json_decode()` default depth. If input exceeds the configured limit, parsing throws a catchable `ParseError` with the message `Maximum stack depth exceeded.`
+
+You can raise or lower the limit when parsing through the facade:
+
+```php
+use Boundwize\JsonRecast\JsonRecast;
+
+$document = JsonRecast::parse($source, maximumDepth: 1024);
+```
+
+Or when using `JsonParser` directly:
+
+```php
+use Boundwize\JsonRecast\Parser\JsonParser;
+
+$document = (new JsonParser(maximumDepth: 1024))->parse($source);
+```
+
+The maximum depth must be greater than `0`.
+
 ## Preserving Printer
 
 `JsonRecast::print()` uses `JsonPreservingPrinter`. When it receives a parsed document without changes, it can return the original text exactly.

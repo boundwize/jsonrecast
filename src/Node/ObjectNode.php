@@ -137,7 +137,7 @@ final class ObjectNode extends AbstractNodeJson
         }
 
         if (str_contains($this->afterOpenBrace, "\n") || str_contains($this->afterOpenBrace, "\r")) {
-            return $this->afterOpenBrace . '    ';
+            return $this->afterOpenBrace . $this->indentForNewItem();
         }
 
         return $this->afterOpenBrace;

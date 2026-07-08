@@ -113,7 +113,7 @@ final class ArrayNode extends AbstractNodeJson
                 $this->items === []
                 && (str_contains($this->afterOpenBracket, "\n") || str_contains($this->afterOpenBracket, "\r"))
             ) {
-                return $this->afterOpenBracket . '    ';
+                return $this->afterOpenBracket . $this->indentForNewItem();
             }
 
             return $this->afterOpenBracket;

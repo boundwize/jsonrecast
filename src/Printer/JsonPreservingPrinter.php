@@ -123,7 +123,10 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         PrintContext $printContext,
         bool $detectScalarMutation,
     ): string {
-        if ($this->shouldPrintContainerBestEffort($objectNode, $objectNode->items)) {
+        if (
+            $this->shouldPrintContainerBestEffort($objectNode, $objectNode->items)
+            || $this->shouldPrintInsertedMultilineItemsBestEffort($objectNode)
+        ) {
             return $this->printObjectBestEffort($objectNode, $printContext, $detectScalarMutation);
         }
 
@@ -245,7 +248,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     ): string {
         if (
             $this->shouldPrintContainerBestEffort($arrayNode, $arrayNode->items)
-            || $this->shouldPrintInsertedMultilineArrayItemsBestEffort($arrayNode)
+            || $this->shouldPrintInsertedMultilineItemsBestEffort($arrayNode)
         ) {
             return $this->printArrayBestEffort($arrayNode, $printContext, $detectScalarMutation);
         }
@@ -438,13 +441,13 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             && ! is_string($nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT));
     }
 
-    private function shouldPrintInsertedMultilineArrayItemsBestEffort(ArrayNode $arrayNode): bool
+    private function shouldPrintInsertedMultilineItemsBestEffort(ArrayNode|ObjectNode $containerNode): bool
     {
-        if ($arrayNode->afterOpenBracket !== '' || $arrayNode->beforeCloseBracket !== '') {
+        if ($this->hasContainerEdgeWhitespace($containerNode)) {
             return false;
         }
 
-        foreach ($arrayNode->items as $item) {
+        foreach ($containerNode->items as $item) {
             if (! $this->isSyntheticItem($item)) {
                 continue;
             }
@@ -460,6 +463,13 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         }
 
         return false;
+    }
+
+    private function hasContainerEdgeWhitespace(ArrayNode|ObjectNode $containerNode): bool
+    {
+        return $containerNode instanceof ArrayNode
+            ? $containerNode->afterOpenBracket !== '' || $containerNode->beforeCloseBracket !== ''
+            : $containerNode->afterOpenBrace !== '' || $containerNode->beforeCloseBrace !== '';
     }
 
     private function reindentOriginalText(

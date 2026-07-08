@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Tests\Parser;
 
+use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use Boundwize\JsonRecast\Parser\JsonParser;
 use Boundwize\JsonRecast\Parser\ParseError;
+use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+
+use function str_repeat;
 
 final class JsonParserErrorTest extends TestCase
 {
@@ -71,5 +75,49 @@ final class JsonParserErrorTest extends TestCase
         }
 
         $this->fail('Expected parser to reject invalid JSON.');
+    }
+
+    public function testItRejectsJsonThatExceedsMaximumNestingDepth(): void
+    {
+        $json = str_repeat('[', 512) . '1' . str_repeat(']', 512);
+
+        try {
+            (new JsonParser())->parse($json);
+        } catch (ParseError $parseError) {
+            $this->assertSame('Maximum stack depth exceeded.', $parseError->getMessage());
+            $this->assertSame(512, $parseError->offset);
+            $this->assertSame(1, $parseError->sourceLine);
+            $this->assertSame(513, $parseError->column);
+
+            return;
+        }
+
+        $this->fail('Expected parser to reject too deeply nested JSON.');
+    }
+
+    public function testMaximumNestingDepthCanBeOverridden(): void
+    {
+        $json = str_repeat('[', 512) . '1' . str_repeat(']', 512);
+
+        $jsonDocument = (new JsonParser(maximumDepth: 513))->parse($json);
+
+        $this->assertSame($json, $jsonDocument->getAttribute(NodeAttributes::ORIGINAL_TEXT));
+    }
+
+    public function testMaximumNestingDepthMustBeGreaterThanZero(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum depth must be greater than 0.');
+
+        new JsonParser(maximumDepth: 0);
+    }
+
+    public function testItParsesJsonAtMaximumNestingBoundary(): void
+    {
+        $json = str_repeat('[', 511) . '1' . str_repeat(']', 511);
+
+        $jsonDocument = (new JsonParser())->parse($json);
+
+        $this->assertSame($json, $jsonDocument->getAttribute(NodeAttributes::ORIGINAL_TEXT));
     }
 }

@@ -15,6 +15,7 @@ use Boundwize\JsonRecast\Node\NumberNode;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
+use InvalidArgumentException;
 use JsonException;
 
 use function count;
@@ -32,6 +33,8 @@ use const JSON_THROW_ON_ERROR;
 
 final class JsonParser
 {
+    public const DEFAULT_MAXIMUM_DEPTH = 512;
+
     private string $source = '';
 
     private string $indent = '    ';
@@ -40,6 +43,13 @@ final class JsonParser
     private array $tokens = [];
 
     private int $position = 0;
+
+    public function __construct(private readonly int $maximumDepth = self::DEFAULT_MAXIMUM_DEPTH)
+    {
+        if ($maximumDepth < 1) {
+            throw new InvalidArgumentException('Maximum depth must be greater than 0.');
+        }
+    }
 
     public function parse(string $source): JsonDocument
     {
@@ -67,6 +77,8 @@ final class JsonParser
 
     private function parseValue(int $depth): NodeJson
     {
+        $this->guardMaximumDepth($depth);
+
         return match ($this->currentToken()->type) {
             TokenType::LEFT_BRACE => $this->parseObject($depth),
             TokenType::LEFT_BRACKET => $this->parseArray($depth),
@@ -77,6 +89,17 @@ final class JsonParser
             TokenType::NULL => $this->parseNull($depth),
             default => throw $this->unexpectedToken('JSON value'),
         };
+    }
+
+    private function guardMaximumDepth(int $depth): void
+    {
+        if ($depth < $this->maximumDepth) {
+            return;
+        }
+
+        $token = $this->currentToken();
+
+        throw new ParseError('Maximum stack depth exceeded.', $token->startOffset, $token->line, $token->column);
     }
 
     private function parseObject(int $depth): ObjectNode

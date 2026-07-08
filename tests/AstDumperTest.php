@@ -30,21 +30,19 @@ JSON);
         $this->assertSame(
             <<<'TXT'
 JsonDocument
-  value: ObjectNode
-    items:
-      [0]: ObjectItemNode
-        key: StringNode(value: "name")
-        value: StringNode(value: "jsonrecast")
-      [1]: ObjectItemNode
-        key: StringNode(value: "items")
-        value: ArrayNode
-          items:
-            [0]: ArrayItemNode
-              value: NumberNode(rawValue: "1")
-            [1]: ArrayItemNode
-              value: BooleanNode(value: true)
-            [2]: ArrayItemNode
-              value: NullNode
+└── value: ObjectNode (2 items)
+    ├── [0]: ObjectItemNode
+    │   ├── key: StringNode(value: "name")
+    │   └── value: StringNode(value: "jsonrecast")
+    └── [1]: ObjectItemNode
+        ├── key: StringNode(value: "items")
+        └── value: ArrayNode (3 items)
+            ├── [0]: ArrayItemNode
+            │   └── value: NumberNode(rawValue: "1")
+            ├── [1]: ArrayItemNode
+            │   └── value: BooleanNode(value: true)
+            └── [2]: ArrayItemNode
+                └── value: NullNode
 TXT,
             JsonRecast::dumpAst($jsonDocument),
         );
@@ -66,7 +64,7 @@ TXT,
         $this->assertSame(
             <<<'TXT'
 JsonDocument
-  value: StringNode(value: "new")
+└── value: StringNode(value: "new")
 TXT,
             (new AstDumper())->dump($jsonRecastResult),
         );
@@ -83,7 +81,7 @@ JSON);
 
         $dump = JsonRecast::dumpAst($jsonDocument, includeAttributes: true);
 
-        $this->assertStringContainsString('attributes:', $dump);
+        $this->assertStringContainsString('attributes', $dump);
         $this->assertStringContainsString('trailingNewline: true', $dump);
         $this->assertStringContainsString('originalText: "{\n    \"name\" : \"jsonrecast\"\n}\n"', $dump);
     }

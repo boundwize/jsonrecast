@@ -36,21 +36,19 @@ echo JsonRecast::dumpAst($document);
 
 ```text
 JsonDocument
-  value: ObjectNode
-    items:
-      [0]: ObjectItemNode
-        key: StringNode(value: "name")
-        value: StringNode(value: "jsonrecast")
-      [1]: ObjectItemNode
-        key: StringNode(value: "items")
-        value: ArrayNode
-          items:
-            [0]: ArrayItemNode
-              value: NumberNode(rawValue: "1")
-            [1]: ArrayItemNode
-              value: BooleanNode(value: true)
-            [2]: ArrayItemNode
-              value: NullNode
+└── value: ObjectNode (2 items)
+    ├── [0]: ObjectItemNode
+    │   ├── key: StringNode(value: "name")
+    │   └── value: StringNode(value: "jsonrecast")
+    └── [1]: ObjectItemNode
+        ├── key: StringNode(value: "items")
+        └── value: ArrayNode (3 items)
+            ├── [0]: ArrayItemNode
+            │   └── value: NumberNode(rawValue: "1")
+            ├── [1]: ArrayItemNode
+            │   └── value: BooleanNode(value: true)
+            └── [2]: ArrayItemNode
+                └── value: NullNode
 ```
 
 ## Dump A Traversal Result

@@ -17,6 +17,7 @@ use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitor;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
 use Boundwize\JsonRecast\Parser\ParseError;
 use Boundwize\JsonRecast\Value\JsonValue;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -147,6 +148,16 @@ JSON, JsonRecast::print($jsonRecastResult));
         $this->expectExceptionMessage('Maximum stack depth exceeded.');
 
         JsonRecast::parse('[[1]]', maximumDepth: 2);
+    }
+
+    public function testPrintAcceptsCustomMaximumDepth(): void
+    {
+        $jsonDocument = JsonRecast::parse('[[1]]', maximumDepth: 3);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
+        JsonRecast::print($jsonDocument, maximumDepth: 2);
     }
 
     public function testChangedDocumentPreservesRootWhitespace(): void

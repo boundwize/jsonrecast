@@ -11,6 +11,8 @@ use Boundwize\JsonRecast\Node\NumberNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\Printer\JsonPrettyPrinter;
+use Boundwize\JsonRecast\Value\JsonValue;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -47,5 +49,30 @@ final class JsonPrettyPrinterTest extends TestCase
         $this->expectExceptionMessage('Unable to encode JSON string.');
 
         (new JsonPrettyPrinter())->print(new StringNode("\xB1"));
+    }
+
+    public function testItRejectsNodeThatExceedsMaximumNestingDepth(): void
+    {
+        $nodeJson = JsonValue::from([[0]], maximumDepth: 3);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
+        (new JsonPrettyPrinter(maximumDepth: 2))->print($nodeJson);
+    }
+
+    public function testMaximumNestingDepthCanBeOverridden(): void
+    {
+        $nodeJson = JsonValue::from([[0]], maximumDepth: 3);
+
+        $this->assertSame("[\n    [\n        0\n    ]\n]", (new JsonPrettyPrinter(maximumDepth: 3))->print($nodeJson));
+    }
+
+    public function testMaximumNestingDepthMustBeGreaterThanZero(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum depth must be greater than 0.');
+
+        new JsonPrettyPrinter(maximumDepth: 0);
     }
 }

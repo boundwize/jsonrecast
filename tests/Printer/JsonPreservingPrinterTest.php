@@ -17,6 +17,8 @@ use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeTraverser\NodeChangeSet;
 use Boundwize\JsonRecast\Parser\JsonParser;
 use Boundwize\JsonRecast\Printer\JsonPreservingPrinter;
+use Boundwize\JsonRecast\Value\JsonValue;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 use RuntimeException;
@@ -139,6 +141,34 @@ JSON,
 
         $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
         $this->assertSame("[\n        ]", (new JsonPreservingPrinter())->print($jsonDocument->value));
+    }
+
+    public function testItRejectsNodeThatExceedsMaximumNestingDepth(): void
+    {
+        $nodeJson = JsonValue::from([[0]], maximumDepth: 3);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
+        (new JsonPreservingPrinter(maximumDepth: 2))->print(new JsonDocument($nodeJson));
+    }
+
+    public function testMaximumNestingDepthCanBeOverridden(): void
+    {
+        $nodeJson = JsonValue::from([[0]], maximumDepth: 3);
+
+        $this->assertSame(
+            "[\n    [\n        0\n    ]\n]",
+            (new JsonPreservingPrinter(maximumDepth: 3))->print(new JsonDocument($nodeJson)),
+        );
+    }
+
+    public function testMaximumNestingDepthMustBeGreaterThanZero(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum depth must be greater than 0.');
+
+        new JsonPreservingPrinter(maximumDepth: 0);
     }
 
     public function testItPreservesTrailingNewlineWhenDocumentAfterValueIsEmpty(): void

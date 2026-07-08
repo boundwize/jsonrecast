@@ -36,13 +36,15 @@ final class JsonRecast
         );
     }
 
-    public static function print(JsonRecastResult|JsonDocument $input): string
-    {
+    public static function print(
+        JsonRecastResult|JsonDocument $input,
+        int $maximumDepth = JsonParser::DEFAULT_MAXIMUM_DEPTH,
+    ): string {
         if ($input instanceof JsonRecastResult) {
-            return (new JsonPreservingPrinter($input->changeSet))->print($input->document);
+            return (new JsonPreservingPrinter($input->changeSet, maximumDepth: $maximumDepth))->print($input->document);
         }
 
-        return (new JsonPreservingPrinter())->print($input);
+        return (new JsonPreservingPrinter(maximumDepth: $maximumDepth))->print($input);
     }
 
     public static function dumpAst(

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Printer;
 
+use Boundwize\JsonRecast\Guard\MaximumDepthGuard;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
@@ -27,22 +28,32 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
 {
     public function __construct(
         private string $indent = '    ',
+        private int $maximumDepth = MaximumDepthGuard::DEFAULT_MAXIMUM_DEPTH,
     ) {
+        MaximumDepthGuard::validateMaximumDepth($maximumDepth);
     }
 
     public function print(NodeJson $nodeJson): string
     {
-        return $this->printNode($nodeJson, new PrintContext($this->indent));
+        return $this->printNode($nodeJson, new PrintContext($this->indent), 0);
     }
 
-    private function printNode(NodeJson $nodeJson, PrintContext $printContext): string
+    private function printNode(NodeJson $nodeJson, PrintContext $printContext, int $depth): string
     {
+        if (
+            ! $nodeJson instanceof JsonDocument
+            && ! $nodeJson instanceof ObjectItemNode
+            && ! $nodeJson instanceof ArrayItemNode
+        ) {
+            MaximumDepthGuard::guardMaximumDepth($this->maximumDepth, $depth);
+        }
+
         return match (true) {
-            $nodeJson instanceof JsonDocument => $this->printNode($nodeJson->value, $printContext),
-            $nodeJson instanceof ObjectNode => $this->printObject($nodeJson, $printContext),
-            $nodeJson instanceof ObjectItemNode => $this->printObjectItem($nodeJson, $printContext),
-            $nodeJson instanceof ArrayNode => $this->printArray($nodeJson, $printContext),
-            $nodeJson instanceof ArrayItemNode => $this->printNode($nodeJson->value, $printContext),
+            $nodeJson instanceof JsonDocument => $this->printNode($nodeJson->value, $printContext, $depth),
+            $nodeJson instanceof ObjectNode => $this->printObject($nodeJson, $printContext, $depth),
+            $nodeJson instanceof ObjectItemNode => $this->printObjectItem($nodeJson, $printContext, $depth),
+            $nodeJson instanceof ArrayNode => $this->printArray($nodeJson, $printContext, $depth),
+            $nodeJson instanceof ArrayItemNode => $this->printNode($nodeJson->value, $printContext, $depth),
             $nodeJson instanceof StringNode => $this->encodeString($nodeJson->value),
             $nodeJson instanceof NumberNode => $nodeJson->rawValue,
             $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
@@ -51,7 +62,7 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
         };
     }
 
-    private function printObject(ObjectNode $objectNode, PrintContext $printContext): string
+    private function printObject(ObjectNode $objectNode, PrintContext $printContext, int $depth): string
     {
         if ($objectNode->items === []) {
             return '{}';
@@ -62,7 +73,7 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
         foreach ($objectNode->items as $i => $item) {
             $output .= $printContext->newline
                 . $printContext->childIndentation()
-                . $this->printObjectItem($item, $printContext->next());
+                . $this->printObjectItem($item, $printContext->next(), $depth + 1);
 
             if ($i < count($objectNode->items) - 1) {
                 $output .= ',';
@@ -72,14 +83,14 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
         return $output . $printContext->newline . $printContext->indentation() . '}';
     }
 
-    private function printObjectItem(ObjectItemNode $objectItemNode, PrintContext $printContext): string
+    private function printObjectItem(ObjectItemNode $objectItemNode, PrintContext $printContext, int $depth): string
     {
         return $this->encodeString($objectItemNode->key->value)
             . ': '
-            . $this->printNode($objectItemNode->value, $printContext);
+            . $this->printNode($objectItemNode->value, $printContext, $depth);
     }
 
-    private function printArray(ArrayNode $arrayNode, PrintContext $printContext): string
+    private function printArray(ArrayNode $arrayNode, PrintContext $printContext, int $depth): string
     {
         if ($arrayNode->items === []) {
             return '[]';
@@ -90,7 +101,7 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
         foreach ($arrayNode->items as $i => $item) {
             $output .= $printContext->newline
                 . $printContext->childIndentation()
-                . $this->printNode($item->value, $printContext->next());
+                . $this->printNode($item->value, $printContext->next(), $depth + 1);
 
             if ($i < count($arrayNode->items) - 1) {
                 $output .= ',';

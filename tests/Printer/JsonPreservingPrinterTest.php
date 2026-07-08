@@ -679,6 +679,38 @@ JSON,
         );
     }
 
+    public function testItPrettyPrintsRootInlineObjectWhenInsertedItemValueHasMultilineOriginalText(): void
+    {
+        $fragment     = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "x": 1,
+    "y": 2
+}
+JSON,
+        );
+        $jsonDocument = (new JsonParser())->parse('{"p": 1, "q": 2}');
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('r', $fragment->value);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "p": 1,
+    "q": 2,
+    "r": {
+        "x": 1,
+        "y": 2
+    }
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItDoesNotPrintClosingWhitespaceBeforeObjectSeparatorsForSyntheticItems(): void
     {
         $items = [

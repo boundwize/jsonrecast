@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Node;
 
+use Boundwize\JsonRecast\Attribute\NodeAttributes;
+
 use function array_key_exists;
+use function is_string;
 
 abstract class AbstractNodeJson implements NodeJson
 {
@@ -37,5 +40,12 @@ abstract class AbstractNodeJson implements NodeJson
     public function removeAttribute(string $name): void
     {
         unset($this->attributes[$name]);
+    }
+
+    protected function indentForNewItem(): string
+    {
+        $indent = $this->getAttribute(NodeAttributes::INDENT);
+
+        return is_string($indent) ? $indent : '    ';
     }
 }

@@ -10,7 +10,6 @@ use Boundwize\JsonRecast\Node\Helper\StartOffsetHelper;
 use function array_pop;
 use function array_splice;
 use function count;
-use function is_string;
 use function max;
 use function str_contains;
 
@@ -138,17 +137,10 @@ final class ObjectNode extends AbstractNodeJson
         }
 
         if (str_contains($this->afterOpenBrace, "\n") || str_contains($this->afterOpenBrace, "\r")) {
-            return $this->afterOpenBrace . $this->indentForAppendedItem();
+            return $this->afterOpenBrace . $this->indentForNewItem();
         }
 
         return $this->afterOpenBrace;
-    }
-
-    private function indentForAppendedItem(): string
-    {
-        $indent = $this->getAttribute(NodeAttributes::INDENT);
-
-        return is_string($indent) ? $indent : '    ';
     }
 
     private function separatorAfterValue(): string

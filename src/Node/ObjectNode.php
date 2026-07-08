@@ -85,6 +85,10 @@ final class ObjectNode extends AbstractNodeJson
         }
 
         if ($removed) {
+            if ($this->items === []) {
+                $this->afterOpenBrace = $this->beforeCloseBrace;
+            }
+
             $this->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         }
 

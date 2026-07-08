@@ -1116,6 +1116,32 @@ JSON,
         $this->assertSame("{\n}", (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItDoesNotDoubleIndentObjectItemAppendedAfterAllKeysAreRemoved(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "a": 1,
+    "b": 2
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->remove('a');
+        $jsonDocument->value->remove('b');
+        $jsonDocument->value->set('c', new NumberNode('3'));
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "c": 3
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesBeforeCloseBracketWhenLastItemIsRemoved(): void
     {
         $jsonDocument = (new JsonParser())->parse("[\n    1\n]");
@@ -1124,6 +1150,32 @@ JSON,
         $jsonDocument->value->removeAt(0);
 
         $this->assertSame("[\n]", (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItDoesNotDoubleIndentArrayItemAppendedAfterAllItemsAreRemoved(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+[
+    1,
+    2
+]
+JSON,
+        );
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->removeAt(0);
+        $jsonDocument->value->removeAt(0);
+        $jsonDocument->value->append(new NumberNode('3'));
+
+        $this->assertSame(
+            <<<'JSON'
+[
+    3
+]
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
     }
 
     /**

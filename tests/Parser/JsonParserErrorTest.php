@@ -40,4 +40,36 @@ final class JsonParserErrorTest extends TestCase
 
         (new JsonParser())->parse($source);
     }
+
+    public function testItReportsUtf8ErrorColumnsByCharacter(): void
+    {
+        try {
+            (new JsonParser())->parse('{"café": tru}');
+        } catch (ParseError $parseError) {
+            $this->assertSame('Unexpected character.', $parseError->getMessage());
+            $this->assertSame(10, $parseError->offset);
+            $this->assertSame(1, $parseError->sourceLine);
+            $this->assertSame(10, $parseError->column);
+
+            return;
+        }
+
+        $this->fail('Expected parser to reject invalid JSON.');
+    }
+
+    public function testItReportsUtf8ErrorColumnsByCharacterWithEmoji(): void
+    {
+        try {
+            (new JsonParser())->parse('{"emoji":"😀", "valid": nul}');
+        } catch (ParseError $parseError) {
+            $this->assertSame('Unexpected character.', $parseError->getMessage());
+            $this->assertSame(26, $parseError->offset);
+            $this->assertSame(1, $parseError->sourceLine);
+            $this->assertSame(24, $parseError->column);
+
+            return;
+        }
+
+        $this->fail('Expected parser to reject invalid JSON.');
+    }
 }

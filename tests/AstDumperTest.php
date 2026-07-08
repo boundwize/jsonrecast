@@ -79,10 +79,59 @@ TXT,
 
 JSON);
 
-        $dump = JsonRecast::dumpAst($jsonDocument, includeAttributes: true);
-
-        $this->assertStringContainsString('attributes', $dump);
-        $this->assertStringContainsString('trailingNewline: true', $dump);
-        $this->assertStringContainsString('originalText: "{\n    \"name\" : \"jsonrecast\"\n}\n"', $dump);
+        $this->assertSame(
+            <<<'TXT'
+JsonDocument
+├── attributes
+│   ├── startOffset: 0
+│   ├── endOffset: 30
+│   ├── depth: 0
+│   ├── indent: "    "
+│   ├── originalText: |
+│   │   {
+│   │       "name" : "jsonrecast"
+│   │   }
+│   ├── source: |
+│   │   {
+│   │       "name" : "jsonrecast"
+│   │   }
+│   ├── newline: "\n"
+│   └── trailingNewline: true
+└── value: ObjectNode (1 item)
+    ├── attributes
+    │   ├── startOffset: 0
+    │   ├── endOffset: 29
+    │   ├── depth: 0
+    │   ├── indent: "    "
+    │   └── originalText: |-
+    │       {
+    │           "name" : "jsonrecast"
+    │       }
+    └── [0]: ObjectItemNode
+        ├── attributes
+        │   ├── startOffset: 1
+        │   ├── endOffset: 28
+        │   ├── depth: 1
+        │   ├── indent: "    "
+        │   └── originalText: |
+        │
+        │           "name" : "jsonrecast"
+        ├── key: StringNode(value: "name")
+        │   └── attributes
+        │       ├── startOffset: 6
+        │       ├── endOffset: 12
+        │       ├── depth: 1
+        │       ├── indent: "    "
+        │       └── originalText: "name"
+        └── value: StringNode(value: "jsonrecast")
+            └── attributes
+                ├── startOffset: 15
+                ├── endOffset: 27
+                ├── depth: 1
+                ├── indent: "    "
+                └── originalText: "jsonrecast"
+TXT,
+            JsonRecast::dumpAst($jsonDocument, includeAttributes: true),
+        );
     }
 }

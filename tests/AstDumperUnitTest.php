@@ -89,6 +89,23 @@ TXT,
         $this->assertStringContainsString('localized: {"note":"' . $note . '"}', $dump);
     }
 
+    public function testItFormatsSourceTextAttributesWithoutEscapingQuotes(): void
+    {
+        $stringNode = new StringNode('name');
+        $stringNode->setAttribute('originalText', '"name"');
+        $stringNode->setAttribute('label', '"name"');
+
+        $this->assertSame(
+            <<<'TXT'
+StringNode(value: "name")
+└── attributes
+    ├── originalText: "name"
+    └── label: "\"name\""
+TXT,
+            (new AstDumper(includeAttributes: true))->dump($stringNode),
+        );
+    }
+
     public function testItOmitsEmptyAttributes(): void
     {
         $this->assertSame(

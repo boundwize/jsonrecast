@@ -16,7 +16,9 @@ use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use RuntimeException;
 
+use function array_pop;
 use function count;
+use function explode;
 use function get_debug_type;
 use function implode;
 use function is_array;
@@ -27,7 +29,11 @@ use function is_object;
 use function is_string;
 use function json_encode;
 use function max;
+use function rtrim;
+use function str_contains;
+use function str_ends_with;
 use function str_repeat;
+use function str_replace;
 use function strlen;
 
 use const JSON_UNESCAPED_SLASHES;
@@ -204,13 +210,65 @@ final readonly class AstDumper
         $index       = 0;
 
         foreach ($values as $key => $value) {
+            if (is_string($value) && $this->shouldFormatAsBlockString($value)) {
+                $this->appendBlockString($lines, $key, $value, $childPrefix, $index === $lastIndex);
+                $index++;
+
+                continue;
+            }
+
             $lines[] = $this->line(
                 $childPrefix,
                 $index === $lastIndex,
-                $key . ': ' . $this->formatValue($value),
+                $key . ': ' . $this->formatNamedValue($key, $value),
             );
             $index++;
         }
+    }
+
+    /**
+     * @param list<string> $lines
+     */
+    private function appendBlockString(
+        array &$lines,
+        string $key,
+        string $value,
+        string $prefix,
+        bool $isLast,
+    ): void {
+        $normalizedValue = str_replace(["\r\n", "\r"], "\n", $value);
+        $endsWithNewline = str_ends_with($normalizedValue, "\n");
+        $blockLines      = explode("\n", $normalizedValue);
+
+        if ($endsWithNewline) {
+            array_pop($blockLines);
+        }
+
+        $lines[]       = $this->line($prefix, $isLast, $key . ': ' . ($endsWithNewline ? '|' : '|-'));
+        $contentPrefix = $this->childPrefix($prefix, $isLast);
+
+        foreach ($blockLines as $blockLine) {
+            $lines[] = $blockLine === '' ? rtrim($contentPrefix) : $contentPrefix . $blockLine;
+        }
+    }
+
+    private function shouldFormatAsBlockString(string $value): bool
+    {
+        return strlen($value) > 1 && (str_contains($value, "\n") || str_contains($value, "\r"));
+    }
+
+    private function formatNamedValue(string $key, mixed $value): string
+    {
+        if (is_string($value) && $this->shouldFormatAsSourceText($key)) {
+            return $value;
+        }
+
+        return $this->formatValue($value);
+    }
+
+    private function shouldFormatAsSourceText(string $key): bool
+    {
+        return $key === 'originalText' || $key === 'source';
     }
 
     private function line(

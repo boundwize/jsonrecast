@@ -711,6 +711,55 @@ JSON,
         );
     }
 
+    public function testItPrettyPrintsInlineAncestorArrayWhenNestedMutationPrintsMultiline(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "big": {
+        "x": 1,
+        "y": 2
+    },
+    "outer": [[1, 2], [3, 4]]
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $bigItem   = $jsonDocument->value->get('big');
+        $outerItem = $jsonDocument->value->get('outer');
+        $this->assertInstanceOf(ObjectItemNode::class, $bigItem);
+        $this->assertInstanceOf(ObjectItemNode::class, $outerItem);
+        $this->assertInstanceOf(ArrayNode::class, $outerItem->value);
+
+        $innerItem = $outerItem->value->items[0];
+        $this->assertInstanceOf(ArrayNode::class, $innerItem->value);
+        $innerItem->value->append($bigItem->value);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "big": {
+        "x": 1,
+        "y": 2
+    },
+    "outer": [
+        [
+            1,
+            2,
+            {
+                "x": 1,
+                "y": 2
+            }
+        ],
+        [3, 4]
+    ]
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItDoesNotPrintClosingWhitespaceBeforeObjectSeparatorsForSyntheticItems(): void
     {
         $items = [

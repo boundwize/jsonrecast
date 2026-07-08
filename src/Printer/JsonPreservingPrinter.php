@@ -123,9 +123,16 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         PrintContext $printContext,
         bool $detectScalarMutation,
     ): string {
+        $childDetectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($containerNode);
+
         if (
             $this->shouldPrintContainerBestEffort($containerNode, $containerNode->items)
             || $this->shouldPrintInsertedMultilineItemsBestEffort($containerNode)
+            || $this->shouldPrintChangedMultilineItemValuesBestEffort(
+                $containerNode->items,
+                $printContext,
+                $childDetectScalarMutation,
+            )
         ) {
             return $this->printContainerBestEffort($containerNode, $printContext, $detectScalarMutation);
         }
@@ -134,7 +141,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             return $this->printEmptyContainer($containerNode);
         }
 
-        $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($containerNode);
+        $detectScalarMutation = $childDetectScalarMutation;
         $output               = $this->openingDelimiter($containerNode);
         $lastIndex            = count($containerNode->items) - 1;
         $itemsInOriginalOrder = $this->getItemsInOriginalOrder($containerNode->items);
@@ -417,6 +424,29 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 is_string($originalText)
                 && (str_contains($originalText, "\n") || str_contains($originalText, "\r"))
             ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param list<ArrayItemNode|ObjectItemNode> $items
+     */
+    private function shouldPrintChangedMultilineItemValuesBestEffort(
+        array $items,
+        PrintContext $printContext,
+        bool $detectScalarMutation,
+    ): bool {
+        foreach ($items as $item) {
+            if (! $this->isChanged($item->value)) {
+                continue;
+            }
+
+            $printedValue = $this->printNode($item->value, $printContext->next(), $detectScalarMutation);
+
+            if (str_contains($printedValue, "\n") || str_contains($printedValue, "\r")) {
                 return true;
             }
         }

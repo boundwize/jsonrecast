@@ -1218,6 +1218,21 @@ JSON,
         );
     }
 
+    public function testItPreservesTabIndentWhenObjectItemAppendedAfterAllKeysAreRemoved(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("{\n\t\"a\": 1,\n\t\"b\": 2\n}");
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->remove('a');
+        $jsonDocument->value->remove('b');
+        $jsonDocument->value->set('c', new NumberNode('3'));
+
+        $this->assertSame(
+            "{\n\t\"c\": 3\n}",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesBeforeCloseBracketWhenLastItemIsRemoved(): void
     {
         $jsonDocument = (new JsonParser())->parse("[\n    1\n]");
@@ -1250,6 +1265,21 @@ JSON,
     3
 ]
 JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItPreservesTabIndentWhenArrayItemAppendedAfterAllItemsAreRemoved(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("[\n\t1,\n\t2\n]");
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->removeAt(0);
+        $jsonDocument->value->removeAt(0);
+        $jsonDocument->value->append(new NumberNode('3'));
+
+        $this->assertSame(
+            "[\n\t3\n]",
             (new JsonPreservingPrinter())->print($jsonDocument),
         );
     }

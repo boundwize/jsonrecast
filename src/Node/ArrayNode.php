@@ -10,6 +10,7 @@ use Boundwize\JsonRecast\Node\Helper\StartOffsetHelper;
 use function array_key_exists;
 use function array_splice;
 use function count;
+use function is_string;
 use function max;
 use function str_contains;
 
@@ -113,7 +114,7 @@ final class ArrayNode extends AbstractNodeJson
                 $this->items === []
                 && (str_contains($this->afterOpenBracket, "\n") || str_contains($this->afterOpenBracket, "\r"))
             ) {
-                return $this->afterOpenBracket . '    ';
+                return $this->afterOpenBracket . $this->indentForInsertedItem();
             }
 
             return $this->afterOpenBracket;
@@ -124,6 +125,13 @@ final class ArrayNode extends AbstractNodeJson
         }
 
         return $this->beforeValueForAppendedItem();
+    }
+
+    private function indentForInsertedItem(): string
+    {
+        $indent = $this->getAttribute(NodeAttributes::INDENT);
+
+        return is_string($indent) ? $indent : '    ';
     }
 
     private function afterValueForInsertedItem(int $index): string

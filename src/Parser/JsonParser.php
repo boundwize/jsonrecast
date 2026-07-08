@@ -34,6 +34,8 @@ final class JsonParser
 {
     private string $source = '';
 
+    private string $indent = '    ';
+
     /** @var list<Token> */
     private array $tokens = [];
 
@@ -44,6 +46,7 @@ final class JsonParser
         $this->source   = $source;
         $this->tokens   = (new Lexer())->tokenize($source);
         $this->position = 0;
+        $this->indent   = $this->detectIndent($source);
 
         $beforeValue = $this->readWhitespace();
 
@@ -56,7 +59,7 @@ final class JsonParser
         $this->setSourceMetadata($jsonDocument, 0, strlen($source), 0);
         $jsonDocument->setAttribute(NodeAttributes::SOURCE, $source);
         $jsonDocument->setAttribute(NodeAttributes::NEWLINE, $this->detectNewline($source));
-        $jsonDocument->setAttribute(NodeAttributes::INDENT, $this->detectIndent($source));
+        $jsonDocument->setAttribute(NodeAttributes::INDENT, $this->indent);
         $jsonDocument->setAttribute(NodeAttributes::TRAILING_NEWLINE, $this->hasTrailingNewline($source));
 
         return $jsonDocument;
@@ -310,6 +313,7 @@ final class JsonParser
         $nodeJson->setAttribute(NodeAttributes::START_OFFSET, $startOffset);
         $nodeJson->setAttribute(NodeAttributes::END_OFFSET, $endOffset);
         $nodeJson->setAttribute(NodeAttributes::DEPTH, $depth);
+        $nodeJson->setAttribute(NodeAttributes::INDENT, $this->indent);
         $nodeJson->setAttribute(
             NodeAttributes::ORIGINAL_TEXT,
             substr($this->source, $startOffset, $endOffset - $startOffset),

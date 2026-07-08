@@ -30,19 +30,21 @@ JSON);
         $this->assertSame(
             <<<'TXT'
 JsonDocument
-└── value: ObjectNode (2 items)
-    ├── [0]: ObjectItemNode
-    │   ├── key: StringNode(value: "name")
-    │   └── value: StringNode(value: "jsonrecast")
-    └── [1]: ObjectItemNode
-        ├── key: StringNode(value: "items")
-        └── value: ArrayNode (3 items)
-            ├── [0]: ArrayItemNode
-            │   └── value: NumberNode(rawValue: "1")
-            ├── [1]: ArrayItemNode
-            │   └── value: BooleanNode(value: true)
-            └── [2]: ArrayItemNode
-                └── value: NullNode
+└── value: ObjectNode
+    └── items (2 items)
+        ├── [0]: ObjectItemNode
+        │   ├── key: StringNode(value: "name")
+        │   └── value: StringNode(value: "jsonrecast")
+        └── [1]: ObjectItemNode
+            ├── key: StringNode(value: "items")
+            └── value: ArrayNode
+                └── items (3 items)
+                    ├── [0]: ArrayItemNode
+                    │   └── value: NumberNode(rawValue: "1")
+                    ├── [1]: ArrayItemNode
+                    │   └── value: BooleanNode(value: true)
+                    └── [2]: ArrayItemNode
+                        └── value: NullNode
 TXT,
             JsonRecast::dumpAst($jsonDocument),
         );
@@ -97,7 +99,7 @@ JsonDocument
 │   │   }
 │   ├── newline: "\n"
 │   └── trailingNewline: true
-└── value: ObjectNode (1 item)
+└── value: ObjectNode
     ├── attributes
     │   ├── startOffset: 0
     │   ├── endOffset: 29
@@ -107,29 +109,30 @@ JsonDocument
     │       {
     │           "name" : "jsonrecast"
     │       }
-    └── [0]: ObjectItemNode
-        ├── attributes
-        │   ├── startOffset: 1
-        │   ├── endOffset: 28
-        │   ├── depth: 1
-        │   ├── indent: "    "
-        │   └── originalText: |
-        │
-        │           "name" : "jsonrecast"
-        ├── key: StringNode(value: "name")
-        │   └── attributes
-        │       ├── startOffset: 6
-        │       ├── endOffset: 12
-        │       ├── depth: 1
-        │       ├── indent: "    "
-        │       └── originalText: "name"
-        └── value: StringNode(value: "jsonrecast")
-            └── attributes
-                ├── startOffset: 15
-                ├── endOffset: 27
-                ├── depth: 1
-                ├── indent: "    "
-                └── originalText: "jsonrecast"
+    └── items (1 item)
+        └── [0]: ObjectItemNode
+            ├── attributes
+            │   ├── startOffset: 1
+            │   ├── endOffset: 28
+            │   ├── depth: 1
+            │   ├── indent: "    "
+            │   └── originalText: |
+            │
+            │           "name" : "jsonrecast"
+            ├── key: StringNode(value: "name")
+            │   └── attributes
+            │       ├── startOffset: 6
+            │       ├── endOffset: 12
+            │       ├── depth: 1
+            │       ├── indent: "    "
+            │       └── originalText: "name"
+            └── value: StringNode(value: "jsonrecast")
+                └── attributes
+                    ├── startOffset: 15
+                    ├── endOffset: 27
+                    ├── depth: 1
+                    ├── indent: "    "
+                    └── originalText: "jsonrecast"
 TXT,
             JsonRecast::dumpAst($jsonDocument, includeAttributes: true),
         );

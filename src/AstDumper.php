@@ -83,13 +83,19 @@ final readonly class AstDumper
                 continue;
             }
 
-            $this->appendNamedValues(
-                $lines,
-                $child['label'],
-                $child['values'],
-                $childPrefix,
-                $index === $lastIndex,
-            );
+            if ($child['kind'] === 'values') {
+                $this->appendNamedValues(
+                    $lines,
+                    $child['label'],
+                    $child['values'],
+                    $childPrefix,
+                    $index === $lastIndex,
+                );
+
+                continue;
+            }
+
+            $this->appendNodeGroup($lines, $child['label'], $child['nodes'], $childPrefix, $index === $lastIndex);
         }
 
         return $lines;
@@ -99,9 +105,9 @@ final readonly class AstDumper
     {
         return match (true) {
             $nodeJson instanceof JsonDocument => 'JsonDocument',
-            $nodeJson instanceof ObjectNode => $this->describeCounted('ObjectNode', count($nodeJson->items), 'item'),
+            $nodeJson instanceof ObjectNode => 'ObjectNode',
             $nodeJson instanceof ObjectItemNode => 'ObjectItemNode',
-            $nodeJson instanceof ArrayNode => $this->describeCounted('ArrayNode', count($nodeJson->items), 'item'),
+            $nodeJson instanceof ArrayNode => 'ArrayNode',
             $nodeJson instanceof ArrayItemNode => 'ArrayItemNode',
             $nodeJson instanceof StringNode => 'StringNode(value: ' . $this->formatValue($nodeJson->value) . ')',
             $nodeJson instanceof NumberNode => 'NumberNode(rawValue: ' . $this->formatValue($nodeJson->rawValue) . ')',
@@ -120,6 +126,7 @@ final readonly class AstDumper
      * @return list<
      *     array{kind: 'node', label: string, node: NodeJson}
      *     |array{kind: 'values', label: string, values: array<string, mixed>}
+     *     |array{kind: 'nodes', label: string, nodes: list<NodeJson>}
      * >
      */
     private function children(NodeJson $nodeJson): array
@@ -145,13 +152,11 @@ final readonly class AstDumper
         }
 
         if ($nodeJson instanceof ObjectNode || $nodeJson instanceof ArrayNode) {
-            foreach ($nodeJson->items as $index => $item) {
-                $children[] = [
-                    'kind'  => 'node',
-                    'label' => '[' . $index . ']',
-                    'node'  => $item,
-                ];
-            }
+            $children[] = [
+                'kind'  => 'nodes',
+                'label' => $this->describeCounted('items', count($nodeJson->items), 'item'),
+                'nodes' => $nodeJson->items,
+            ];
 
             return $children;
         }
@@ -189,6 +194,27 @@ final readonly class AstDumper
     {
         foreach ($this->dumpNode($nodeJson, $prefix, $isLast, $label) as $line) {
             $lines[] = $line;
+        }
+    }
+
+    /**
+     * @param list<string>   $lines
+     * @param list<NodeJson> $nodes
+     */
+    private function appendNodeGroup(
+        array &$lines,
+        string $name,
+        array $nodes,
+        string $prefix,
+        bool $isLast,
+    ): void {
+        $lines[] = $this->line($prefix, $isLast, $name);
+
+        $childPrefix = $this->childPrefix($prefix, $isLast);
+        $lastIndex   = count($nodes) - 1;
+
+        foreach ($nodes as $index => $node) {
+            $this->appendNode($lines, $node, $childPrefix, $index === $lastIndex, '[' . $index . ']');
         }
     }
 

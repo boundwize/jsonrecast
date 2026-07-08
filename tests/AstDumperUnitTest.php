@@ -24,23 +24,26 @@ final class AstDumperUnitTest extends TestCase
 
         $this->assertSame(
             <<<'TXT'
-ObjectNode (0 items)
+ObjectNode
+└── items (0 items)
 TXT,
             $astDumper->dump(new ObjectNode([], afterOpenBrace: "\n", beforeCloseBrace: "\n")),
         );
 
         $this->assertSame(
             <<<'TXT'
-ArrayNode (0 items)
+ArrayNode
+└── items (0 items)
 TXT,
             $astDumper->dump(new ArrayNode([], afterOpenBracket: ' ', beforeCloseBracket: ' ')),
         );
 
         $this->assertSame(
             <<<'TXT'
-ArrayNode (1 item)
-└── [0]: ArrayItemNode
-    └── value: StringNode(value: "jsonrecast")
+ArrayNode
+└── items (1 item)
+    └── [0]: ArrayItemNode
+        └── value: StringNode(value: "jsonrecast")
 TXT,
             $astDumper->dump(new ArrayNode(
                 [

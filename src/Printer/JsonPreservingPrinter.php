@@ -79,13 +79,13 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
         return match (true) {
             $nodeJson instanceof JsonDocument => $this->printDocument($nodeJson, $printContext, $detectScalarMutation),
-            $nodeJson instanceof ObjectNode => $this->printObject($nodeJson, $printContext, $detectScalarMutation),
+            $nodeJson instanceof ObjectNode => $this->printContainer($nodeJson, $printContext, $detectScalarMutation),
             $nodeJson instanceof ObjectItemNode => $this->printObjectItemPreserving(
                 $nodeJson,
                 $printContext,
                 detectScalarMutation: $detectScalarMutation,
             ),
-            $nodeJson instanceof ArrayNode => $this->printArray($nodeJson, $printContext, $detectScalarMutation),
+            $nodeJson instanceof ArrayNode => $this->printContainer($nodeJson, $printContext, $detectScalarMutation),
             $nodeJson instanceof ArrayItemNode => $this->printArrayItemPreserving(
                 $nodeJson,
                 $printContext,
@@ -118,81 +118,123 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         return $output;
     }
 
-    private function printObject(
-        ObjectNode $objectNode,
+    private function printContainer(
+        ArrayNode|ObjectNode $containerNode,
         PrintContext $printContext,
         bool $detectScalarMutation,
     ): string {
-        if ($this->shouldPrintContainerBestEffort($objectNode, $objectNode->items)) {
-            return $this->printObjectBestEffort($objectNode, $printContext, $detectScalarMutation);
+        if (
+            $this->shouldPrintContainerBestEffort($containerNode, $containerNode->items)
+            || $this->shouldPrintInsertedMultilineItemsBestEffort($containerNode)
+        ) {
+            return $this->printContainerBestEffort($containerNode, $printContext, $detectScalarMutation);
         }
 
-        if ($objectNode->items === []) {
-            return $this->printEmptyObject($objectNode);
+        if ($containerNode->items === []) {
+            return $this->printEmptyContainer($containerNode);
         }
 
-        $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($objectNode);
-        $output               = '{';
-        $lastIndex            = count($objectNode->items) - 1;
-        $itemsInOriginalOrder = $this->getItemsInOriginalOrder($objectNode->items);
+        $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($containerNode);
+        $output               = $this->openingDelimiter($containerNode);
+        $lastIndex            = count($containerNode->items) - 1;
+        $itemsInOriginalOrder = $this->getItemsInOriginalOrder($containerNode->items);
 
-        foreach ($objectNode->items as $i => $item) {
-            [$beforeKey, $afterValue] = $this->getItemLayout(
-                $objectNode->items,
+        foreach ($containerNode->items as $i => $item) {
+            [$beforeItem, $afterValue] = $this->getItemLayout(
+                $containerNode->items,
                 $i,
                 $itemsInOriginalOrder,
-                $objectNode->afterOpenBrace,
-                $objectNode->beforeCloseBrace,
+                $this->afterOpen($containerNode),
+                $this->beforeClose($containerNode),
             );
 
-            $output .= $this->printObjectItemPreserving(
-                $item,
-                $printContext->next(),
-                $beforeKey,
-                $afterValue,
-                $detectScalarMutation,
-            );
+            $output .= $item instanceof ObjectItemNode
+                ? $this->printObjectItemPreserving(
+                    $item,
+                    $printContext->next(),
+                    $beforeItem,
+                    $afterValue,
+                    $detectScalarMutation,
+                )
+                : $this->printArrayItemPreserving(
+                    $item,
+                    $printContext->next(),
+                    $beforeItem,
+                    $afterValue,
+                    $detectScalarMutation,
+                );
 
             if ($i < $lastIndex) {
                 $output .= ',';
             }
         }
 
-        return $output . '}';
+        return $output . $this->closingDelimiter($containerNode);
     }
 
-    private function printObjectBestEffort(
-        ObjectNode $objectNode,
+    private function printContainerBestEffort(
+        ArrayNode|ObjectNode $containerNode,
         PrintContext $printContext,
         bool $detectScalarMutation,
     ): string {
-        if ($objectNode->items === []) {
-            return $this->printEmptyObject($objectNode);
+        if ($containerNode->items === []) {
+            return $this->printEmptyContainer($containerNode);
         }
 
-        $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($objectNode);
-        $output               = '{';
+        $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($containerNode);
+        $output               = $this->openingDelimiter($containerNode);
 
-        foreach ($objectNode->items as $i => $item) {
+        foreach ($containerNode->items as $i => $item) {
             $output .= $printContext->newline
                 . $printContext->childIndentation()
-                . $this->printObjectItemBestEffort($item, $printContext->next(), $detectScalarMutation);
+                . ($item instanceof ObjectItemNode
+                    ? $this->printObjectItemBestEffort($item, $printContext->next(), $detectScalarMutation)
+                    : $this->printNode($item->value, $printContext->next(), $detectScalarMutation));
 
-            if ($i < count($objectNode->items) - 1) {
+            if ($i < count($containerNode->items) - 1) {
                 $output .= ',';
             }
         }
 
-        return $output . $printContext->newline . $printContext->indentation() . '}';
+        return $output
+            . $printContext->newline
+            . $printContext->indentation()
+            . $this->closingDelimiter($containerNode);
     }
 
-    private function printEmptyObject(ObjectNode $objectNode): string
+    private function printEmptyContainer(ArrayNode|ObjectNode $containerNode): string
     {
-        if ($objectNode->beforeCloseBrace !== '') {
-            return '{' . $objectNode->beforeCloseBrace . '}';
+        $beforeClose = $this->beforeClose($containerNode);
+
+        if ($beforeClose !== '') {
+            return $this->openingDelimiter($containerNode) . $beforeClose . $this->closingDelimiter($containerNode);
         }
 
-        return '{}';
+        return $this->openingDelimiter($containerNode) . $this->closingDelimiter($containerNode);
+    }
+
+    private function openingDelimiter(ArrayNode|ObjectNode $containerNode): string
+    {
+        return $containerNode instanceof ArrayNode ? '[' : '{';
+    }
+
+    private function closingDelimiter(ArrayNode|ObjectNode $containerNode): string
+    {
+        return $containerNode instanceof ArrayNode ? ']' : '}';
+    }
+
+    private function afterOpen(ArrayNode|ObjectNode $containerNode): string
+    {
+        return $containerNode instanceof ArrayNode
+            ? $containerNode->afterOpenBracket
+            : $containerNode->afterOpenBrace;
+    }
+
+    private function beforeClose(ArrayNode|ObjectNode $containerNode): string
+    {
+        return $containerNode instanceof ArrayNode
+            ? $containerNode->beforeCloseBracket
+            : $containerNode->beforeCloseBrace;
     }
 
     private function printObjectItemPreserving(
@@ -236,86 +278,6 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         return $this->printNode($objectItemNode->key, $printContext, $detectScalarMutation)
             . ': '
             . $this->printNode($objectItemNode->value, $printContext, $detectScalarMutation);
-    }
-
-    private function printArray(
-        ArrayNode $arrayNode,
-        PrintContext $printContext,
-        bool $detectScalarMutation,
-    ): string {
-        if (
-            $this->shouldPrintContainerBestEffort($arrayNode, $arrayNode->items)
-            || $this->shouldPrintInsertedMultilineArrayItemsBestEffort($arrayNode)
-        ) {
-            return $this->printArrayBestEffort($arrayNode, $printContext, $detectScalarMutation);
-        }
-
-        if ($arrayNode->items === []) {
-            return $this->printEmptyArray($arrayNode);
-        }
-
-        $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($arrayNode);
-        $output               = '[';
-        $lastIndex            = count($arrayNode->items) - 1;
-        $itemsInOriginalOrder = $this->getItemsInOriginalOrder($arrayNode->items);
-
-        foreach ($arrayNode->items as $i => $item) {
-            [$beforeValue, $afterValue] = $this->getItemLayout(
-                $arrayNode->items,
-                $i,
-                $itemsInOriginalOrder,
-                $arrayNode->afterOpenBracket,
-                $arrayNode->beforeCloseBracket,
-            );
-
-            $output .= $this->printArrayItemPreserving(
-                $item,
-                $printContext->next(),
-                $beforeValue,
-                $afterValue,
-                $detectScalarMutation,
-            );
-
-            if ($i < $lastIndex) {
-                $output .= ',';
-            }
-        }
-
-        return $output . ']';
-    }
-
-    private function printArrayBestEffort(
-        ArrayNode $arrayNode,
-        PrintContext $printContext,
-        bool $detectScalarMutation,
-    ): string {
-        if ($arrayNode->items === []) {
-            return $this->printEmptyArray($arrayNode);
-        }
-
-        $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($arrayNode);
-        $output               = '[';
-
-        foreach ($arrayNode->items as $i => $item) {
-            $output .= $printContext->newline
-                . $printContext->childIndentation()
-                . $this->printNode($item->value, $printContext->next(), $detectScalarMutation);
-
-            if ($i < count($arrayNode->items) - 1) {
-                $output .= ',';
-            }
-        }
-
-        return $output . $printContext->newline . $printContext->indentation() . ']';
-    }
-
-    private function printEmptyArray(ArrayNode $arrayNode): string
-    {
-        if ($arrayNode->beforeCloseBracket !== '') {
-            return '[' . $arrayNode->beforeCloseBracket . ']';
-        }
-
-        return '[]';
     }
 
     private function printArrayItemPreserving(
@@ -438,13 +400,13 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             && ! is_string($nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT));
     }
 
-    private function shouldPrintInsertedMultilineArrayItemsBestEffort(ArrayNode $arrayNode): bool
+    private function shouldPrintInsertedMultilineItemsBestEffort(ArrayNode|ObjectNode $containerNode): bool
     {
-        if ($arrayNode->afterOpenBracket !== '' || $arrayNode->beforeCloseBracket !== '') {
+        if ($this->hasContainerEdgeWhitespace($containerNode)) {
             return false;
         }
 
-        foreach ($arrayNode->items as $item) {
+        foreach ($containerNode->items as $item) {
             if (! $this->isSyntheticItem($item)) {
                 continue;
             }
@@ -460,6 +422,15 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         }
 
         return false;
+    }
+
+    private function hasContainerEdgeWhitespace(ArrayNode|ObjectNode $containerNode): bool
+    {
+        if ($containerNode instanceof ArrayNode) {
+            return $containerNode->afterOpenBracket !== '' || $containerNode->beforeCloseBracket !== '';
+        }
+
+        return $containerNode->afterOpenBrace !== '' || $containerNode->beforeCloseBrace !== '';
     }
 
     private function reindentOriginalText(

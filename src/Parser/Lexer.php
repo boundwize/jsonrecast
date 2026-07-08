@@ -283,7 +283,12 @@ final class Lexer
             return;
         }
 
-        $this->column++;
+        $byte = ord($char);
+
+        if ($byte < 0x80 || $byte > 0xBF) {
+            $this->column++;
+        }
+
         $this->previousWasCarriageReturn = false;
     }
 

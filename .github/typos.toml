@@ -1,1 +1,4 @@
 [default.extend-words]
+
+# test on purpose
+tru = "tru"

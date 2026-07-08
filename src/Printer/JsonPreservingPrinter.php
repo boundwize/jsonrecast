@@ -426,9 +426,11 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
     private function hasContainerEdgeWhitespace(ArrayNode|ObjectNode $containerNode): bool
     {
-        return $containerNode instanceof ArrayNode
-            ? $containerNode->afterOpenBracket !== '' || $containerNode->beforeCloseBracket !== ''
-            : $containerNode->afterOpenBrace !== '' || $containerNode->beforeCloseBrace !== '';
+        if ($containerNode instanceof ArrayNode) {
+            return $containerNode->afterOpenBracket !== '' || $containerNode->beforeCloseBracket !== '';
+        }
+
+        return $containerNode->afterOpenBrace !== '' || $containerNode->beforeCloseBrace !== '';
     }
 
     private function reindentOriginalText(

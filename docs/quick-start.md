@@ -45,14 +45,14 @@ echo JsonRecast::dumpAst($document);
 
 ```text
 JsonDocument
-  value: ObjectNode
-    items:
-      [0]: ObjectItemNode
-        key: StringNode(value: "name")
-        value: StringNode(value: "acme/demo")
-      [1]: ObjectItemNode
-        key: StringNode(value: "private")
-        value: BooleanNode(value: true)
+└── value: ObjectNode
+    └── items (2 items)
+        ├── [0]: ObjectItemNode
+        │   ├── key: StringNode(value: "name")
+        │   └── value: StringNode(value: "acme/demo")
+        └── [1]: ObjectItemNode
+            ├── key: StringNode(value: "private")
+            └── value: BooleanNode(value: true)
 ```
 
 ## Edit With A Visitor

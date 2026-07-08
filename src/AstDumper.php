@@ -16,6 +16,9 @@ use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use RuntimeException;
 
+use function array_pop;
+use function count;
+use function explode;
 use function get_debug_type;
 use function implode;
 use function is_array;
@@ -25,7 +28,13 @@ use function is_int;
 use function is_object;
 use function is_string;
 use function json_encode;
+use function max;
+use function rtrim;
+use function str_contains;
+use function str_ends_with;
 use function str_repeat;
+use function str_replace;
+use function strlen;
 
 use const JSON_UNESCAPED_SLASHES;
 use const JSON_UNESCAPED_UNICODE;
@@ -42,49 +51,51 @@ final readonly class AstDumper
     {
         $nodeJson = $input instanceof JsonRecastResult ? $input->document : $input;
 
-        return implode("\n", $this->dumpNode($nodeJson, 0));
+        return implode("\n", $this->dumpNode($nodeJson, '', true, null, true));
     }
 
     /**
      * @return list<string>
      */
-    private function dumpNode(NodeJson $nodeJson, int $level, ?string $label = null): array
-    {
-        $lines = [
-            $this->line($level, $this->describe($nodeJson), $label),
+    private function dumpNode(
+        NodeJson $nodeJson,
+        string $prefix,
+        bool $isLast,
+        ?string $label = null,
+        bool $isRoot = false,
+    ): array {
+        $lines    = [
+            $this->line($prefix, $isLast, $this->describe($nodeJson), $label, $isRoot),
         ];
+        $children = $this->children($nodeJson);
 
-        if ($this->includeAttributes) {
-            $this->appendNamedValues($lines, 'attributes', $nodeJson->getAttributes(), $level + 1);
-        }
-
-        if ($nodeJson instanceof JsonDocument) {
-            $this->appendNode($lines, $nodeJson->value, $level + 1, 'value');
-
+        if ($children === []) {
             return $lines;
         }
 
-        if ($nodeJson instanceof ObjectNode) {
-            $this->appendItems($lines, $nodeJson->items, $level + 1);
+        $childPrefix = $isRoot ? '' : $this->childPrefix($prefix, $isLast);
+        $lastIndex   = count($children) - 1;
 
-            return $lines;
-        }
+        foreach ($children as $index => $child) {
+            if ($child['kind'] === 'node') {
+                $this->appendNode($lines, $child['node'], $childPrefix, $index === $lastIndex, $child['label']);
 
-        if ($nodeJson instanceof ObjectItemNode) {
-            $this->appendNode($lines, $nodeJson->key, $level + 1, 'key');
-            $this->appendNode($lines, $nodeJson->value, $level + 1, 'value');
+                continue;
+            }
 
-            return $lines;
-        }
+            if ($child['kind'] === 'values') {
+                $this->appendNamedValues(
+                    $lines,
+                    $child['label'],
+                    $child['values'],
+                    $childPrefix,
+                    $index === $lastIndex,
+                );
 
-        if ($nodeJson instanceof ArrayNode) {
-            $this->appendItems($lines, $nodeJson->items, $level + 1);
+                continue;
+            }
 
-            return $lines;
-        }
-
-        if ($nodeJson instanceof ArrayItemNode) {
-            $this->appendNode($lines, $nodeJson->value, $level + 1, 'value');
+            $this->appendNodeGroup($lines, $child['label'], $child['nodes'], $childPrefix, $index === $lastIndex);
         }
 
         return $lines;
@@ -106,32 +117,104 @@ final readonly class AstDumper
         };
     }
 
-    /**
-     * @param list<string>   $lines
-     * @param list<NodeJson> $items
-     */
-    private function appendItems(array &$lines, array $items, int $level): void
+    private function describeCounted(string $name, int $count, string $unit): string
     {
-        if ($items === []) {
-            $lines[] = $this->line($level, 'items: []');
+        return $name . ' (' . $count . ' ' . $unit . ($count === 1 ? '' : 's') . ')';
+    }
 
-            return;
+    /**
+     * @return list<
+     *     array{kind: 'node', label: string, node: NodeJson}
+     *     |array{kind: 'values', label: string, values: array<string, mixed>}
+     *     |array{kind: 'nodes', label: string, nodes: list<NodeJson>}
+     * >
+     */
+    private function children(NodeJson $nodeJson): array
+    {
+        $children = [];
+
+        if ($this->includeAttributes && $nodeJson->getAttributes() !== []) {
+            $children[] = [
+                'kind'   => 'values',
+                'label'  => 'attributes',
+                'values' => $nodeJson->getAttributes(),
+            ];
         }
 
-        $lines[] = $this->line($level, 'items:');
+        if ($nodeJson instanceof JsonDocument) {
+            $children[] = [
+                'kind'  => 'node',
+                'label' => 'value',
+                'node'  => $nodeJson->value,
+            ];
 
-        foreach ($items as $index => $item) {
-            $this->appendNode($lines, $item, $level + 1, '[' . $index . ']');
+            return $children;
         }
+
+        if ($nodeJson instanceof ObjectNode || $nodeJson instanceof ArrayNode) {
+            $children[] = [
+                'kind'  => 'nodes',
+                'label' => $this->describeCounted('items', count($nodeJson->items), 'item'),
+                'nodes' => $nodeJson->items,
+            ];
+
+            return $children;
+        }
+
+        if ($nodeJson instanceof ObjectItemNode) {
+            $children[] = [
+                'kind'  => 'node',
+                'label' => 'key',
+                'node'  => $nodeJson->key,
+            ];
+            $children[] = [
+                'kind'  => 'node',
+                'label' => 'value',
+                'node'  => $nodeJson->value,
+            ];
+
+            return $children;
+        }
+
+        if ($nodeJson instanceof ArrayItemNode) {
+            $children[] = [
+                'kind'  => 'node',
+                'label' => 'value',
+                'node'  => $nodeJson->value,
+            ];
+        }
+
+        return $children;
     }
 
     /**
      * @param list<string> $lines
      */
-    private function appendNode(array &$lines, NodeJson $nodeJson, int $level, string $label): void
+    private function appendNode(array &$lines, NodeJson $nodeJson, string $prefix, bool $isLast, string $label): void
     {
-        foreach ($this->dumpNode($nodeJson, $level, $label) as $line) {
+        foreach ($this->dumpNode($nodeJson, $prefix, $isLast, $label) as $line) {
             $lines[] = $line;
+        }
+    }
+
+    /**
+     * @param list<string>   $lines
+     * @param list<NodeJson> $nodes
+     */
+    private function appendNodeGroup(
+        array &$lines,
+        string $name,
+        array $nodes,
+        string $prefix,
+        bool $isLast,
+    ): void {
+        $lines[] = $this->line($prefix, $isLast, $name);
+
+        $childPrefix = $this->childPrefix($prefix, $isLast);
+        $lastIndex   = count($nodes) - 1;
+
+        foreach ($nodes as $index => $node) {
+            $this->appendNode($lines, $node, $childPrefix, $index === $lastIndex, '[' . $index . ']');
         }
     }
 
@@ -139,26 +222,112 @@ final readonly class AstDumper
      * @param list<string>        $lines
      * @param array<string, mixed> $values
      */
-    private function appendNamedValues(array &$lines, string $name, array $values, int $level): void
-    {
-        if ($values === []) {
-            return;
-        }
+    private function appendNamedValues(
+        array &$lines,
+        string $name,
+        array $values,
+        string $prefix,
+        bool $isLast,
+    ): void {
+        $lines[] = $this->line($prefix, $isLast, $name);
 
-        $lines[] = $this->line($level, $name . ':');
+        $childPrefix = $this->childPrefix($prefix, $isLast);
+        $lastIndex   = count($values) - 1;
+        $index       = 0;
 
         foreach ($values as $key => $value) {
-            $lines[] = $this->line($level + 1, $key . ': ' . $this->formatValue($value));
+            if (is_string($value) && $this->shouldFormatAsBlockString($value)) {
+                $this->appendBlockString($lines, $key, $value, $childPrefix, $index === $lastIndex);
+                $index++;
+
+                continue;
+            }
+
+            $lines[] = $this->line(
+                $childPrefix,
+                $index === $lastIndex,
+                $key . ': ' . $this->formatNamedValue($key, $value),
+            );
+            $index++;
         }
     }
 
-    private function line(int $level, string $text, ?string $label = null): string
+    /**
+     * @param list<string> $lines
+     */
+    private function appendBlockString(
+        array &$lines,
+        string $key,
+        string $value,
+        string $prefix,
+        bool $isLast,
+    ): void {
+        $normalizedValue = str_replace(["\r\n", "\r"], "\n", $value);
+        $endsWithNewline = str_ends_with($normalizedValue, "\n");
+        $blockLines      = explode("\n", $normalizedValue);
+
+        if ($endsWithNewline) {
+            array_pop($blockLines);
+        }
+
+        $lines[]       = $this->line($prefix, $isLast, $key . ': ' . ($endsWithNewline ? '|' : '|-'));
+        $contentPrefix = $this->childPrefix($prefix, $isLast);
+
+        foreach ($blockLines as $blockLine) {
+            $lines[] = $blockLine === '' ? rtrim($contentPrefix) : $contentPrefix . $blockLine;
+        }
+    }
+
+    private function shouldFormatAsBlockString(string $value): bool
     {
+        return strlen($value) > 1 && (str_contains($value, "\n") || str_contains($value, "\r"));
+    }
+
+    private function formatNamedValue(string $key, mixed $value): string
+    {
+        if (is_string($value) && $this->shouldFormatAsSourceText($key)) {
+            return $value;
+        }
+
+        return $this->formatValue($value);
+    }
+
+    private function shouldFormatAsSourceText(string $key): bool
+    {
+        return $key === 'originalText' || $key === 'source';
+    }
+
+    private function line(
+        string $prefix,
+        bool $isLast,
+        string $text,
+        ?string $label = null,
+        bool $isRoot = false,
+    ): string {
         if ($label !== null) {
             $text = $label . ': ' . $text;
         }
 
-        return str_repeat($this->indent, $level) . $text;
+        if ($isRoot) {
+            return $text;
+        }
+
+        return $prefix . $this->branch($isLast) . $text;
+    }
+
+    private function childPrefix(string $prefix, bool $isLast): string
+    {
+        return $prefix . ($isLast ? ' ' : '│') . str_repeat(' ', $this->branchWidth() - 1);
+    }
+
+    private function branch(bool $isLast): string
+    {
+        return ($isLast ? '└' : '├') . str_repeat('─', $this->branchWidth() - 2) . ' ';
+    }
+
+    private function branchWidth(): int
+    {
+        return max(3, strlen($this->indent) + 2);
     }
 
     private function formatValue(mixed $value): string

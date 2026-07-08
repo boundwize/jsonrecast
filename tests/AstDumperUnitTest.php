@@ -25,7 +25,7 @@ final class AstDumperUnitTest extends TestCase
         $this->assertSame(
             <<<'TXT'
 ObjectNode
-  items: []
+└── items (0 items)
 TXT,
             $astDumper->dump(new ObjectNode([], afterOpenBrace: "\n", beforeCloseBrace: "\n")),
         );
@@ -33,7 +33,7 @@ TXT,
         $this->assertSame(
             <<<'TXT'
 ArrayNode
-  items: []
+└── items (0 items)
 TXT,
             $astDumper->dump(new ArrayNode([], afterOpenBracket: ' ', beforeCloseBracket: ' ')),
         );
@@ -41,9 +41,9 @@ TXT,
         $this->assertSame(
             <<<'TXT'
 ArrayNode
-  items:
-    [0]: ArrayItemNode
-      value: StringNode(value: "jsonrecast")
+└── items (1 item)
+    └── [0]: ArrayItemNode
+        └── value: StringNode(value: "jsonrecast")
 TXT,
             $astDumper->dump(new ArrayNode(
                 [
@@ -90,6 +90,23 @@ TXT,
         $this->assertStringContainsString('StringNode(value: "' . $note . '")', $dump);
         $this->assertStringContainsString('city: "' . $city . '"', $dump);
         $this->assertStringContainsString('localized: {"note":"' . $note . '"}', $dump);
+    }
+
+    public function testItFormatsSourceTextAttributesWithoutEscapingQuotes(): void
+    {
+        $stringNode = new StringNode('name');
+        $stringNode->setAttribute('originalText', '"name"');
+        $stringNode->setAttribute('label', '"name"');
+
+        $this->assertSame(
+            <<<'TXT'
+StringNode(value: "name")
+└── attributes
+    ├── originalText: "name"
+    └── label: "\"name\""
+TXT,
+            (new AstDumper(includeAttributes: true))->dump($stringNode),
+        );
     }
 
     public function testItOmitsEmptyAttributes(): void

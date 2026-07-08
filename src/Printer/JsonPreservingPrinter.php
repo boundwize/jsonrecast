@@ -196,7 +196,10 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             }
         }
 
-        return $output . $printContext->newline . $printContext->indentation() . $this->closingDelimiter($containerNode);
+        return $output
+            . $printContext->newline
+            . $printContext->indentation()
+            . $this->closingDelimiter($containerNode);
     }
 
     private function printEmptyContainer(ArrayNode|ObjectNode $containerNode): string

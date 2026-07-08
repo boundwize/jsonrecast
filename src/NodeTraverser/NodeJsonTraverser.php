@@ -250,6 +250,7 @@ final class NodeJsonTraverser
         }
 
         $this->copyDocumentAttribute($previous, $replacement, NodeAttributes::NEWLINE);
+        $this->copyDocumentAttribute($previous, $replacement, NodeAttributes::INDENT);
         $this->copyDocumentAttribute($previous, $replacement, NodeAttributes::TRAILING_NEWLINE);
 
         return $replacement;

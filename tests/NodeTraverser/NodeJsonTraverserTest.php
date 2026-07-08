@@ -20,6 +20,7 @@ use Boundwize\JsonRecast\NodeTraverser\NodeJsonTraverser;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitor;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
 use Boundwize\JsonRecast\Parser\JsonParser;
+use Boundwize\JsonRecast\Printer\JsonPreservingPrinter;
 use Boundwize\JsonRecast\Printer\JsonPrettyPrinter;
 use Boundwize\JsonRecast\Value\JsonValue;
 use Closure;
@@ -115,6 +116,38 @@ final class NodeJsonTraverserTest extends TestCase
         $this->assertSame("\r\n", $jsonDocument->getAttribute(NodeAttributes::NEWLINE));
         $this->assertTrue($jsonDocument->getAttribute(NodeAttributes::TRAILING_NEWLINE));
         $this->assertSame(' ', $jsonDocument->afterValue);
+    }
+
+    public function testDocumentReplacementKeepsExistingIndentAttributeForPreservingPrinter(): void
+    {
+        $jsonDocument = new JsonDocument(JsonValue::from([
+            'name'    => 'new',
+            'license' => 'MIT',
+        ]));
+
+        $nodeJsonTraversalResult = $this->traverse(
+            (new JsonParser())->parse("{\n\t\"name\": \"old\"\n}\n"),
+            new class ($jsonDocument) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly JsonDocument $jsonDocument,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if (! $nodeJson instanceof JsonDocument || ! $nodeJsonPath->isRoot()) {
+                        return null;
+                    }
+
+                    return $this->jsonDocument;
+                }
+            },
+        );
+
+        $this->assertSame(
+            "{\n\t\"name\": \"new\",\n\t\"license\": \"MIT\"\n}\n",
+            (new JsonPreservingPrinter($nodeJsonTraversalResult->changeSet))->print($nodeJsonTraversalResult->node),
+        );
     }
 
     public function testNoHasChangedAttributeExists(): void

@@ -1240,6 +1240,74 @@ JSON,
         $this->assertSame('[1, "x"]', (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItDoesNotDuplicateMultilineWhitespaceWhenAppendingToEmptyArray(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("[\n\n]");
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->append(new NumberNode('1'));
+
+        $this->assertSame("[\n\n    1\n]", (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItDoesNotDuplicateBlankLineInNestedEmptyArray(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "name": "my-app",
+    "keywords": [
+
+    ]
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+        $keywords = $jsonDocument->value->get('keywords');
+        $this->assertInstanceOf(ObjectItemNode::class, $keywords);
+        $this->assertInstanceOf(ArrayNode::class, $keywords->value);
+
+        $keywords->value->append(new StringNode('php'));
+
+        $output = (new JsonPreservingPrinter())->print($jsonDocument);
+
+        $this->assertNotSame(
+            <<<'JSON'
+{
+    "name": "my-app",
+    "keywords": [
+
+        "php"
+
+    ]
+}
+JSON,
+            $output,
+        );
+        $this->assertSame(
+            <<<'JSON'
+{
+    "name": "my-app",
+    "keywords": [
+
+        "php"
+    ]
+}
+JSON,
+            $output,
+        );
+    }
+
+    public function testItDoesNotDuplicateMultilineWhitespaceWhenAppendingToEmptyObject(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("{\n\n}");
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('a', new NumberNode('1'));
+
+        $this->assertSame("{\n\n    \"a\": 1\n}", (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
     public function testItPreservesSeparatorWhenInsertingIntoSingleItemArray(): void
     {
         $jsonDocument = (new JsonParser())->parse('[1]');

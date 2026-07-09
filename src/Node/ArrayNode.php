@@ -6,6 +6,7 @@ namespace Boundwize\JsonRecast\Node;
 
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use Boundwize\JsonRecast\Node\Helper\StartOffsetHelper;
+use Boundwize\JsonRecast\Node\Helper\WhitespaceHelper;
 
 use function array_key_exists;
 use function array_splice;
@@ -56,7 +57,8 @@ final class ArrayNode extends AbstractNodeJson
         }
 
         if ($itemCount === 0) {
-            $this->afterOpenBracket = $beforeValue;
+            $this->afterOpenBracket   = $beforeValue;
+            $this->beforeCloseBracket = $arrayItemNode->afterValue;
         }
 
         array_splice($this->items, $index, 0, [$arrayItemNode]);
@@ -132,6 +134,10 @@ final class ArrayNode extends AbstractNodeJson
 
         if ($index === $itemCount) {
             if ($itemCount === 0) {
+                if ($this->afterOpenBracket === $this->beforeCloseBracket) {
+                    return WhitespaceHelper::closingLine($this->beforeCloseBracket);
+                }
+
                 return $this->beforeCloseBracket;
             }
 

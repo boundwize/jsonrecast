@@ -21,11 +21,13 @@ use RuntimeException;
 
 use function array_pop;
 use function count;
+use function intdiv;
 use function is_float;
 use function is_int;
 use function is_string;
 use function json_decode;
 use function json_encode;
+use function max;
 use function preg_split;
 use function str_contains;
 use function str_ends_with;
@@ -567,7 +569,64 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             return $originalText;
         }
 
-        $delta = $printContext->level() - $originalDepth;
+        $delta          = $printContext->level() - $originalDepth;
+        $originalIndent = $nodeJson->getAttribute(NodeAttributes::INDENT);
+
+        if (
+            is_string($originalIndent)
+            && $originalIndent !== ''
+            && $originalIndent !== $printContext->indentUnit()
+        ) {
+            /** @var list<string> $lines */
+            $lines  = preg_split('/(?<=\r\n|\r|\n)/', $originalText);
+            $output = $lines[0];
+
+            for ($i = 1, $count = count($lines); $i < $count; $i++) {
+                $line = $lines[$i];
+
+                if (trim($line) === '') {
+                    $output .= $line;
+
+                    continue;
+                }
+
+                $leadingWhitespaceLength = 0;
+
+                while (
+                    isset($line[$leadingWhitespaceLength])
+                    && ($line[$leadingWhitespaceLength] === ' ' || $line[$leadingWhitespaceLength] === "\t")
+                ) {
+                    $leadingWhitespaceLength++;
+                }
+
+                $originalIndentLength = strlen($originalIndent);
+                $indentLevel          = intdiv(
+                    $leadingWhitespaceLength + intdiv($originalIndentLength, 2),
+                    $originalIndentLength,
+                );
+                $residual             = $leadingWhitespaceLength - ($indentLevel * $originalIndentLength);
+
+                $targetLevel  = $indentLevel + $delta;
+                $targetPrefix = str_repeat(
+                    $printContext->indentUnit(),
+                    max($targetLevel, 0),
+                );
+
+                if ($residual < 0) {
+                    $targetPrefix = substr($targetPrefix, 0, $residual);
+                } elseif ($residual > 0) {
+                    $targetPrefix .= substr(
+                        $line,
+                        $leadingWhitespaceLength - $residual,
+                        $residual,
+                    );
+                }
+
+                $output .= $targetPrefix . substr($line, $leadingWhitespaceLength);
+            }
+
+            return $output;
+        }
 
         if ($delta === 0 || $printContext->indentUnit() === '') {
             return $originalText;

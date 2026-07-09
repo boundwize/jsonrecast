@@ -25,7 +25,6 @@ use function json_decode;
 use function preg_match_all;
 use function str_contains;
 use function str_ends_with;
-use function str_starts_with;
 use function strlen;
 use function substr;
 
@@ -365,37 +364,7 @@ final class JsonParser
             }
         }
 
-        $indent = $this->shortestIndentUnitFromNestedLines($lineIndents);
-
-        if ($indent !== null) {
-            return $indent;
-        }
-
         return $this->shortestIndent($lineIndents) ?? '    ';
-    }
-
-    /**
-     * @param list<string> $lineIndents
-     */
-    private function shortestIndentUnitFromNestedLines(array $lineIndents): ?string
-    {
-        $indent = null;
-
-        foreach ($lineIndents as $lineIndent) {
-            foreach ($lineIndents as $childIndent) {
-                if ($lineIndent === $childIndent || ! str_starts_with($childIndent, $lineIndent)) {
-                    continue;
-                }
-
-                $candidate = substr($childIndent, strlen($lineIndent));
-
-                if ($indent === null || strlen($candidate) < strlen($indent)) {
-                    $indent = $candidate;
-                }
-            }
-        }
-
-        return $indent;
     }
 
     /**

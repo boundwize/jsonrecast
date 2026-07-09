@@ -53,9 +53,12 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
 
         return match (true) {
             $nodeJson instanceof JsonDocument => $this->printNode($nodeJson->value, $printContext, $depth),
-            $nodeJson instanceof ObjectNode => $this->printObject($nodeJson, $printContext, $depth),
+            $nodeJson instanceof ObjectNode, $nodeJson instanceof ArrayNode => $this->printCollection(
+                $nodeJson,
+                $printContext,
+                $depth,
+            ),
             $nodeJson instanceof ObjectItemNode => $this->printObjectItem($nodeJson, $printContext, $depth),
-            $nodeJson instanceof ArrayNode => $this->printArray($nodeJson, $printContext, $depth),
             $nodeJson instanceof ArrayItemNode => $this->printNode($nodeJson->value, $printContext, $depth),
             $nodeJson instanceof StringNode => $this->encodeString($nodeJson->value),
             $nodeJson instanceof NumberNode => $nodeJson->rawValue,
@@ -65,27 +68,6 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
         };
     }
 
-    private function printObject(ObjectNode $objectNode, PrintContext $printContext, int $depth): string
-    {
-        if ($objectNode->items === []) {
-            return '{}';
-        }
-
-        $output = '{';
-
-        foreach ($objectNode->items as $i => $item) {
-            $output .= $printContext->newline
-                . $printContext->childIndentation()
-                . $this->printObjectItem($item, $printContext->next(), $depth + 1);
-
-            if ($i < count($objectNode->items) - 1) {
-                $output .= ',';
-            }
-        }
-
-        return $output . $printContext->newline . $printContext->indentation() . '}';
-    }
-
     private function printObjectItem(ObjectItemNode $objectItemNode, PrintContext $printContext, int $depth): string
     {
         return $this->encodeString($objectItemNode->key->value)
@@ -93,25 +75,40 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
             . $this->printNode($objectItemNode->value, $printContext, $depth);
     }
 
-    private function printArray(ArrayNode $arrayNode, PrintContext $printContext, int $depth): string
+    private function printCollection(ObjectNode|ArrayNode $node, PrintContext $printContext, int $depth): string
     {
-        if ($arrayNode->items === []) {
-            return '[]';
+        $isObject       = $node instanceof ObjectNode;
+        $openDelimiter  = $isObject ? '{' : '[';
+        $closeDelimiter = $isObject ? '}' : ']';
+
+        if ($node->items === []) {
+            return $openDelimiter . $closeDelimiter;
         }
 
-        $output = '[';
+        $output = $openDelimiter;
 
-        foreach ($arrayNode->items as $i => $item) {
+        foreach ($node->items as $i => $item) {
             $output .= $printContext->newline
                 . $printContext->childIndentation()
-                . $this->printNode($item->value, $printContext->next(), $depth + 1);
+                . $this->printCollectionItem($item, $printContext->next(), $depth + 1);
 
-            if ($i < count($arrayNode->items) - 1) {
+            if ($i < count($node->items) - 1) {
                 $output .= ',';
             }
         }
 
-        return $output . $printContext->newline . $printContext->indentation() . ']';
+        return $output . $printContext->newline . $printContext->indentation() . $closeDelimiter;
+    }
+
+    private function printCollectionItem(
+        ObjectItemNode|ArrayItemNode $item,
+        PrintContext $printContext,
+        int $depth,
+    ): string {
+        return match (true) {
+            $item instanceof ObjectItemNode => $this->printObjectItem($item, $printContext, $depth),
+            $item instanceof ArrayItemNode => $this->printNode($item->value, $printContext, $depth),
+        };
     }
 
     private function encodeString(string $value): string

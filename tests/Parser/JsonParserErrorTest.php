@@ -104,6 +104,23 @@ final class JsonParserErrorTest extends TestCase
         $this->assertSame($json, $jsonDocument->getAttribute(NodeAttributes::ORIGINAL_TEXT));
     }
 
+    public function testMaximumNestingDepthResetsForNextInlineSiblingAfterNestedStack(): void
+    {
+        $json = '{"1":[2],"2":2}';
+
+        $jsonDocument = (new JsonParser(maximumDepth: 3))->parse($json);
+
+        $this->assertSame($json, $jsonDocument->getAttribute(NodeAttributes::ORIGINAL_TEXT));
+    }
+
+    public function testMaximumNestingDepthIsCheckedWhenEnteringNestedStack(): void
+    {
+        $this->expectException(ParseError::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
+        (new JsonParser(maximumDepth: 2))->parse('{"1":[2],"2":2}');
+    }
+
     public function testMaximumNestingDepthMustBeGreaterThanZero(): void
     {
         $this->expectException(InvalidArgumentException::class);

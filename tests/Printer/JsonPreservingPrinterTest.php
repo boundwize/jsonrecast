@@ -236,6 +236,16 @@ JSON,
         );
     }
 
+    public function testMaximumNestingDepthResetsForNextInlineSiblingAfterNestedStack(): void
+    {
+        $jsonDocument = (new JsonParser(maximumDepth: 3))->parse('{"1":[2],"2":2}');
+
+        $this->assertSame(
+            '{"1":[2],"2":2}',
+            (new JsonPreservingPrinter(maximumDepth: 3))->print($jsonDocument),
+        );
+    }
+
     public function testMaximumNestingDepthMustBeGreaterThanZero(): void
     {
         $this->expectException(InvalidArgumentException::class);

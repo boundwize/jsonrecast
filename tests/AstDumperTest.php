@@ -89,6 +89,7 @@ JsonDocument
 │   ├── endOffset: 30
 │   ├── depth: 0
 │   ├── indent: "    "
+│   ├── newline: "\n"
 │   ├── originalText: |
 │   │   {
 │   │       "name" : "jsonrecast"
@@ -97,7 +98,6 @@ JsonDocument
 │   │   {
 │   │       "name" : "jsonrecast"
 │   │   }
-│   ├── newline: "\n"
 │   └── trailingNewline: true
 └── value: ObjectNode
     ├── attributes
@@ -105,6 +105,7 @@ JsonDocument
     │   ├── endOffset: 29
     │   ├── depth: 0
     │   ├── indent: "    "
+    │   ├── newline: "\n"
     │   └── originalText: |-
     │       {
     │           "name" : "jsonrecast"
@@ -116,6 +117,7 @@ JsonDocument
             │   ├── endOffset: 28
             │   ├── depth: 1
             │   ├── indent: "    "
+            │   ├── newline: "\n"
             │   └── originalText: |
             │
             │           "name" : "jsonrecast"
@@ -125,6 +127,7 @@ JsonDocument
             │       ├── endOffset: 12
             │       ├── depth: 1
             │       ├── indent: "    "
+            │       ├── newline: "\n"
             │       └── originalText: "name"
             └── value: StringNode(value: "jsonrecast")
                 └── attributes
@@ -132,6 +135,7 @@ JsonDocument
                     ├── endOffset: 27
                     ├── depth: 1
                     ├── indent: "    "
+                    ├── newline: "\n"
                     └── originalText: "jsonrecast"
 TXT,
             JsonRecast::dumpAst($jsonDocument, includeAttributes: true),

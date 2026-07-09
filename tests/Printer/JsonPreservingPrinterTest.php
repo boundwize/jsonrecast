@@ -144,6 +144,31 @@ JSON,
         );
     }
 
+    public function testItUsesParsedNodeNewlineWhenPrintingChangedSubtreeDirectly(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            "{\r\n    \"template\":{\"name\":\"json\"}\r\n}",
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $templateItem = $jsonDocument->value->get('template');
+        $this->assertInstanceOf(ObjectItemNode::class, $templateItem);
+        $this->assertInstanceOf(ObjectNode::class, $templateItem->value);
+
+        $templateItem->value->set('data', JsonValue::from(['x' => 1, 'y' => 2]));
+
+        $this->assertSame(
+            "{\r\n"
+            . "    \"name\":\"json\",\r\n"
+            . "    \"data\":{\r\n"
+            . "        \"x\": 1,\r\n"
+            . "        \"y\": 2\r\n"
+            . "    }\r\n"
+            . '}',
+            (new JsonPreservingPrinter())->print($templateItem->value),
+        );
+    }
+
     public function testItPreservesParsedMultilineEmptyObjectNode(): void
     {
         $jsonDocument = (new JsonParser())->parse("{\n        }");

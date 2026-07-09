@@ -53,7 +53,7 @@ try {
 
 ## Maximum Depth
 
-JsonRecast limits JSON nesting depth to `512` by default, matching PHP's `json_decode()` default depth. The same default applies when parsing JSON, building nodes from PHP values, printing node trees, and dumping ASTs, so all tree-processing operations share the same boundary.
+JsonRecast limits JSON nesting depth to `512` by default, matching PHP's `json_decode()` default depth. The same default applies when parsing JSON, building nodes from PHP values, and printing node trees, so default-generated output remains parseable by the default parser.
 
 If parsed input exceeds the configured limit, parsing throws a catchable `ParseError` with the message `Maximum stack depth exceeded.` If PHP value conversion or printing exceeds the configured limit, JsonRecast throws `InvalidArgumentException` with the same message.
 
@@ -91,14 +91,6 @@ $json = JsonRecast::print($document, maximumDepth: 1024);
 
 $preserved = (new JsonPreservingPrinter(maximumDepth: 1024))->print($document);
 $pretty = (new JsonPrettyPrinter(maximumDepth: 1024))->print($document);
-```
-
-`AstDumper` also accepts the option when used directly:
-
-```php
-use Boundwize\JsonRecast\AstDumper;
-
-$dump = (new AstDumper(maximumDepth: 1024))->dump($document);
 ```
 
 The maximum depth must be greater than `0`.

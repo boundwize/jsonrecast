@@ -45,9 +45,12 @@ final class JsonParser
 
     private int $position = 0;
 
-    public function __construct(private readonly int $maximumDepth = self::DEFAULT_MAXIMUM_DEPTH)
+    /** @var positive-int */
+    private readonly int $maximumDepth;
+
+    public function __construct(int $maximumDepth = self::DEFAULT_MAXIMUM_DEPTH)
     {
-        MaximumDepthGuard::validateMaximumDepth($maximumDepth);
+        $this->maximumDepth = MaximumDepthGuard::validateMaximumDepth($maximumDepth);
     }
 
     public function parse(string $source): JsonDocument
@@ -216,7 +219,7 @@ final class JsonParser
         $token = $this->consume(TokenType::STRING);
 
         try {
-            $value = json_decode($token->text, true, 512, JSON_THROW_ON_ERROR);
+            $value = json_decode($token->text, true, $this->maximumDepth, JSON_THROW_ON_ERROR);
         } catch (JsonException $jsonException) {
             throw new ParseError($jsonException->getMessage(), $token->startOffset, $token->line, $token->column);
         }

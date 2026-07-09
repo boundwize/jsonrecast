@@ -26,11 +26,14 @@ use const JSON_UNESCAPED_UNICODE;
 
 final readonly class JsonPrettyPrinter implements JsonPrinter
 {
+    /** @var positive-int */
+    private int $maximumDepth;
+
     public function __construct(
         private string $indent = '    ',
-        private int $maximumDepth = MaximumDepthGuard::DEFAULT_MAXIMUM_DEPTH,
+        int $maximumDepth = MaximumDepthGuard::DEFAULT_MAXIMUM_DEPTH,
     ) {
-        MaximumDepthGuard::validateMaximumDepth($maximumDepth);
+        $this->maximumDepth = MaximumDepthGuard::validateMaximumDepth($maximumDepth);
     }
 
     public function print(NodeJson $nodeJson): string
@@ -113,7 +116,11 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
 
     private function encodeString(string $value): string
     {
-        $encoded = json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $encoded = json_encode(
+            $value,
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
+            $this->maximumDepth,
+        );
 
         if (! is_string($encoded)) {
             throw new RuntimeException('Unable to encode JSON string.');

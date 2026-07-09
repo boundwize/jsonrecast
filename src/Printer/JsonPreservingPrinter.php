@@ -374,9 +374,11 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         bool $detectScalarMutation,
         int $depth,
     ): string {
-        $separator = $this->isExplicitlyChanged($objectItemNode)
-            ? ': '
-            : $objectItemNode->betweenKeyAndColon . ':' . $objectItemNode->betweenColonAndValue;
+        $separator = $objectItemNode->hasAttribute(NodeAttributes::ORIGINAL_TEXT)
+            || $objectItemNode->betweenKeyAndColon !== ''
+            || $objectItemNode->betweenColonAndValue !== ''
+                ? $objectItemNode->betweenKeyAndColon . ':' . $objectItemNode->betweenColonAndValue
+                : ': ';
 
         return $this->printNode($objectItemNode->key, $printContext, $detectScalarMutation, $depth)
             . $separator

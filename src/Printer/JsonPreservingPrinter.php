@@ -21,6 +21,7 @@ use RuntimeException;
 
 use function array_pop;
 use function count;
+use function intdiv;
 use function is_float;
 use function is_int;
 use function is_string;
@@ -31,7 +32,6 @@ use function preg_split;
 use function str_contains;
 use function str_ends_with;
 use function str_repeat;
-use function str_starts_with;
 use function strlen;
 use function substr;
 use function trim;
@@ -590,19 +590,39 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                     continue;
                 }
 
-                $indentLevel = 0;
-                $offset      = 0;
+                $leadingWhitespaceLength = 0;
 
-                while (str_starts_with(substr($line, $offset), $originalIndent)) {
-                    $indentLevel++;
-                    $offset += strlen($originalIndent);
+                while (
+                    isset($line[$leadingWhitespaceLength])
+                    && ($line[$leadingWhitespaceLength] === ' ' || $line[$leadingWhitespaceLength] === "\t")
+                ) {
+                    $leadingWhitespaceLength++;
                 }
 
-                $targetLevel = $indentLevel + $delta;
-                $output     .= str_repeat(
+                $originalIndentLength = strlen($originalIndent);
+                $indentLevel          = intdiv(
+                    $leadingWhitespaceLength + intdiv($originalIndentLength, 2),
+                    $originalIndentLength,
+                );
+                $residual             = $leadingWhitespaceLength - ($indentLevel * $originalIndentLength);
+
+                $targetLevel  = $indentLevel + $delta;
+                $targetPrefix = str_repeat(
                     $printContext->indentUnit(),
                     max($targetLevel, 0),
-                ) . substr($line, $offset);
+                );
+
+                if ($residual < 0) {
+                    $targetPrefix = substr($targetPrefix, 0, $residual);
+                } elseif ($residual > 0) {
+                    $targetPrefix .= substr(
+                        $line,
+                        $leadingWhitespaceLength - $residual,
+                        $residual,
+                    );
+                }
+
+                $output .= $targetPrefix . substr($line, $leadingWhitespaceLength);
             }
 
             return $output;

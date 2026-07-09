@@ -46,6 +46,23 @@ final class JsonParserTest extends TestCase
         $this->assertSame('boundwize', $jsonDocument->value->items[0]->value->value);
     }
 
+    public function testItDetectsOuterIndentWhenNestedLineIsInconsistentlyIndented(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "source": {
+        "a": 1,
+       "b": 2,
+         "c": 3
+    }
+}
+JSON,
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
     public function testItParsesUtf8WithByteBasedSourceOffsets(): void
     {
         $city         = "M\xC3\xBCnchen";

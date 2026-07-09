@@ -101,12 +101,10 @@ final class NodeJsonTraverser
 
         if ($nodeJson instanceof JsonDocument) {
             $this->traverseDocument($nodeJson, $nodeJsonPath);
-        } elseif ($nodeJson instanceof ObjectNode) {
-            $this->traverseObject($nodeJson, $nodeJsonPath);
+        } elseif ($nodeJson instanceof ObjectNode || $nodeJson instanceof ArrayNode) {
+            $this->traverseContainer($nodeJson, $nodeJsonPath);
         } elseif ($nodeJson instanceof ObjectItemNode) {
             $this->traverseObjectItem($nodeJson, $nodeJsonPath);
-        } elseif ($nodeJson instanceof ArrayNode) {
-            $this->traverseArray($nodeJson, $nodeJsonPath);
         } elseif ($nodeJson instanceof ArrayItemNode) {
             $this->traverseArrayItem($nodeJson, $nodeJsonPath);
         }
@@ -139,29 +137,40 @@ final class NodeJsonTraverser
         $jsonDocument->value = $result;
     }
 
-    private function traverseObject(ObjectNode $objectNode, NodeJsonPath $nodeJsonPath): void
+    private function traverseContainer(ObjectNode|ArrayNode $containerNode, NodeJsonPath $nodeJsonPath): void
     {
         $i = 0;
 
-        while ($i < count($objectNode->items)) {
-            $result = $this->traverseNode($objectNode->items[$i], $nodeJsonPath);
+        while ($i < count($containerNode->items)) {
+            $childPath = $containerNode instanceof ArrayNode
+                ? $nodeJsonPath->childArrayIndex($i)
+                : $nodeJsonPath;
+            $result    = $this->traverseNode($containerNode->items[$i], $childPath);
 
             if ($result === NodeJsonVisitor::REMOVE_NODE) {
-                array_splice($objectNode->items, $i, 1);
+                array_splice($containerNode->items, $i, 1);
 
-                if ($objectNode->items === []) {
-                    $objectNode->afterOpenBrace = $objectNode->beforeCloseBrace;
+                if ($containerNode->items === []) {
+                    if ($containerNode instanceof ObjectNode) {
+                        $containerNode->afterOpenBrace = $containerNode->beforeCloseBrace;
+                    } else {
+                        $containerNode->afterOpenBracket = $containerNode->beforeCloseBracket;
+                    }
                 }
 
-                $this->nodeChangeSet->markChanged($objectNode);
+                $this->nodeChangeSet->markChanged($containerNode);
                 continue;
             }
 
-            if (! $result instanceof ObjectItemNode) {
+            if ($containerNode instanceof ObjectNode && ! $result instanceof ObjectItemNode) {
                 throw new LogicException('ObjectNode children must be ObjectItemNode.');
             }
 
-            $objectNode->items[$i] = $result;
+            if ($containerNode instanceof ArrayNode && ! $result instanceof ArrayItemNode) {
+                throw new LogicException('ArrayNode children must be ArrayItemNode.');
+            }
+
+            $containerNode->items[$i] = $result;
             $i++;
         }
     }
@@ -188,33 +197,6 @@ final class NodeJsonTraverser
         }
 
         $objectItemNode->value = $valueResult;
-    }
-
-    private function traverseArray(ArrayNode $arrayNode, NodeJsonPath $nodeJsonPath): void
-    {
-        $i = 0;
-
-        while ($i < count($arrayNode->items)) {
-            $result = $this->traverseNode($arrayNode->items[$i], $nodeJsonPath->childArrayIndex($i));
-
-            if ($result === NodeJsonVisitor::REMOVE_NODE) {
-                array_splice($arrayNode->items, $i, 1);
-
-                if ($arrayNode->items === []) {
-                    $arrayNode->afterOpenBracket = $arrayNode->beforeCloseBracket;
-                }
-
-                $this->nodeChangeSet->markChanged($arrayNode);
-                continue;
-            }
-
-            if (! $result instanceof ArrayItemNode) {
-                throw new LogicException('ArrayNode children must be ArrayItemNode.');
-            }
-
-            $arrayNode->items[$i] = $result;
-            $i++;
-        }
     }
 
     private function traverseArrayItem(ArrayItemNode $arrayItemNode, NodeJsonPath $nodeJsonPath): void

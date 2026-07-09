@@ -42,10 +42,15 @@ use const JSON_UNESCAPED_UNICODE;
 
 final readonly class AstDumper
 {
+    /** @var positive-int */
+    private int $maximumDepth;
+
     public function __construct(
         private string $indent = '  ',
         private bool $includeAttributes = false,
+        int $maximumDepth = MaximumDepthGuard::DEFAULT_MAXIMUM_DEPTH,
     ) {
+        $this->maximumDepth = MaximumDepthGuard::validateMaximumDepth($maximumDepth);
     }
 
     public function dump(NodeJson|JsonRecastResult $input): string
@@ -64,7 +69,16 @@ final readonly class AstDumper
         bool $isLast,
         ?string $label = null,
         bool $isRoot = false,
+        int $depth = 0,
     ): array {
+        if (
+            ! $nodeJson instanceof JsonDocument
+            && ! $nodeJson instanceof ObjectItemNode
+            && ! $nodeJson instanceof ArrayItemNode
+        ) {
+            MaximumDepthGuard::guardMaximumDepth($this->maximumDepth, $depth);
+        }
+
         $lines    = [
             $this->line($prefix, $isLast, $this->describe($nodeJson), $label, $isRoot),
         ];
@@ -76,10 +90,20 @@ final readonly class AstDumper
 
         $childPrefix = $isRoot ? '' : $this->childPrefix($prefix, $isLast);
         $lastIndex   = count($children) - 1;
+        $childDepth  = $nodeJson instanceof ObjectNode || $nodeJson instanceof ArrayNode
+            ? $depth + 1
+            : $depth;
 
         foreach ($children as $index => $child) {
             if ($child['kind'] === 'node') {
-                $this->appendNode($lines, $child['node'], $childPrefix, $index === $lastIndex, $child['label']);
+                $this->appendNode(
+                    $lines,
+                    $child['node'],
+                    $childPrefix,
+                    $index === $lastIndex,
+                    $child['label'],
+                    $childDepth,
+                );
 
                 continue;
             }
@@ -96,7 +120,14 @@ final readonly class AstDumper
                 continue;
             }
 
-            $this->appendNodeGroup($lines, $child['label'], $child['nodes'], $childPrefix, $index === $lastIndex);
+            $this->appendNodeGroup(
+                $lines,
+                $child['label'],
+                $child['nodes'],
+                $childPrefix,
+                $index === $lastIndex,
+                $childDepth,
+            );
         }
 
         return $lines;
@@ -191,9 +222,15 @@ final readonly class AstDumper
     /**
      * @param list<string> $lines
      */
-    private function appendNode(array &$lines, NodeJson $nodeJson, string $prefix, bool $isLast, string $label): void
-    {
-        foreach ($this->dumpNode($nodeJson, $prefix, $isLast, $label) as $line) {
+    private function appendNode(
+        array &$lines,
+        NodeJson $nodeJson,
+        string $prefix,
+        bool $isLast,
+        string $label,
+        int $depth,
+    ): void {
+        foreach ($this->dumpNode($nodeJson, $prefix, $isLast, $label, depth: $depth) as $line) {
             $lines[] = $line;
         }
     }
@@ -208,6 +245,7 @@ final readonly class AstDumper
         array $nodes,
         string $prefix,
         bool $isLast,
+        int $depth,
     ): void {
         $lines[] = $this->line($prefix, $isLast, $name);
 
@@ -215,7 +253,7 @@ final readonly class AstDumper
         $lastIndex   = count($nodes) - 1;
 
         foreach ($nodes as $index => $node) {
-            $this->appendNode($lines, $node, $childPrefix, $index === $lastIndex, '[' . $index . ']');
+            $this->appendNode($lines, $node, $childPrefix, $index === $lastIndex, '[' . $index . ']', $depth);
         }
     }
 
@@ -365,7 +403,7 @@ final readonly class AstDumper
         $encoded = json_encode(
             $value,
             JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
-            MaximumDepthGuard::DEFAULT_MAXIMUM_DEPTH,
+            $this->maximumDepth,
         );
 
         if (! is_string($encoded)) {

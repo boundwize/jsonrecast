@@ -10,6 +10,7 @@ use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use stdClass;
@@ -131,5 +132,41 @@ TXT,
         $this->expectExceptionMessage('Unable to encode AST dump value.');
 
         (new AstDumper())->dump(new StringNode("\xB1\x31"));
+    }
+
+    public function testItRejectsNodeThatExceedsMaximumNestingDepth(): void
+    {
+        $arrayNode = new ArrayNode([
+            new ArrayItemNode(new ArrayNode([
+                new ArrayItemNode(new StringNode('value')),
+            ])),
+        ]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
+        (new AstDumper(maximumDepth: 2))->dump($arrayNode);
+    }
+
+    public function testMaximumNestingDepthCanBeOverridden(): void
+    {
+        $arrayNode = new ArrayNode([
+            new ArrayItemNode(new ArrayNode([
+                new ArrayItemNode(new StringNode('value')),
+            ])),
+        ]);
+
+        $this->assertStringContainsString(
+            'value: StringNode(value: "value")',
+            (new AstDumper(maximumDepth: 3))->dump($arrayNode),
+        );
+    }
+
+    public function testMaximumNestingDepthMustBeGreaterThanZero(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum depth must be greater than 0.');
+
+        new AstDumper(maximumDepth: 0);
     }
 }

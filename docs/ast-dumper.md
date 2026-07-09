@@ -138,14 +138,27 @@ JsonDocument
                     └── originalText: "jsonrecast"
 ```
 
-You can instantiate the utility directly too:
+## Maximum Depth
+
+AST dumping limits JSON nesting depth to `512` by default, matching parsing and printing. This protects the recursive tree traversal from manually constructed or transformed trees that are deeper than the normal parser limit.
+
+To change the limit, instantiate `AstDumper` directly:
 
 ```php
 use Boundwize\JsonRecast\AstDumper;
 
-$dumper = new AstDumper(includeAttributes: true);
+$dumper = new AstDumper(
+    includeAttributes: true,
+    maximumDepth: 1024,
+);
 
 echo $dumper->dump($document);
 ```
+
+The limit uses JSON nesting semantics: `JsonDocument`, `ObjectItemNode`, and `ArrayItemNode` are wrapper nodes and do not add depth. Each nested object or array level does.
+
+The configured limit also applies when nested array attributes are encoded. An AST that exceeds the limit throws `InvalidArgumentException` with the message `Maximum stack depth exceeded.` An attribute value that cannot be encoded within the limit throws `RuntimeException` with the message `Unable to encode AST dump value.`
+
+The maximum depth must be greater than `0`.
 
 Attribute dumps are verbose because they include exact source text. They are best suited to tests and debugging sessions.

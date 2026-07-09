@@ -538,7 +538,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         int $depth,
     ): bool {
         foreach ($items as $item) {
-            if (! $this->isChanged($item->value)) {
+            if (! $this->isChanged($item) && ! $this->isChanged($item->value)) {
                 continue;
             }
 

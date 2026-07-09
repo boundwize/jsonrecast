@@ -758,6 +758,68 @@ JSON,
         );
     }
 
+    public function testItPrettyPrintsSpacePaddedObjectWhenInsertedValueIsMultiline(): void
+    {
+        $fragment     = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "x": 1,
+    "y": 2
+}
+JSON,
+        );
+        $jsonDocument = (new JsonParser())->parse('{ "a": 1 }');
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('big', $fragment->value);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "a": 1,
+    "big": {
+        "x": 1,
+        "y": 2
+    }
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItPrettyPrintsSpacePaddedArrayWhenAppendedValueIsMultiline(): void
+    {
+        $fragment     = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "x": 1,
+    "y": 2
+}
+JSON,
+        );
+        $jsonDocument = (new JsonParser())->parse('[ 1 ]');
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->append($fragment->value);
+
+        $this->assertSame(
+            <<<'JSON'
+[
+    1,
+    {
+        "x": 1,
+        "y": 2
+    }
+]
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItReindentsGraftedSubtreeThatUsesDifferentIndentUnitAtSameDepth(): void
     {
         $fragment     = (new JsonParser())->parse(

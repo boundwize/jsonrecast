@@ -503,7 +503,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
     private function shouldPrintInsertedMultilineItemsBestEffort(ArrayNode|ObjectNode $containerNode): bool
     {
-        if ($this->hasContainerEdgeWhitespace($containerNode)) {
+        if ($this->hasContainerMultilineEdgeWhitespace($containerNode)) {
             return false;
         }
 
@@ -549,13 +549,19 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         return false;
     }
 
-    private function hasContainerEdgeWhitespace(ArrayNode|ObjectNode $containerNode): bool
+    private function hasContainerMultilineEdgeWhitespace(ArrayNode|ObjectNode $containerNode): bool
     {
-        if ($containerNode instanceof ArrayNode) {
-            return $containerNode->afterOpenBracket !== '' || $containerNode->beforeCloseBracket !== '';
-        }
+        $afterOpen   = $containerNode instanceof ArrayNode
+            ? $containerNode->afterOpenBracket
+            : $containerNode->afterOpenBrace;
+        $beforeClose = $containerNode instanceof ArrayNode
+            ? $containerNode->beforeCloseBracket
+            : $containerNode->beforeCloseBrace;
 
-        return $containerNode->afterOpenBrace !== '' || $containerNode->beforeCloseBrace !== '';
+        return str_contains($afterOpen, "\n")
+            || str_contains($afterOpen, "\r")
+            || str_contains($beforeClose, "\n")
+            || str_contains($beforeClose, "\r");
     }
 
     private function reindentOriginalText(

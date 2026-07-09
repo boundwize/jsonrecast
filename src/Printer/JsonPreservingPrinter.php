@@ -26,10 +26,12 @@ use function is_int;
 use function is_string;
 use function json_decode;
 use function json_encode;
+use function max;
 use function preg_split;
 use function str_contains;
 use function str_ends_with;
 use function str_repeat;
+use function str_starts_with;
 use function strlen;
 use function substr;
 use function trim;
@@ -567,7 +569,44 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             return $originalText;
         }
 
-        $delta = $printContext->level() - $originalDepth;
+        $delta          = $printContext->level() - $originalDepth;
+        $originalIndent = $nodeJson->getAttribute(NodeAttributes::INDENT);
+
+        if (
+            is_string($originalIndent)
+            && $originalIndent !== ''
+            && $originalIndent !== $printContext->indentUnit()
+        ) {
+            /** @var list<string> $lines */
+            $lines  = preg_split('/(?<=\r\n|\r|\n)/', $originalText);
+            $output = $lines[0];
+
+            for ($i = 1, $count = count($lines); $i < $count; $i++) {
+                $line = $lines[$i];
+
+                if (trim($line) === '') {
+                    $output .= $line;
+
+                    continue;
+                }
+
+                $indentLevel = 0;
+                $offset      = 0;
+
+                while (str_starts_with(substr($line, $offset), $originalIndent)) {
+                    $indentLevel++;
+                    $offset += strlen($originalIndent);
+                }
+
+                $targetLevel = $indentLevel + $delta;
+                $output     .= str_repeat(
+                    $printContext->indentUnit(),
+                    max($targetLevel, 0),
+                ) . substr($line, $offset);
+            }
+
+            return $output;
+        }
 
         if ($delta === 0 || $printContext->indentUnit() === '') {
             return $originalText;

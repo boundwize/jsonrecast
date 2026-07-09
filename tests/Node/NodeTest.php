@@ -303,6 +303,16 @@ final class NodeTest extends TestCase
         $this->assertSame('x', $arrayNode->items[0]->value->value);
     }
 
+    public function testArrayNodeAppendToEmptyArrayPreservesDistinctClosingWhitespace(): void
+    {
+        $arrayNode = new ArrayNode([], afterOpenBracket: ' ', beforeCloseBracket: "\n");
+
+        $arrayNode->append(new StringNode('x'));
+
+        $this->assertSame(' ', $arrayNode->items[0]->beforeValue);
+        $this->assertSame("\n", $arrayNode->items[0]->afterValue);
+    }
+
     public function testArrayNodeAppendToEmptyMultilineArrayUsesDefaultIndent(): void
     {
         $arrayNode = new ArrayNode([], afterOpenBracket: "\n", beforeCloseBracket: "\n");

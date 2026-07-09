@@ -11,6 +11,7 @@ use function array_key_exists;
 use function array_splice;
 use function count;
 use function max;
+use function preg_match;
 use function str_contains;
 
 final class ArrayNode extends AbstractNodeJson
@@ -56,7 +57,8 @@ final class ArrayNode extends AbstractNodeJson
         }
 
         if ($itemCount === 0) {
-            $this->afterOpenBracket = $beforeValue;
+            $this->afterOpenBracket   = $beforeValue;
+            $this->beforeCloseBracket = $arrayItemNode->afterValue;
         }
 
         array_splice($this->items, $index, 0, [$arrayItemNode]);
@@ -132,6 +134,10 @@ final class ArrayNode extends AbstractNodeJson
 
         if ($index === $itemCount) {
             if ($itemCount === 0) {
+                if ($this->afterOpenBracket === $this->beforeCloseBracket) {
+                    return $this->closingLineWhitespace($this->beforeCloseBracket);
+                }
+
                 return $this->beforeCloseBracket;
             }
 
@@ -139,6 +145,15 @@ final class ArrayNode extends AbstractNodeJson
         }
 
         return $this->separatorAfterValue();
+    }
+
+    private function closingLineWhitespace(string $whitespace): string
+    {
+        if (preg_match('/(?:\r\n|\r|\n)[^\r\n]*$/', $whitespace, $matches) === 1) {
+            return $matches[0];
+        }
+
+        return $whitespace;
     }
 
     private function separatorAfterValue(): string

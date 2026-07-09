@@ -1240,6 +1240,26 @@ JSON,
         $this->assertSame('[1, "x"]', (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItDoesNotDuplicateMultilineWhitespaceWhenAppendingToEmptyArray(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("[\n\n]");
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->append(new NumberNode('1'));
+
+        $this->assertSame("[\n\n    1\n]", (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItDoesNotDuplicateMultilineWhitespaceWhenAppendingToEmptyObject(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("{\n\n}");
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('a', new NumberNode('1'));
+
+        $this->assertSame("{\n\n    \"a\": 1\n}", (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
     public function testItPreservesSeparatorWhenInsertingIntoSingleItemArray(): void
     {
         $jsonDocument = (new JsonParser())->parse('[1]');

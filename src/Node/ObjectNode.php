@@ -11,6 +11,7 @@ use function array_pop;
 use function array_splice;
 use function count;
 use function max;
+use function preg_match;
 use function str_contains;
 
 final class ObjectNode extends AbstractNodeJson
@@ -97,17 +98,26 @@ final class ObjectNode extends AbstractNodeJson
 
     private function appendNewItem(string $key, NodeJson $nodeJson): void
     {
-        $itemCount      = count($this->items);
-        $lastItem       = $itemCount > 0 ? $this->items[$itemCount - 1] : null;
-        $styleDonor     = StartOffsetHelper::findStyleDonor($this->items) ?? $lastItem;
-        $beforeKey      = $this->beforeKeyForAppendedItem();
+        $itemCount  = count($this->items);
+        $lastItem   = $itemCount > 0 ? $this->items[$itemCount - 1] : null;
+        $styleDonor = StartOffsetHelper::findStyleDonor($this->items) ?? $lastItem;
+        $beforeKey  = $this->beforeKeyForAppendedItem();
+        $afterValue = $styleDonor !== null ? $styleDonor->afterValue : $this->beforeCloseBrace;
+
+        if (
+            $styleDonor === null
+            && $this->afterOpenBrace === $this->beforeCloseBrace
+        ) {
+            $afterValue = $this->closingLineWhitespace($this->beforeCloseBrace);
+        }
+
         $objectItemNode = new ObjectItemNode(
             key: new StringNode($key),
             value: $nodeJson,
             beforeKey: $beforeKey,
             betweenKeyAndColon: $styleDonor !== null ? $styleDonor->betweenKeyAndColon : '',
             betweenColonAndValue: $styleDonor !== null ? $styleDonor->betweenColonAndValue : ' ',
-            afterValue: $styleDonor !== null ? $styleDonor->afterValue : $this->beforeCloseBrace,
+            afterValue: $afterValue,
         );
         $objectItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         $objectItemNode->setAttribute(NodeAttributes::START_OFFSET, $this->startOffsetForAppendedItem());
@@ -116,7 +126,8 @@ final class ObjectNode extends AbstractNodeJson
             $lastItem->afterValue = $this->separatorAfterValue();
             $lastItem->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         } else {
-            $this->afterOpenBrace = $beforeKey;
+            $this->afterOpenBrace   = $beforeKey;
+            $this->beforeCloseBrace = $afterValue;
         }
 
         $this->items[] = $objectItemNode;
@@ -152,6 +163,15 @@ final class ObjectNode extends AbstractNodeJson
         }
 
         return '';
+    }
+
+    private function closingLineWhitespace(string $whitespace): string
+    {
+        if (preg_match('/(?:\r\n|\r|\n)[^\r\n]*$/', $whitespace, $matches) === 1) {
+            return $matches[0];
+        }
+
+        return $whitespace;
     }
 
     private function startOffsetForAppendedItem(): float

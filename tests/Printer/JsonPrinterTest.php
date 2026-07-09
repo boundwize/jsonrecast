@@ -242,16 +242,16 @@ JSON,
 
     public function testItPreservesObjectItemColonSpacingWhenBestEffortReformatsContainer(): void
     {
-        $parser       = new JsonParser();
-        $jsonDocument = $parser->parse('{"a" :  1, "b":2}');
-        $multiline    = $parser->parse(<<<'JSON'
+        $jsonParser   = new JsonParser();
+        $jsonDocument = $jsonParser->parse('{"a" :  1, "b":2}');
+        $multiline    = $jsonParser->parse(<<<'JSON'
 {
     "x": 1,
     "y": 2
 }
 JSON);
 
-        self::assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
         $jsonDocument->value->set('big', $multiline->value);
 
         $this->assertSame(

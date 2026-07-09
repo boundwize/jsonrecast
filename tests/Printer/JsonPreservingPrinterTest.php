@@ -262,6 +262,23 @@ JSON,
         $this->assertSame("\"json\" \n", (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItDoesNotDuplicateMixedTrailingNewlineWhenDocumentIsChanged(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("{\r\n    \"name\": \"old\"\r\n}\n");
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $nameItem = $jsonDocument->value->get('name');
+        $this->assertInstanceOf(ObjectItemNode::class, $nameItem);
+        $this->assertInstanceOf(StringNode::class, $nameItem->value);
+
+        $nameItem->value->value = 'new';
+
+        $this->assertSame(
+            "{\r\n    \"name\": \"new\"\r\n}\n",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesDocumentFramingWhitespaceAfterRootValueReplacement(): void
     {
         $jsonDocument        = (new JsonParser())->parse("\n1\t");

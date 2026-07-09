@@ -92,8 +92,7 @@ final class JsonParser
         }
 
         return match ($this->currentToken()->type) {
-            TokenType::LEFT_BRACE => $this->parseObject($depth),
-            TokenType::LEFT_BRACKET => $this->parseArray($depth),
+            TokenType::LEFT_BRACE, TokenType::LEFT_BRACKET => $this->parseCollection($depth),
             TokenType::STRING => $this->parseString($depth),
             TokenType::NUMBER => $this->parseNumber($depth),
             TokenType::TRUE => $this->parseTrue($depth),
@@ -103,114 +102,89 @@ final class JsonParser
         };
     }
 
-    private function parseObject(int $depth): ObjectNode
+    private function parseCollection(int $depth): ObjectNode|ArrayNode
     {
-        $token = $this->consume(TokenType::LEFT_BRACE);
+        $isObject        = $this->currentToken()->type === TokenType::LEFT_BRACE;
+        $openTokenType   = $isObject ? TokenType::LEFT_BRACE : TokenType::LEFT_BRACKET;
+        $closeTokenType  = $isObject ? TokenType::RIGHT_BRACE : TokenType::RIGHT_BRACKET;
+        $expectedItem    = $isObject ? 'object key' : 'array value';
+        $expectedClosing = $isObject ? '"," or "}"' : '"," or "]"';
+        $token           = $this->consume($openTokenType);
 
-        $beforeKeyStart = $this->currentToken()->startOffset;
-        $beforeKey      = $this->readWhitespace();
+        $beforeItemStart = $this->currentToken()->startOffset;
+        $beforeItem      = $this->readWhitespace();
 
-        if ($this->currentToken()->type === TokenType::RIGHT_BRACE) {
-            $close = $this->consume(TokenType::RIGHT_BRACE);
-            $node  = new ObjectNode([], afterOpenBrace: $beforeKey, beforeCloseBrace: $beforeKey);
+        if ($this->currentToken()->type === $closeTokenType) {
+            $close = $this->consume($closeTokenType);
+            $node  = $isObject
+                ? new ObjectNode([], afterOpenBrace: $beforeItem, beforeCloseBrace: $beforeItem)
+                : new ArrayNode([], afterOpenBracket: $beforeItem, beforeCloseBracket: $beforeItem);
             $this->setSourceMetadata($node, $token->startOffset, $close->endOffset, $depth);
 
             return $node;
         }
 
-        $items = [];
+        $objectItems = [];
+        $arrayItems  = [];
 
         while (true) {
             $itemDepth = $depth + 1;
-            $key       = $this->parseString($itemDepth);
 
-            $betweenKeyAndColon = $this->readWhitespace();
-            $this->consume(TokenType::COLON);
-            $betweenColonAndValue = $this->readWhitespace();
-            $value                = $this->parseValue($itemDepth);
-            $afterValue           = $this->readWhitespace();
-            $itemEnd              = $this->currentToken()->startOffset;
-
-            $item = new ObjectItemNode(
-                key: $key,
-                value: $value,
-                beforeKey: $beforeKey,
-                betweenKeyAndColon: $betweenKeyAndColon,
-                betweenColonAndValue: $betweenColonAndValue,
-                afterValue: $afterValue,
-            );
-            $this->setSourceMetadata($item, $beforeKeyStart, $itemEnd, $itemDepth);
-            $items[] = $item;
+            if ($isObject) {
+                $key                = $this->parseString($itemDepth);
+                $betweenKeyAndColon = $this->readWhitespace();
+                $this->consume(TokenType::COLON);
+                $betweenColonAndValue = $this->readWhitespace();
+                $value                = $this->parseValue($itemDepth);
+                $afterValue           = $this->readWhitespace();
+                $itemEnd              = $this->currentToken()->startOffset;
+                $item                 = new ObjectItemNode(
+                    key: $key,
+                    value: $value,
+                    beforeKey: $beforeItem,
+                    betweenKeyAndColon: $betweenKeyAndColon,
+                    betweenColonAndValue: $betweenColonAndValue,
+                    afterValue: $afterValue,
+                );
+                $this->setSourceMetadata($item, $beforeItemStart, $itemEnd, $itemDepth);
+                $objectItems[] = $item;
+            } else {
+                $value        = $this->parseValue($itemDepth);
+                $afterValue   = $this->readWhitespace();
+                $itemEnd      = $this->currentToken()->startOffset;
+                $arrayItems[] = $this->arrayItem(
+                    $value,
+                    $beforeItem,
+                    $afterValue,
+                    $beforeItemStart,
+                    $itemEnd,
+                    $itemDepth,
+                );
+            }
 
             if ($this->currentToken()->type === TokenType::COMMA) {
                 $this->consume(TokenType::COMMA);
-                $beforeKeyStart = $this->currentToken()->startOffset;
-                $beforeKey      = $this->readWhitespace();
+                $beforeItemStart = $this->currentToken()->startOffset;
+                $beforeItem      = $this->readWhitespace();
 
-                if ($this->currentToken()->type === TokenType::RIGHT_BRACE) {
-                    throw $this->unexpectedToken('object key');
+                if ($this->currentToken()->type === $closeTokenType) {
+                    throw $this->unexpectedToken($expectedItem);
                 }
 
                 continue;
             }
 
-            if ($this->currentToken()->type === TokenType::RIGHT_BRACE) {
-                $close = $this->consume(TokenType::RIGHT_BRACE);
-                $node  = new ObjectNode($items, $items[0]->beforeKey, $afterValue);
+            if ($this->currentToken()->type === $closeTokenType) {
+                $close = $this->consume($closeTokenType);
+                $node  = $isObject
+                    ? new ObjectNode($objectItems, $objectItems[0]->beforeKey, $afterValue)
+                    : new ArrayNode($arrayItems, $arrayItems[0]->beforeValue, $afterValue);
                 $this->setSourceMetadata($node, $token->startOffset, $close->endOffset, $depth);
 
                 return $node;
             }
 
-            throw $this->unexpectedToken('"," or "}"');
-        }
-    }
-
-    private function parseArray(int $depth): ArrayNode
-    {
-        $token = $this->consume(TokenType::LEFT_BRACKET);
-
-        $beforeValueStart = $this->currentToken()->startOffset;
-        $beforeValue      = $this->readWhitespace();
-
-        if ($this->currentToken()->type === TokenType::RIGHT_BRACKET) {
-            $close = $this->consume(TokenType::RIGHT_BRACKET);
-            $node  = new ArrayNode([], $beforeValue, $beforeValue);
-            $this->setSourceMetadata($node, $token->startOffset, $close->endOffset, $depth);
-
-            return $node;
-        }
-
-        $items = [];
-
-        while (true) {
-            $itemDepth  = $depth + 1;
-            $value      = $this->parseValue($itemDepth);
-            $afterValue = $this->readWhitespace();
-            $itemEnd    = $this->currentToken()->startOffset;
-            $items[]    = $this->arrayItem($value, $beforeValue, $afterValue, $beforeValueStart, $itemEnd, $itemDepth);
-
-            if ($this->currentToken()->type === TokenType::COMMA) {
-                $this->consume(TokenType::COMMA);
-                $beforeValueStart = $this->currentToken()->startOffset;
-                $beforeValue      = $this->readWhitespace();
-
-                if ($this->currentToken()->type === TokenType::RIGHT_BRACKET) {
-                    throw $this->unexpectedToken('array value');
-                }
-
-                continue;
-            }
-
-            if ($this->currentToken()->type === TokenType::RIGHT_BRACKET) {
-                $close = $this->consume(TokenType::RIGHT_BRACKET);
-                $node  = new ArrayNode($items, $items[0]->beforeValue, $afterValue);
-                $this->setSourceMetadata($node, $token->startOffset, $close->endOffset, $depth);
-
-                return $node;
-            }
-
-            throw $this->unexpectedToken('"," or "]"');
+            throw $this->unexpectedToken($expectedClosing);
         }
     }
 

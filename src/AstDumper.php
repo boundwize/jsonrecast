@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast;
 
+use Boundwize\JsonRecast\Guard\MaximumDepthGuard;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
@@ -361,7 +362,11 @@ final readonly class AstDumper
 
     private function encode(mixed $value): string
     {
-        $encoded = json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $encoded = json_encode(
+            $value,
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
+            MaximumDepthGuard::DEFAULT_MAXIMUM_DEPTH,
+        );
 
         if (! is_string($encoded)) {
             throw new RuntimeException('Unable to encode AST dump value.');

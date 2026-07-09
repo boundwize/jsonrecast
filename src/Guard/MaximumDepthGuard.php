@@ -16,11 +16,14 @@ final class MaximumDepthGuard
     {
     }
 
-    public static function validateMaximumDepth(int $maximumDepth): void
+    /** @return positive-int */
+    public static function validateMaximumDepth(int $maximumDepth): int
     {
         if ($maximumDepth < 1) {
             throw new InvalidArgumentException('Maximum depth must be greater than 0.');
         }
+
+        return $maximumDepth;
     }
 
     public static function isExceeded(int $maximumDepth, int $depth): bool

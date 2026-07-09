@@ -52,13 +52,12 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     {
         $this->guardNodeTreeMaximumDepth($nodeJson);
 
-        $newline = $nodeJson instanceof JsonDocument && is_string($nodeJson->getAttribute(NodeAttributes::NEWLINE))
+        $newline    = $nodeJson instanceof JsonDocument && is_string($nodeJson->getAttribute(NodeAttributes::NEWLINE))
             ? $nodeJson->getAttribute(NodeAttributes::NEWLINE)
             : "\n";
-        $indent  = $this->indent
-            ?? ($nodeJson instanceof JsonDocument && is_string($nodeJson->getAttribute(NodeAttributes::INDENT))
-                ? $nodeJson->getAttribute(NodeAttributes::INDENT)
-                : '    ');
+        $nodeIndent = $nodeJson->getAttribute(NodeAttributes::INDENT);
+        $indent     = $this->indent
+            ?? (is_string($nodeIndent) ? $nodeIndent : '    ');
 
         return $this->printNode($nodeJson, new PrintContext($indent, $newline), depth: 0);
     }

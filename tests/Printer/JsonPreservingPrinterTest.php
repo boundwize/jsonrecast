@@ -127,6 +127,23 @@ JSON,
         $this->assertSame('["json"]', (new JsonPreservingPrinter())->print($jsonDocument->value));
     }
 
+    public function testItUsesParsedNodeIndentWhenPrintingTabIndentedSubtreeDirectly(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            "{\n\t\"template\": {\n\t\t\"name\": \"json\"\n\t}\n}",
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $templateItem = $jsonDocument->value->get('template');
+        $this->assertInstanceOf(ObjectItemNode::class, $templateItem);
+        $this->assertInstanceOf(ObjectNode::class, $templateItem->value);
+
+        $this->assertSame(
+            "{\n\t\"name\": \"json\"\n}",
+            (new JsonPreservingPrinter())->print($templateItem->value),
+        );
+    }
+
     public function testItPreservesParsedMultilineEmptyObjectNode(): void
     {
         $jsonDocument = (new JsonParser())->parse("{\n        }");

@@ -240,6 +240,35 @@ JSON,
         );
     }
 
+    public function testItPreservesObjectItemColonSpacingWhenBestEffortReformatsContainer(): void
+    {
+        $jsonParser   = new JsonParser();
+        $jsonDocument = $jsonParser->parse('{"a" :  1, "b":2}');
+        $multiline    = $jsonParser->parse(<<<'JSON'
+{
+    "x": 1,
+    "y": 2
+}
+JSON);
+
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+        $jsonDocument->value->set('big', $multiline->value);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "a" :  1,
+    "b":2,
+    "big":{
+        "x": 1,
+        "y": 2
+    }
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesRemoveObjectItemBestEffort(): void
     {
         $source = <<<'JSON'

@@ -59,7 +59,7 @@ final class JsonValue
 
     private static function formatFloat(float $value): string
     {
-        $rawValue = json_encode($value, JSON_THROW_ON_ERROR, MaximumDepthGuard::DEFAULT_MAXIMUM_DEPTH);
+        $rawValue = json_encode($value, JSON_THROW_ON_ERROR);
 
         if (strpbrk($rawValue, '.eE') !== false) {
             return $rawValue;

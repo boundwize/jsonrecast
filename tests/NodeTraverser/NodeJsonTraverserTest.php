@@ -262,7 +262,7 @@ JSON,
         );
 
         $nodeJsonTraversalResult = $this->traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
-            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): null|NodeJson|int
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?int
             {
                 if (! $nodeJson instanceof ObjectItemNode || $nodeJson->key->value !== 'a') {
                     return null;
@@ -304,7 +304,7 @@ JSON,
         );
 
         $nodeJsonTraversalResult = $this->traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
-            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): null|NodeJson|int
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?int
             {
                 if (! $nodeJson instanceof ArrayItemNode) {
                     return null;

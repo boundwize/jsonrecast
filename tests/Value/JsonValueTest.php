@@ -110,6 +110,27 @@ final class JsonValueTest extends TestCase
         $this->assertSame('json', $nested->items[0]->value->value);
     }
 
+    public function testMaximumNestingDepthResetsForNextInlinePhpArraySibling(): void
+    {
+        $nodeJson = JsonValue::from([1 => [2], 2], maximumDepth: 3);
+
+        $this->assertInstanceOf(ObjectNode::class, $nodeJson);
+        $this->assertCount(2, $nodeJson->items);
+        $this->assertSame('1', $nodeJson->items[0]->key->value);
+        $this->assertInstanceOf(ArrayNode::class, $nodeJson->items[0]->value);
+        $this->assertSame('2', $nodeJson->items[1]->key->value);
+        $this->assertInstanceOf(NumberNode::class, $nodeJson->items[1]->value);
+        $this->assertSame('2', $nodeJson->items[1]->value->rawValue);
+    }
+
+    public function testMaximumNestingDepthIsCheckedWhenEnteringPhpArrayStack(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
+        JsonValue::from([1 => [2], 2], maximumDepth: 2);
+    }
+
     public function testItRejectsValueThatExceedsMaximumNestingDepth(): void
     {
         $this->expectException(InvalidArgumentException::class);

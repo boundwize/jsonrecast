@@ -134,6 +134,40 @@ TXT,
         (new AstDumper())->dump(new StringNode("\xB1\x31"));
     }
 
+    public function testItReducesMaximumDepthForAttributeEncodingInsideNestedStack(): void
+    {
+        $nestedNode = new ArrayNode([
+            new ArrayItemNode(new StringNode('value')),
+        ]);
+        $nestedNode->setAttribute('metadata', [1 => [2], 2]);
+
+        $arrayNode = new ArrayNode([
+            new ArrayItemNode($nestedNode),
+        ]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Unable to encode AST dump value.');
+
+        (new AstDumper(includeAttributes: true, maximumDepth: 2))->dump($arrayNode);
+    }
+
+    public function testAttributeEncodingDepthResetsForNextInlineValue(): void
+    {
+        $nestedNode = new ArrayNode([
+            new ArrayItemNode(new StringNode('value')),
+        ]);
+        $nestedNode->setAttribute('metadata', [1 => [2], 2]);
+
+        $arrayNode = new ArrayNode([
+            new ArrayItemNode($nestedNode),
+        ]);
+
+        $this->assertStringContainsString(
+            'metadata: {"1":[2],"2":2}',
+            (new AstDumper(includeAttributes: true, maximumDepth: 3))->dump($arrayNode),
+        );
+    }
+
     public function testItRejectsNodeThatExceedsMaximumNestingDepth(): void
     {
         $arrayNode = new ArrayNode([

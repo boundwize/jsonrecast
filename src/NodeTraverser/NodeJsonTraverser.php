@@ -148,6 +148,11 @@ final class NodeJsonTraverser
 
             if ($result === NodeJsonVisitor::REMOVE_NODE) {
                 array_splice($objectNode->items, $i, 1);
+
+                if ($objectNode->items === []) {
+                    $objectNode->afterOpenBrace = $objectNode->beforeCloseBrace;
+                }
+
                 $this->nodeChangeSet->markChanged($objectNode);
                 continue;
             }
@@ -194,6 +199,11 @@ final class NodeJsonTraverser
 
             if ($result === NodeJsonVisitor::REMOVE_NODE) {
                 array_splice($arrayNode->items, $i, 1);
+
+                if ($arrayNode->items === []) {
+                    $arrayNode->afterOpenBracket = $arrayNode->beforeCloseBracket;
+                }
+
                 $this->nodeChangeSet->markChanged($arrayNode);
                 continue;
             }

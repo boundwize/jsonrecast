@@ -198,7 +198,8 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
         if (
             $jsonDocument->getAttribute(NodeAttributes::TRAILING_NEWLINE) === true
-            && ! str_ends_with($output, $printContext->newline)
+            && ! str_ends_with($output, "\n")
+            && ! str_ends_with($output, "\r")
         ) {
             $output .= $printContext->newline;
         }

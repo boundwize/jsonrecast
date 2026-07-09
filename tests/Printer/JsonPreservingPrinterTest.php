@@ -1219,6 +1219,45 @@ JSON,
         $this->assertSame('["new"]', (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItPreservesExplicitlyChangedObjectItemColonSpacingWhenBestEffortReformatsContainer(): void
+    {
+        $fragment = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "x": 1,
+    "y": 2
+}
+JSON,
+        );
+
+        $jsonDocument = (new JsonParser())->parse('{"a" :  1, "b": 2}');
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $aItem = $jsonDocument->value->get('a');
+        $this->assertInstanceOf(ObjectItemNode::class, $aItem);
+        $aItem->value = new NumberNode('9');
+
+        $jsonDocument->value->set('big', $fragment->value);
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($aItem);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "a" :  9,
+    "b": 2,
+    "big": {
+        "x": 1,
+        "y": 2
+    }
+}
+JSON,
+            (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument),
+        );
+    }
+
     public function testItPrintsInPlaceStringMutationWhenObjectItemIsChanged(): void
     {
         $jsonDocument = (new JsonParser())->parse('{"name":"old"}');

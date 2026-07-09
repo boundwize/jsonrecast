@@ -251,6 +251,90 @@ JSON,
 JSON, (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
     }
 
+    public function testItDoesNotDoubleIndentObjectItemAddedAfterVisitorRemovesAllItems(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "a": 1
+}
+JSON,
+        );
+
+        $nodeJsonTraversalResult = $this->traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?int
+            {
+                if (! $nodeJson instanceof ObjectItemNode || $nodeJson->key->value !== 'a') {
+                    return null;
+                }
+
+                return NodeJsonVisitor::REMOVE_NODE;
+            }
+
+            public function leaveNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+            {
+                if (! $nodeJson instanceof ObjectNode || ! $nodeJsonPath->isRoot()) {
+                    return null;
+                }
+
+                $nodeJson->set('b', new NumberNode('2'));
+
+                return $nodeJson;
+            }
+        });
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "b": 2
+}
+JSON,
+            (new JsonPreservingPrinter($nodeJsonTraversalResult->changeSet))->print($nodeJsonTraversalResult->node),
+        );
+    }
+
+    public function testItDoesNotDoubleIndentArrayItemAddedAfterVisitorRemovesAllItems(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+[
+    1
+]
+JSON,
+        );
+
+        $nodeJsonTraversalResult = $this->traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?int
+            {
+                if (! $nodeJson instanceof ArrayItemNode) {
+                    return null;
+                }
+
+                return NodeJsonVisitor::REMOVE_NODE;
+            }
+
+            public function leaveNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+            {
+                if (! $nodeJson instanceof ArrayNode || ! $nodeJsonPath->isRoot()) {
+                    return null;
+                }
+
+                $nodeJson->append(new NumberNode('2'));
+
+                return $nodeJson;
+            }
+        });
+
+        $this->assertSame(
+            <<<'JSON'
+[
+    2
+]
+JSON,
+            (new JsonPreservingPrinter($nodeJsonTraversalResult->changeSet))->print($nodeJsonTraversalResult->node),
+        );
+    }
+
     public function testArrayIndexesAreReindexedAfterVisitorRemovalAndAddition(): void
     {
         $jsonDocument      = (new JsonParser())->parse('["keep","remove","after"]');

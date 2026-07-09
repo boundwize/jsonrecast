@@ -115,6 +115,7 @@ final readonly class AstDumper
                     $child['values'],
                     $childPrefix,
                     $index === $lastIndex,
+                    $depth,
                 );
 
                 continue;
@@ -267,6 +268,7 @@ final readonly class AstDumper
         array $values,
         string $prefix,
         bool $isLast,
+        int $depth,
     ): void {
         $lines[] = $this->line($prefix, $isLast, $name);
 
@@ -285,7 +287,7 @@ final readonly class AstDumper
             $lines[] = $this->line(
                 $childPrefix,
                 $index === $lastIndex,
-                $key . ': ' . $this->formatNamedValue($key, $value),
+                $key . ': ' . $this->formatNamedValue($key, $value, $depth),
             );
             $index++;
         }
@@ -322,13 +324,13 @@ final readonly class AstDumper
         return strlen($value) > 1 && (str_contains($value, "\n") || str_contains($value, "\r"));
     }
 
-    private function formatNamedValue(string $key, mixed $value): string
+    private function formatNamedValue(string $key, mixed $value, int $depth): string
     {
         if (is_string($value) && $this->shouldFormatAsSourceText($key)) {
             return $value;
         }
 
-        return $this->formatValue($value);
+        return $this->formatValue($value, $depth);
     }
 
     private function shouldFormatAsSourceText(string $key): bool
@@ -369,10 +371,10 @@ final readonly class AstDumper
         return max(3, strlen($this->indent) + 2);
     }
 
-    private function formatValue(mixed $value): string
+    private function formatValue(mixed $value, int $depth = 0): string
     {
         if (is_string($value)) {
-            return $this->encode($value);
+            return $this->encode($value, $depth);
         }
 
         if (is_bool($value)) {
@@ -388,7 +390,7 @@ final readonly class AstDumper
         }
 
         if (is_array($value)) {
-            return $this->encode($value);
+            return $this->encode($value, $depth);
         }
 
         if (is_object($value)) {
@@ -398,12 +400,12 @@ final readonly class AstDumper
         return get_debug_type($value);
     }
 
-    private function encode(mixed $value): string
+    private function encode(mixed $value, int $depth): string
     {
         $encoded = json_encode(
             $value,
             JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
-            $this->maximumDepth,
+            max(1, $this->maximumDepth - $depth),
         );
 
         if (! is_string($encoded)) {

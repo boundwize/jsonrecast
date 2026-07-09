@@ -6,12 +6,12 @@ namespace Boundwize\JsonRecast\Node;
 
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use Boundwize\JsonRecast\Node\Helper\StartOffsetHelper;
+use Boundwize\JsonRecast\Node\Helper\WhitespaceHelper;
 
 use function array_pop;
 use function array_splice;
 use function count;
 use function max;
-use function preg_match;
 use function str_contains;
 
 final class ObjectNode extends AbstractNodeJson
@@ -108,7 +108,7 @@ final class ObjectNode extends AbstractNodeJson
             $styleDonor === null
             && $this->afterOpenBrace === $this->beforeCloseBrace
         ) {
-            $afterValue = $this->closingLineWhitespace($this->beforeCloseBrace);
+            $afterValue = WhitespaceHelper::closingLine($this->beforeCloseBrace);
         }
 
         $objectItemNode = new ObjectItemNode(
@@ -163,15 +163,6 @@ final class ObjectNode extends AbstractNodeJson
         }
 
         return '';
-    }
-
-    private function closingLineWhitespace(string $whitespace): string
-    {
-        if (preg_match('/(?:\r\n|\r|\n)[^\r\n]*$/', $whitespace, $matches) === 1) {
-            return $matches[0];
-        }
-
-        return $whitespace;
     }
 
     private function startOffsetForAppendedItem(): float

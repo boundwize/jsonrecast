@@ -169,6 +169,37 @@ JSON,
         );
     }
 
+    public function testItPrettyPrintsInlineObjectWhenExistingValueIsReplacedByParsedMultilineValue(): void
+    {
+        $fragment = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "x": 1,
+    "y": 2
+}
+JSON,
+        );
+
+        $jsonDocument = (new JsonParser())->parse('{"a": 1, "b": 2}');
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('a', $fragment->value);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "a": {
+        "x": 1,
+        "y": 2
+    },
+    "b": 2
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesParsedMultilineEmptyObjectNode(): void
     {
         $jsonDocument = (new JsonParser())->parse("{\n        }");

@@ -47,4 +47,5 @@ JsonRecast is a PHP library for tools that need to read, edit, and rewrite JSON 
 - [Traversal And Paths](traversal-and-paths/) explains visitor hooks, change tracking, and `NodeJsonPath`.
 - [Node Reference](node-reference/) lists the node classes and helper methods.
 - [Parsing And Printers](parsing-and-printers/) covers parse errors, preserving output, and pretty output.
+- [Advanced Tricks](advanced-tricks/) covers practical patterns for project tooling and low-noise migrations.
 - [AST Dumper](ast-dumper/) shows how to inspect parsed or transformed documents.

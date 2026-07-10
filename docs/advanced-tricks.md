@@ -7,7 +7,7 @@ nav_order: 7
 # Advanced Tricks
 {: .no_toc }
 
-These tricks are useful when building project tooling: config upgraders, repository cleanup commands, package metadata migrations, or tests that need to prove a JSON rewrite changed only what it meant to change.
+This section is for library maintainers and developers of JSON migration tools: config upgraders, repository cleanup commands, package metadata migrations, or tests that need to prove a rewrite changed only what it meant to change.
 
 ## Contents
 {: .no_toc }
@@ -33,7 +33,7 @@ if ($document->value instanceof ObjectNode) {
 echo JsonRecast::print($document);
 ```
 
-Use a visitor when the tool should find matching nodes while walking the document. This is the better fit for nested paths, repeated structures, removals with `NodeJsonVisitor::REMOVE_NODE`, or edits that depend on traversal timing.
+Use a [visitor](../traversal-and-paths/#visitor-hooks) when the tool should find matching nodes while walking the document. This is the better fit for nested paths, repeated structures, removals with `NodeJsonVisitor::REMOVE_NODE`, or edits that depend on traversal timing.
 
 ```php
 use Boundwize\JsonRecast\JsonRecast;
@@ -83,11 +83,11 @@ $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstr
 echo JsonRecast::print($result);
 ```
 
-In short: direct edits are simplest when the location is already known; visitors are safer when discovery, path checks, or traversal order are part of the work. When a visitor finds the file is already in the intended state, return `null`; that avoids marking the node as changed on repeated runs. Use `leaveNode()` when it follows an earlier `enterNode()` change or when the decision depends on child edits that have already happened.
+In short: direct edits are simplest when the location is already known; visitors are safer when discovery, [path checks](../traversal-and-paths/#path-basics), or traversal order are part of the work. When a visitor finds the file is already in the intended state, return `null`; that avoids marking the node as changed on repeated runs. Use `leaveNode()` when it follows an earlier `enterNode()` change or when the decision depends on child edits that have already happened.
 
 ## Let The Parsed Style Shape New Values
 
-Project tools often need to add the same data to files with different local styles. Build the new value once; the preserving printer uses the parsed document's indentation and newline metadata when it has to print that new subtree.
+Project tools often need to add the same data to files with different local styles. Build the new value once with [`JsonValue::from()`](../quick-start/#add-values-from-php-data); the preserving printer uses the parsed document's indentation and newline metadata when it has to print that new subtree.
 
 ```php
 use Boundwize\JsonRecast\JsonRecast;

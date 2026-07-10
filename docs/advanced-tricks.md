@@ -37,7 +37,9 @@ Use a visitor when the tool should find matching nodes while walking the documen
 
 ```php
 use Boundwize\JsonRecast\JsonRecast;
+use Boundwize\JsonRecast\Node\BooleanNode;
 use Boundwize\JsonRecast\Node\NodeJson;
+use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\NodePath\NodeJsonPath;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
@@ -50,7 +52,25 @@ $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstr
             return null;
         }
 
-        if ($node->has('config')) {
+        $config = $node->get('config');
+
+        if ($config instanceof ObjectItemNode && $config->value instanceof ObjectNode) {
+            $sortPackages = $config->value->get('sort-packages');
+
+            if (
+                $sortPackages instanceof ObjectItemNode
+                && $sortPackages->value instanceof BooleanNode
+                && $sortPackages->value->value === true
+            ) {
+                return null;
+            }
+
+            $config->value->set('sort-packages', JsonValue::from(true));
+
+            return $node;
+        }
+
+        if ($config instanceof ObjectItemNode) {
             return null;
         }
 

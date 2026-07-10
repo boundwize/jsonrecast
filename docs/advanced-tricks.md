@@ -50,6 +50,10 @@ $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstr
             return null;
         }
 
+        if ($node->has('canonical')) {
+            return null;
+        }
+
         $node->set('canonical', JsonValue::from(false));
 
         return $node;
@@ -59,7 +63,7 @@ $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstr
 echo JsonRecast::print($result);
 ```
 
-In short: direct edits are simplest when the location is already known; visitors are safer when discovery, path checks, or traversal order are part of the work. Use `leaveNode()` when it follows an earlier `enterNode()` change or when the decision depends on child edits that have already happened.
+In short: direct edits are simplest when the location is already known; visitors are safer when discovery, path checks, or traversal order are part of the work. When a visitor finds the file is already in the intended state, return `null`; that avoids marking the node as changed on repeated runs. Use `leaveNode()` when it follows an earlier `enterNode()` change or when the decision depends on child edits that have already happened.
 
 ## Let The Parsed Style Shape New Values
 
@@ -188,7 +192,9 @@ If a migration removes or inserts array items in `enterNode()`, child values are
 use Boundwize\JsonRecast\JsonRecast;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\NodeJson;
+use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
+use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodePath\NodeJsonPath;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
 use Boundwize\JsonRecast\Value\JsonValue;
@@ -209,7 +215,52 @@ $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstr
             return null;
         }
 
-        $node->removeAt(0);
+        $oldIndex = null;
+        $hasComposerRepository = false;
+
+        foreach ($node->items as $index => $item) {
+            if (! $item->value instanceof ObjectNode) {
+                continue;
+            }
+
+            $type = $item->value->get('type');
+            $url = $item->value->get('url');
+
+            if (
+                $type instanceof ObjectItemNode
+                && $type->value instanceof StringNode
+                && $type->value->value === 'vcs'
+                && $url instanceof ObjectItemNode
+                && $url->value instanceof StringNode
+                && $url->value->value === 'https://example.com/old.git'
+            ) {
+                $oldIndex = $index;
+            }
+
+            if (
+                $type instanceof ObjectItemNode
+                && $type->value instanceof StringNode
+                && $type->value->value === 'composer'
+                && $url instanceof ObjectItemNode
+                && $url->value instanceof StringNode
+                && $url->value->value === 'https://repo.packagist.org'
+            ) {
+                $hasComposerRepository = true;
+            }
+        }
+
+        if ($oldIndex === null && $hasComposerRepository) {
+            return null;
+        }
+
+        if ($oldIndex !== null) {
+            $node->removeAt($oldIndex);
+        }
+
+        if ($hasComposerRepository) {
+            return $node;
+        }
+
         $node->append(JsonValue::from([
             'type' => 'composer',
             'url' => 'https://repo.packagist.org',
@@ -221,6 +272,10 @@ $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstr
     public function leaveNode(NodeJson $node, NodeJsonPath $path): ?NodeJson
     {
         if ($node instanceof ObjectNode && $path->matches(['repositories', 1])) {
+            if ($node->has('canonical')) {
+                return null;
+            }
+
             $node->set('canonical', JsonValue::from(false));
 
             return $node;
@@ -246,7 +301,7 @@ echo JsonRecast::print($result);
 }
 ```
 
-The `repositories` array is changed before its children are traversed. By the time `leaveNode()` sees the new repository object, its path is `['repositories', 1]`, so the visitor can add metadata to the reshaped item directly.
+The `repositories` array is changed before its children are traversed. By the time `leaveNode()` sees the new repository object, its path is `['repositories', 1]`, so the visitor can add metadata to the reshaped item directly. The early `return null` branches make the migration repeatable: once the old repository is gone and `canonical` already exists, the visitor stops without appending or marking the node changed again.
 
 ## Preserve Special Number Spelling
 

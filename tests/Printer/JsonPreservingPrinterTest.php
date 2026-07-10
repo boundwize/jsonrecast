@@ -993,6 +993,90 @@ JSON,
         );
     }
 
+    public function testItReindentsChangedItemInsideGraftedObjectSubtree(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "k0": 0
+}
+JSON,
+        );
+        $fragment     = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "lvl0": {
+    "lvl1": 1
+  },
+  "other": 2
+}
+JSON,
+        );
+
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+
+        $jsonDocument->value->set('grafted', $fragment->value);
+        $fragment->value->set('other', new NumberNode('999'));
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "k0": 0,
+    "grafted": {
+        "lvl0": {
+            "lvl1": 1
+        },
+        "other": 999
+    }
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItReindentsChangedItemInsideGraftedArraySubtree(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "k0": 0
+}
+JSON,
+        );
+        $fragment     = (new JsonParser())->parse(
+            <<<'JSON'
+[
+  [
+    1
+  ],
+  2
+]
+JSON,
+        );
+
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+        $this->assertInstanceOf(ArrayNode::class, $fragment->value);
+
+        $jsonDocument->value->set('grafted', $fragment->value);
+        $fragment->value->setAt(1, new NumberNode('999'));
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "k0": 0,
+    "grafted": [
+        [
+            1
+        ],
+        999
+    ]
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPrettyPrintsInlineAncestorArrayWhenNestedMutationPrintsMultiline(): void
     {
         $jsonDocument = (new JsonParser())->parse(

@@ -46,15 +46,15 @@ use Boundwize\JsonRecast\Value\JsonValue;
 $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstract {
     public function enterNode(NodeJson $node, NodeJsonPath $path): ?NodeJson
     {
-        if (! $node instanceof ObjectNode || ! $path->matches(['repositories', 0])) {
+        if (! $node instanceof ObjectNode || ! $path->isRoot()) {
             return null;
         }
 
-        if ($node->has('canonical')) {
+        if ($node->has('config')) {
             return null;
         }
 
-        $node->set('canonical', JsonValue::from(false));
+        $node->set('config', JsonValue::from(['sort-packages' => true]));
 
         return $node;
     }
@@ -323,7 +323,10 @@ $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstr
         if ($node instanceof NumberNode) {
             $value = $node->toIntOrFloat();
 
-            if ($path->isObjectValue('temperature_delta') && ($value < -10 || $value > 10)) {
+            if (
+                $path->matchesObjectKeys(['temperature_delta'])
+                && ($value < -10 || $value > 10)
+            ) {
                 throw new RuntimeException('temperature_delta must be between -10 and 10.');
             }
         }

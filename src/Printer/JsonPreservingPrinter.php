@@ -33,6 +33,7 @@ use function str_contains;
 use function str_ends_with;
 use function str_repeat;
 use function strlen;
+use function strrpos;
 use function substr;
 use function trim;
 use function usort;
@@ -229,7 +230,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         }
 
         if ($containerNode->items === []) {
-            return $this->printEmptyContainer($containerNode);
+            return $this->printEmptyContainer($containerNode, $printContext);
         }
 
         $detectScalarMutation = $childDetectScalarMutation;
@@ -243,7 +244,17 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 $i,
                 $itemsInOriginalOrder,
                 $this->afterOpen($containerNode),
-                $this->beforeClose($containerNode),
+                $this->reindentWhitespaceBeforeNode(
+                    $containerNode,
+                    $this->beforeClose($containerNode),
+                    $printContext,
+                ),
+            );
+
+            $beforeItem = $this->reindentWhitespaceBeforeNode(
+                $item,
+                $beforeItem ?? $this->beforeItem($item),
+                $printContext->next(),
             );
 
             $output .= $item instanceof ObjectItemNode
@@ -279,7 +290,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         int $depth,
     ): string {
         if ($containerNode->items === []) {
-            return $this->printEmptyContainer($containerNode);
+            return $this->printEmptyContainer($containerNode, $printContext);
         }
 
         $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($containerNode);
@@ -303,9 +314,13 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             . $this->closingDelimiter($containerNode);
     }
 
-    private function printEmptyContainer(ArrayNode|ObjectNode $containerNode): string
+    private function printEmptyContainer(ArrayNode|ObjectNode $containerNode, PrintContext $printContext): string
     {
-        $beforeClose = $this->beforeClose($containerNode);
+        $beforeClose = $this->reindentWhitespaceBeforeNode(
+            $containerNode,
+            $this->beforeClose($containerNode),
+            $printContext,
+        );
 
         if ($beforeClose !== '') {
             return $this->openingDelimiter($containerNode) . $beforeClose . $this->closingDelimiter($containerNode);
@@ -336,6 +351,11 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         return $containerNode instanceof ArrayNode
             ? $containerNode->beforeCloseBracket
             : $containerNode->beforeCloseBrace;
+    }
+
+    private function beforeItem(ArrayItemNode|ObjectItemNode $item): string
+    {
+        return $item instanceof ObjectItemNode ? $item->beforeKey : $item->beforeValue;
     }
 
     private function printObjectItemPreserving(
@@ -573,6 +593,111 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             || str_contains($beforeClose, "\r");
     }
 
+    private function reindentWhitespaceBeforeNode(
+        NodeJson $nodeJson,
+        string $whitespace,
+        PrintContext $printContext,
+    ): string {
+        if (! str_contains($whitespace, "\n") && ! str_contains($whitespace, "\r")) {
+            return $whitespace;
+        }
+
+        $lineFeedPosition       = strrpos($whitespace, "\n");
+        $carriageReturnPosition = strrpos($whitespace, "\r");
+        $lastNewlinePosition    = max(
+            $lineFeedPosition === false ? -1 : $lineFeedPosition,
+            $carriageReturnPosition === false ? -1 : $carriageReturnPosition,
+        );
+
+        return substr($whitespace, 0, $lastNewlinePosition + 1)
+            . $this->reindentLeadingWhitespace(
+                $nodeJson,
+                substr($whitespace, $lastNewlinePosition + 1),
+                $printContext,
+            );
+    }
+
+    private function reindentLeadingWhitespace(
+        NodeJson $nodeJson,
+        string $leadingWhitespace,
+        PrintContext $printContext,
+    ): string {
+        $originalDepth = $nodeJson->getAttribute(NodeAttributes::DEPTH);
+
+        if (! is_int($originalDepth)) {
+            return $leadingWhitespace;
+        }
+
+        $delta          = $printContext->level() - $originalDepth;
+        $originalIndent = $nodeJson->getAttribute(NodeAttributes::INDENT);
+
+        if (
+            is_string($originalIndent)
+            && $originalIndent !== ''
+            && $originalIndent !== $printContext->indentUnit()
+        ) {
+            return $this->reindentLeadingWhitespaceUnit(
+                $leadingWhitespace,
+                $originalIndent,
+                $printContext->indentUnit(),
+                $delta,
+            );
+        }
+
+        if ($delta === 0 || $printContext->indentUnit() === '') {
+            return $leadingWhitespace;
+        }
+
+        if ($delta > 0) {
+            return str_repeat($printContext->indentUnit(), $delta) . $leadingWhitespace;
+        }
+
+        $removeLength = strlen($printContext->indentUnit()) * -$delta;
+        $stripLength  = 0;
+
+        while (
+            $stripLength < $removeLength
+            && isset($leadingWhitespace[$stripLength])
+            && ($leadingWhitespace[$stripLength] === ' ' || $leadingWhitespace[$stripLength] === "\t")
+        ) {
+            $stripLength++;
+        }
+
+        return substr($leadingWhitespace, $stripLength);
+    }
+
+    private function reindentLeadingWhitespaceUnit(
+        string $leadingWhitespace,
+        string $originalIndent,
+        string $targetIndent,
+        int $delta,
+    ): string {
+        $leadingWhitespaceLength = strlen($leadingWhitespace);
+        $originalIndentLength    = strlen($originalIndent);
+        $indentLevel             = intdiv(
+            $leadingWhitespaceLength + intdiv($originalIndentLength, 2),
+            $originalIndentLength,
+        );
+        $residual                = $leadingWhitespaceLength - ($indentLevel * $originalIndentLength);
+
+        $targetLevel  = $indentLevel + $delta;
+        $targetPrefix = str_repeat($targetIndent, max($targetLevel, 0));
+
+        if ($residual < 0) {
+            return substr($targetPrefix, 0, $residual);
+        }
+
+        if ($residual > 0) {
+            return $targetPrefix . substr(
+                $leadingWhitespace,
+                $leadingWhitespaceLength - $residual,
+                $residual,
+            );
+        }
+
+        return $targetPrefix;
+    }
+
     private function reindentOriginalText(
         NodeJson $nodeJson,
         string $originalText,
@@ -584,75 +709,10 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             return $originalText;
         }
 
-        $delta          = $printContext->level() - $originalDepth;
-        $originalIndent = $nodeJson->getAttribute(NodeAttributes::INDENT);
-
-        if (
-            is_string($originalIndent)
-            && $originalIndent !== ''
-            && $originalIndent !== $printContext->indentUnit()
-        ) {
-            /** @var list<string> $lines */
-            $lines  = preg_split('/(?<=\r\n|\r|\n)/', $originalText);
-            $output = $lines[0];
-
-            for ($i = 1, $count = count($lines); $i < $count; $i++) {
-                $line = $lines[$i];
-
-                if (trim($line) === '') {
-                    $output .= $line;
-
-                    continue;
-                }
-
-                $leadingWhitespaceLength = 0;
-
-                while (
-                    isset($line[$leadingWhitespaceLength])
-                    && ($line[$leadingWhitespaceLength] === ' ' || $line[$leadingWhitespaceLength] === "\t")
-                ) {
-                    $leadingWhitespaceLength++;
-                }
-
-                $originalIndentLength = strlen($originalIndent);
-                $indentLevel          = intdiv(
-                    $leadingWhitespaceLength + intdiv($originalIndentLength, 2),
-                    $originalIndentLength,
-                );
-                $residual             = $leadingWhitespaceLength - ($indentLevel * $originalIndentLength);
-
-                $targetLevel  = $indentLevel + $delta;
-                $targetPrefix = str_repeat(
-                    $printContext->indentUnit(),
-                    max($targetLevel, 0),
-                );
-
-                if ($residual < 0) {
-                    $targetPrefix = substr($targetPrefix, 0, $residual);
-                } elseif ($residual > 0) {
-                    $targetPrefix .= substr(
-                        $line,
-                        $leadingWhitespaceLength - $residual,
-                        $residual,
-                    );
-                }
-
-                $output .= $targetPrefix . substr($line, $leadingWhitespaceLength);
-            }
-
-            return $output;
-        }
-
-        if ($delta === 0 || $printContext->indentUnit() === '') {
-            return $originalText;
-        }
-
         /** @var list<string> $lines */
         $lines = preg_split('/(?<=\r\n|\r|\n)/', $originalText);
 
-        $output       = $lines[0];
-        $addPrefix    = $delta > 0 ? str_repeat($printContext->indentUnit(), $delta) : '';
-        $removeLength = $delta < 0 ? strlen($printContext->indentUnit()) * -$delta : 0;
+        $output = $lines[0];
 
         for ($i = 1, $count = count($lines); $i < $count; $i++) {
             $line = $lines[$i];
@@ -663,22 +723,19 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 continue;
             }
 
-            if ($delta > 0) {
-                $output .= $addPrefix . $line;
-
-                continue;
-            }
-
-            $stripLength = 0;
+            $leadingWhitespaceLength = 0;
             while (
-                $stripLength < $removeLength
-                && isset($line[$stripLength])
-                && ($line[$stripLength] === ' ' || $line[$stripLength] === "\t")
+                isset($line[$leadingWhitespaceLength])
+                && ($line[$leadingWhitespaceLength] === ' ' || $line[$leadingWhitespaceLength] === "\t")
             ) {
-                $stripLength++;
+                $leadingWhitespaceLength++;
             }
 
-            $output .= substr($line, $stripLength);
+            $output .= $this->reindentLeadingWhitespace(
+                $nodeJson,
+                substr($line, 0, $leadingWhitespaceLength),
+                $printContext,
+            ) . substr($line, $leadingWhitespaceLength);
         }
 
         return $output;

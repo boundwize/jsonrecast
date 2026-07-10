@@ -11,6 +11,7 @@ use Boundwize\JsonRecast\Node\Helper\WhitespaceHelper;
 use function array_pop;
 use function array_splice;
 use function count;
+use function is_string;
 use function max;
 use function str_contains;
 
@@ -116,7 +117,7 @@ final class ObjectNode extends AbstractNodeJson
             value: $nodeJson,
             beforeKey: $beforeKey,
             betweenKeyAndColon: $styleDonor !== null ? $styleDonor->betweenKeyAndColon : '',
-            betweenColonAndValue: $styleDonor !== null ? $styleDonor->betweenColonAndValue : ' ',
+            betweenColonAndValue: $this->betweenColonAndValueForAppendedItem($styleDonor),
             afterValue: $afterValue,
         );
         $objectItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
@@ -131,6 +132,23 @@ final class ObjectNode extends AbstractNodeJson
         }
 
         $this->items[] = $objectItemNode;
+    }
+
+    private function betweenColonAndValueForAppendedItem(?ObjectItemNode $objectItemNode): string
+    {
+        if (! $objectItemNode instanceof ObjectItemNode) {
+            return ' ';
+        }
+
+        if (
+            $objectItemNode->betweenColonAndValue === ''
+            && ! $objectItemNode->hasAttribute(NodeAttributes::START_OFFSET)
+            && ! is_string($objectItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT))
+        ) {
+            return ' ';
+        }
+
+        return $objectItemNode->betweenColonAndValue;
     }
 
     private function beforeKeyForAppendedItem(): string

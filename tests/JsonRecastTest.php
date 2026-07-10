@@ -6,6 +6,7 @@ namespace Boundwize\JsonRecast\Tests;
 
 use Boundwize\JsonRecast\JsonRecast;
 use Boundwize\JsonRecast\Node\ArrayNode;
+use Boundwize\JsonRecast\Node\BooleanNode;
 use Boundwize\JsonRecast\Node\JsonDocument;
 use Boundwize\JsonRecast\Node\NodeJson;
 use Boundwize\JsonRecast\Node\NumberNode;
@@ -22,6 +23,7 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 use function array_reverse;
+use function count;
 use function json_decode;
 
 use const JSON_THROW_ON_ERROR;
@@ -565,6 +567,79 @@ JSON,
         $this->assertStringContainsString(
             '"temperature_delta": -0',
             $printed,
+        );
+    }
+
+    public function testAppendedGeneratedObjectKeepsDefaultColonSpacingAfterSecondMutation(): void
+    {
+        $jsonDocument = JsonRecast::parse(<<<'JSON'
+{
+    "repositories": [
+        {"type": "vcs", "url": "https://example.com/old.git"},
+        {"type": "path", "url": "packages/local"}
+    ]
+}
+JSON);
+
+        $jsonRecastResult = JsonRecast::traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
+            private ?int $composerRepositoryIndex = null;
+
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+            {
+                if (! $nodeJson instanceof ArrayNode || ! $nodeJsonPath->matchesObjectKeys(['repositories'])) {
+                    return null;
+                }
+
+                $nodeJson->removeAt(0);
+                $this->composerRepositoryIndex = count($nodeJson->items);
+                $nodeJson->append(JsonValue::from([
+                    'type' => 'composer',
+                    'url'  => 'https://repo.packagist.org',
+                ]));
+
+                return $nodeJson;
+            }
+
+            public function leaveNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+            {
+                if (
+                    $this->composerRepositoryIndex === null
+                    || ! $nodeJson instanceof ObjectNode
+                    || ! $nodeJsonPath->matches(['repositories', $this->composerRepositoryIndex])
+                ) {
+                    return null;
+                }
+
+                $canonical = $nodeJson->get('canonical');
+
+                if (
+                    $canonical instanceof ObjectItemNode
+                    && $canonical->value instanceof BooleanNode
+                    && $canonical->value->value === false
+                ) {
+                    return null;
+                }
+
+                $nodeJson->set('canonical', JsonValue::from(false));
+
+                return $nodeJson;
+            }
+        });
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "repositories": [
+        {"type": "path", "url": "packages/local"},
+        {
+            "type": "composer",
+            "url": "https://repo.packagist.org",
+            "canonical": false
+        }
+    ]
+}
+JSON,
+            JsonRecast::print($jsonRecastResult),
         );
     }
 

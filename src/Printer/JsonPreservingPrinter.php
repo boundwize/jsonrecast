@@ -385,9 +385,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
         return $beforeKey
             . $this->printNode($objectItemNode->key, $printContext, $detectScalarMutation, $depth)
-            . $objectItemNode->betweenKeyAndColon
-            . ':'
-            . $objectItemNode->betweenColonAndValue
+            . $this->objectItemSeparator($objectItemNode)
             . $this->printNode($objectItemNode->value, $printContext, $detectScalarMutation, $depth)
             . $afterValue;
     }
@@ -398,15 +396,25 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         bool $detectScalarMutation,
         int $depth,
     ): string {
-        $separator = $objectItemNode->hasAttribute(NodeAttributes::ORIGINAL_TEXT)
+        return $this->printNode($objectItemNode->key, $printContext, $detectScalarMutation, $depth)
+            . $this->objectItemSeparator($objectItemNode)
+            . $this->printNode($objectItemNode->value, $printContext, $detectScalarMutation, $depth);
+    }
+
+    private function objectItemSeparator(ObjectItemNode $objectItemNode): string
+    {
+        $originalText = $objectItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+
+        if (
+            is_string($originalText)
+            || $objectItemNode->hasAttribute(NodeAttributes::START_OFFSET)
             || $objectItemNode->betweenKeyAndColon !== ''
             || $objectItemNode->betweenColonAndValue !== ''
-                ? $objectItemNode->betweenKeyAndColon . ':' . $objectItemNode->betweenColonAndValue
-                : ': ';
+        ) {
+            return $objectItemNode->betweenKeyAndColon . ':' . $objectItemNode->betweenColonAndValue;
+        }
 
-        return $this->printNode($objectItemNode->key, $printContext, $detectScalarMutation, $depth)
-            . $separator
-            . $this->printNode($objectItemNode->value, $printContext, $detectScalarMutation, $depth);
+        return ': ';
     }
 
     private function printArrayItemPreserving(

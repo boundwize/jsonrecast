@@ -180,10 +180,16 @@ if ($document->value instanceof ObjectNode) {
         && $autoloadDevItem instanceof ObjectItemNode
         && $autoloadDevItem->value instanceof ArrayNode
     ) {
-        $movedNode = $legacyItem->value->items[0]->value;
+        if ($legacyItem->value->items !== []) {
+            $movedNode = $legacyItem->value->items[0]->value;
 
-        $legacyItem->value->removeAt(0);
-        $autoloadDevItem->value->append($movedNode);
+            $legacyItem->value->removeAt(0);
+            $autoloadDevItem->value->append($movedNode);
+        }
+
+        if ($legacyItem->value->items === []) {
+            $document->value->remove('legacy');
+        }
     }
 }
 
@@ -192,8 +198,6 @@ echo JsonRecast::print($document);
 
 ```json
 {
-  "legacy": [
-  ],
   "autoload-dev": [
     {
       "path": "tests/Fixtures/App"
@@ -202,7 +206,7 @@ echo JsonRecast::print($document);
 }
 ```
 
-This is handy for project restructures: move a block from an old key to a new key, then clean up the empty parent in a later visitor if your tool wants to remove it.
+This is handy for project restructures: move a block from an old key to a new key, then remove the old parent when the migration leaves it empty. The empty check also handles files where `legacy` was already empty before this run.
 
 ## Use LeaveNode After Array Reindexing
 

@@ -17,7 +17,7 @@ This section is for library maintainers and developers of JSON migration tools: 
 
 ## Choose Direct Edits Or Visitors
 
-Use direct `JsonDocument` edits when the tool already knows the small part of the file it wants to change. This is a good fit for root-level config migration, duplicate-key cleanup, or moving one known subtree.
+Use direct `JsonDocument` edits when the tool already knows the small part of the file it wants to change. This is a good fit for root-level config migration, duplicate-key cleanup, or moving one known subtree with [container helpers](../node-reference/#containers).
 
 ```php
 use Boundwize\JsonRecast\JsonRecast;
@@ -212,7 +212,7 @@ This is handy for project restructures: move a block from an old key to a new ke
 
 ## Use LeaveNode After Array Reindexing
 
-If a migration removes or inserts array items in `enterNode()`, child values are visited with the updated indexes. Use `leaveNode()` in the same visitor when the next edit should target the reshaped array.
+If a migration removes or inserts array items in `enterNode()`, child values are visited with the updated indexes. Use `matchesObjectKeys()` to match the array's object-key path, then `leaveNode()` with [`NodeJsonPath::matches()`](../traversal-and-paths/#path-basics) when the next edit should target the reshaped array.
 
 ```php
 use Boundwize\JsonRecast\JsonRecast;

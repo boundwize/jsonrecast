@@ -103,7 +103,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 $detectScalarMutation,
                 $depth,
             ),
-            $nodeJson instanceof ObjectNode => $this->printContainer(
+            $nodeJson instanceof ObjectNode, $nodeJson instanceof ArrayNode => $this->printContainer(
                 $nodeJson,
                 $printContext,
                 $detectScalarMutation,
@@ -114,12 +114,6 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 $printContext,
                 detectScalarMutation: $detectScalarMutation,
                 depth: $depth,
-            ),
-            $nodeJson instanceof ArrayNode => $this->printContainer(
-                $nodeJson,
-                $printContext,
-                $detectScalarMutation,
-                $depth,
             ),
             $nodeJson instanceof ArrayItemNode => $this->printArrayItemPreserving(
                 $nodeJson,
@@ -159,21 +153,13 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 continue;
             }
 
-            if ($currentNode instanceof ObjectNode) {
-                foreach ($currentNode->items as $item) {
-                    $stack[] = [$item, $depth + 1];
-                }
-
-                continue;
-            }
-
             if ($currentNode instanceof ObjectItemNode) {
                 $stack[] = [$currentNode->key, $depth];
                 $stack[] = [$currentNode->value, $depth];
                 continue;
             }
 
-            if ($currentNode instanceof ArrayNode) {
+            if ($currentNode instanceof ObjectNode || $currentNode instanceof ArrayNode) {
                 foreach ($currentNode->items as $item) {
                     $stack[] = [$item, $depth + 1];
                 }
@@ -588,12 +574,8 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
     private function hasContainerMultilineEdgeWhitespace(ArrayNode|ObjectNode $containerNode): bool
     {
-        $afterOpen   = $containerNode instanceof ArrayNode
-            ? $containerNode->afterOpenBracket
-            : $containerNode->afterOpenBrace;
-        $beforeClose = $containerNode instanceof ArrayNode
-            ? $containerNode->beforeCloseBracket
-            : $containerNode->beforeCloseBrace;
+        $afterOpen   = $this->afterOpen($containerNode);
+        $beforeClose = $this->beforeClose($containerNode);
 
         return str_contains($afterOpen, "\n")
             || str_contains($afterOpen, "\r")
@@ -922,7 +904,9 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             $nodeJson instanceof JsonDocument => $nodeJson->beforeValue
                 . $this->getOriginalText($nodeJson->value)
                 . $nodeJson->afterValue,
-            $nodeJson instanceof ObjectNode => $this->reconstructOriginalContainerText($nodeJson),
+            $nodeJson instanceof ObjectNode, $nodeJson instanceof ArrayNode => $this->reconstructOriginalContainerText(
+                $nodeJson,
+            ),
             $nodeJson instanceof ObjectItemNode => $nodeJson->beforeKey
                 . $this->getOriginalText($nodeJson->key)
                 . $nodeJson->betweenKeyAndColon
@@ -930,7 +914,6 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 . $nodeJson->betweenColonAndValue
                 . $this->getOriginalText($nodeJson->value)
                 . $nodeJson->afterValue,
-            $nodeJson instanceof ArrayNode => $this->reconstructOriginalContainerText($nodeJson),
             $nodeJson instanceof ArrayItemNode => $nodeJson->beforeValue
                 . $this->getOriginalText($nodeJson->value)
                 . $nodeJson->afterValue,
@@ -961,7 +944,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         foreach ($containerNode->items as $i => $item) {
             $beforeValue = $i === 0
                 ? $this->afterOpen($containerNode)
-                : ($item instanceof ObjectItemNode ? $item->beforeKey : $item->beforeValue);
+                : $this->beforeItem($item);
             $afterValue  = $i === $lastIndex ? $this->beforeClose($containerNode) : $item->afterValue;
 
             $output .= $beforeValue
@@ -1011,33 +994,28 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             return $this->hasBooleanValueChanged($nodeJson);
         }
 
-        if ($nodeJson instanceof ObjectNode) {
-            foreach ($nodeJson->items as $item) {
-                if ($this->hasScalarValueChanged($item)) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         if ($nodeJson instanceof ObjectItemNode) {
             return $this->hasScalarValueChanged($nodeJson->key)
                 || $this->hasScalarValueChanged($nodeJson->value);
         }
 
-        if ($nodeJson instanceof ArrayNode) {
-            foreach ($nodeJson->items as $item) {
-                if ($this->hasScalarValueChanged($item)) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         if ($nodeJson instanceof ArrayItemNode) {
             return $this->hasScalarValueChanged($nodeJson->value);
+        }
+
+        if ($nodeJson instanceof ObjectNode || $nodeJson instanceof ArrayNode) {
+            return $this->hasAnyChangedItemScalarValue($nodeJson);
+        }
+
+        return false;
+    }
+
+    private function hasAnyChangedItemScalarValue(ObjectNode|ArrayNode $containerNode): bool
+    {
+        foreach ($containerNode->items as $item) {
+            if ($this->hasScalarValueChanged($item)) {
+                return true;
+            }
         }
 
         return false;
@@ -1074,32 +1052,27 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             return $this->isChanged($nodeJson->value);
         }
 
-        if ($nodeJson instanceof ObjectNode) {
-            foreach ($nodeJson->items as $item) {
-                if ($this->isChanged($item)) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         if ($nodeJson instanceof ObjectItemNode) {
             return $this->isChanged($nodeJson->key) || $this->isChanged($nodeJson->value);
         }
 
-        if ($nodeJson instanceof ArrayNode) {
-            foreach ($nodeJson->items as $item) {
-                if ($this->isChanged($item)) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         if ($nodeJson instanceof ArrayItemNode) {
             return $this->isChanged($nodeJson->value);
+        }
+
+        if ($nodeJson instanceof ObjectNode || $nodeJson instanceof ArrayNode) {
+            return $this->hasChangedContainerItem($nodeJson);
+        }
+
+        return false;
+    }
+
+    private function hasChangedContainerItem(ObjectNode|ArrayNode $containerNode): bool
+    {
+        foreach ($containerNode->items as $item) {
+            if ($this->isChanged($item)) {
+                return true;
+            }
         }
 
         return false;

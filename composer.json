@@ -53,7 +53,7 @@
         }
     },
     "require-dev": {
-        "boundwize/pyrameter": "^0.4.2",
+        "boundwize/pyrameter": "^0.5",
         "boundwize/structarmed": "^0.14.9",
         "laminas/laminas-coding-standard": "^3.1",
         "phpstan/phpstan": "^2.2",

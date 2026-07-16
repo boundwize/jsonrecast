@@ -982,43 +982,12 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
     private function hasScalarValueChanged(NodeJson $nodeJson): bool
     {
-        if ($nodeJson instanceof StringNode) {
-            return $this->hasStringValueChanged($nodeJson);
-        }
-
-        if ($nodeJson instanceof NumberNode) {
-            return $this->hasNumberValueChanged($nodeJson);
-        }
-
-        if ($nodeJson instanceof BooleanNode) {
-            return $this->hasBooleanValueChanged($nodeJson);
-        }
-
-        if ($nodeJson instanceof ObjectItemNode) {
-            return $this->hasScalarValueChanged($nodeJson->key)
-                || $this->hasScalarValueChanged($nodeJson->value);
-        }
-
-        if ($nodeJson instanceof ArrayItemNode) {
-            return $this->hasScalarValueChanged($nodeJson->value);
-        }
-
-        if ($nodeJson instanceof ObjectNode || $nodeJson instanceof ArrayNode) {
-            return $this->hasAnyChangedItemScalarValue($nodeJson);
-        }
-
-        return false;
-    }
-
-    private function hasAnyChangedItemScalarValue(ObjectNode|ArrayNode $containerNode): bool
-    {
-        foreach ($containerNode->items as $item) {
-            if ($this->hasScalarValueChanged($item)) {
-                return true;
-            }
-        }
-
-        return false;
+        return match (true) {
+            $nodeJson instanceof StringNode => $this->hasStringValueChanged($nodeJson),
+            $nodeJson instanceof NumberNode => $this->hasNumberValueChanged($nodeJson),
+            $nodeJson instanceof BooleanNode => $this->hasBooleanValueChanged($nodeJson),
+            default => false,
+        };
     }
 
     private function hasStringValueChanged(StringNode $stringNode): bool

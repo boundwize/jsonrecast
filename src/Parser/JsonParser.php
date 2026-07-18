@@ -18,8 +18,9 @@ use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use JsonException;
 
+use function array_keys;
 use function count;
-use function in_array;
+use function implode;
 use function is_string;
 use function json_decode;
 use function preg_match_all;
@@ -260,14 +261,14 @@ final class JsonParser
 
     private function readWhitespace(): string
     {
-        $whitespace = '';
+        $parts = [];
 
-        while ($this->currentToken()->type === TokenType::WHITESPACE) {
-            $whitespace .= $this->currentToken()->text;
+        while (($token = $this->currentToken())->type === TokenType::WHITESPACE) {
+            $parts[] = $token->text;
             $this->position++;
         }
 
-        return $whitespace;
+        return implode('', $parts);
     }
 
     /**
@@ -336,16 +337,14 @@ final class JsonParser
     {
         preg_match_all('/(?:\r\n|\r|\n)([ \t]+)(?=\S)/', $source, $matches);
 
-        /** @var list<string> $lineIndents */
+        /** @var array<string, true> $lineIndents */
         $lineIndents = [];
 
         foreach ($matches[1] as $lineIndent) {
-            if (! in_array($lineIndent, $lineIndents, true)) {
-                $lineIndents[] = $lineIndent;
-            }
+            $lineIndents[$lineIndent] = true;
         }
 
-        return $this->shortestIndent($lineIndents) ?? '    ';
+        return $this->shortestIndent(array_keys($lineIndents)) ?? '    ';
     }
 
     /**

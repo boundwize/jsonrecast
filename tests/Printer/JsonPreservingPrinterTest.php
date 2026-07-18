@@ -1673,6 +1673,107 @@ JSON,
         );
     }
 
+    public function testItDoesNotDuplicateBlankLineWhenAppendingMultipleItemsToNestedEmptyArray(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "name": "my-app",
+    "keywords": [
+
+    ]
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+        $keywords = $jsonDocument->value->get('keywords');
+        $this->assertInstanceOf(ObjectItemNode::class, $keywords);
+        $this->assertInstanceOf(ArrayNode::class, $keywords->value);
+
+        $keywords->value->append(new StringNode('php'));
+        $keywords->value->append(new StringNode('go'));
+
+        // The decorative blank line is a one-time opening decoration: it stays
+        // before the first item only and must not be repeated before later items.
+        $this->assertSame(
+            <<<'JSON'
+{
+    "name": "my-app",
+    "keywords": [
+
+        "php",
+        "go"
+    ]
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItDoesNotDuplicateBlankLineWhenSettingMultipleKeysOnNestedEmptyObject(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "cfg": {
+
+    }
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+        $cfg = $jsonDocument->value->get('cfg');
+        $this->assertInstanceOf(ObjectItemNode::class, $cfg);
+        $this->assertInstanceOf(ObjectNode::class, $cfg->value);
+
+        $cfg->value->set('a', new NumberNode('1'));
+        $cfg->value->set('b', new NumberNode('2'));
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "cfg": {
+
+        "a": 1,
+        "b": 2
+    }
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItPreservesIntentionalBlankLineBetweenItemsWhenAppending(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+[
+    1,
+
+    2
+]
+JSON,
+        );
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->append(new NumberNode('3'));
+
+        // A blank line used as an intentional inter-item separator (not the
+        // container's opening decoration) is preserved for the appended item.
+        $this->assertSame(
+            <<<'JSON'
+[
+    1,
+
+    2,
+
+    3
+]
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItDoesNotDuplicateMultilineWhitespaceWhenAppendingToEmptyObject(): void
     {
         $jsonDocument = (new JsonParser())->parse("{\n\n}");

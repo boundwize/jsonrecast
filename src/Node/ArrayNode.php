@@ -160,11 +160,12 @@ final class ArrayNode extends AbstractNodeJson
 
     private function beforeValueForAppendedItem(): string
     {
-        $itemCount  = count($this->items);
-        $styleDonor = StartOffsetHelper::findStyleDonor($this->items) ?? $this->items[$itemCount - 1];
+        $itemCount   = count($this->items);
+        $styleDonor  = StartOffsetHelper::findStyleDonor($this->items) ?? $this->items[$itemCount - 1];
+        $beforeValue = WhitespaceHelper::separatorAfterOpening($styleDonor->beforeValue, $this->afterOpenBracket);
 
-        if ($styleDonor->beforeValue !== '' || $itemCount > 1) {
-            return $styleDonor->beforeValue;
+        if ($beforeValue !== '' || $itemCount > 1) {
+            return $beforeValue;
         }
 
         // Single item at position 0: beforeValue equals afterOpenBracket ('' for inline).

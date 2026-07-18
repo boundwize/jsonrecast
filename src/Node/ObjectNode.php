@@ -156,11 +156,16 @@ final class ObjectNode extends AbstractNodeJson
         $itemCount = count($this->items);
 
         if ($itemCount > 1) {
-            return (StartOffsetHelper::findStyleDonor($this->items) ?? $this->items[$itemCount - 1])->beforeKey;
+            $styleDonor = StartOffsetHelper::findStyleDonor($this->items) ?? $this->items[$itemCount - 1];
+
+            return WhitespaceHelper::separatorAfterOpening($styleDonor->beforeKey, $this->afterOpenBrace);
         }
 
         if ($itemCount === 1) {
-            $firstItemBeforeKey = $this->items[0]->beforeKey;
+            $firstItemBeforeKey = WhitespaceHelper::separatorAfterOpening(
+                $this->items[0]->beforeKey,
+                $this->afterOpenBrace,
+            );
 
             return $firstItemBeforeKey !== '' ? $firstItemBeforeKey : ' ';
         }

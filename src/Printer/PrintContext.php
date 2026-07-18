@@ -8,11 +8,14 @@ use function str_repeat;
 
 final readonly class PrintContext
 {
+    private string $indentation;
+
     public function __construct(
         private string $indent = '    ',
         public string $newline = "\n",
         private int $level = 0,
     ) {
+        $this->indentation = str_repeat($indent, $level);
     }
 
     public function next(): self
@@ -22,12 +25,12 @@ final readonly class PrintContext
 
     public function indentation(): string
     {
-        return str_repeat($this->indent, $this->level);
+        return $this->indentation;
     }
 
     public function childIndentation(): string
     {
-        return str_repeat($this->indent, $this->level + 1);
+        return $this->indentation . $this->indent;
     }
 
     public function indentUnit(): string

@@ -6,13 +6,35 @@ namespace Boundwize\JsonRecast\Parser;
 
 use function ctype_digit;
 use function ctype_xdigit;
-use function in_array;
 use function ord;
 use function strlen;
 use function substr;
 
 final class Lexer
 {
+    private const WHITESPACE_CHARS = [' ' => true, "\t" => true, "\n" => true, "\r" => true];
+
+    private const STRING_ESCAPES = [
+        '"'  => true,
+        '\\' => true,
+        '/'  => true,
+        'b'  => true,
+        'f'  => true,
+        'n'  => true,
+        'r'  => true,
+        't'  => true,
+    ];
+
+    private const EXPONENT_CHARS = ['e' => true, 'E' => true];
+
+    private const SIGN_CHARS = ['+' => true, '-' => true];
+
+    private const KEYWORD_TOKENS = [
+        'true'  => TokenType::TRUE,
+        'false' => TokenType::FALSE,
+        'null'  => TokenType::NULL,
+    ];
+
     private int $offset = 0;
 
     private int $line = 1;
@@ -77,25 +99,22 @@ final class Lexer
             return $this->numberToken($startOffset, $line, $column);
         }
 
-        foreach (
-            [
-                'true'  => TokenType::TRUE,
-                'false' => TokenType::FALSE,
-                'null'  => TokenType::NULL,
-            ] as $text => $type
-        ) {
-            if (substr($this->source, $this->offset, strlen($text)) !== $text) {
-                continue;
-            }
+        $text = match ($char) {
+            't' => 'true',
+            'f' => 'false',
+            'n' => 'null',
+            default => null,
+        };
 
-            for ($i = 0; $i < strlen($text); $i++) {
-                $this->advance();
-            }
-
-            return new Token($type, $text, $startOffset, $this->offset, $line, $column);
+        if ($text === null || substr($this->source, $this->offset, strlen($text)) !== $text) {
+            throw $this->error('Unexpected character.');
         }
 
-        throw $this->error('Unexpected character.');
+        $length        = strlen($text);
+        $this->offset += $length;
+        $this->column += $length;
+
+        return new Token(self::KEYWORD_TOKENS[$text], $text, $startOffset, $this->offset, $line, $column);
     }
 
     /**
@@ -111,7 +130,7 @@ final class Lexer
 
     private function whitespaceToken(int $startOffset, int $line, int $column): Token
     {
-        while (! $this->isAtEnd() && in_array($this->currentChar(), [' ', "\t", "\n", "\r"], true)) {
+        while (! $this->isAtEnd() && isset(self::WHITESPACE_CHARS[$this->currentChar()])) {
             $this->advance();
         }
 
@@ -162,7 +181,7 @@ final class Lexer
 
             $escaped = $this->currentChar();
 
-            if (in_array($escaped, ['"', '\\', '/', 'b', 'f', 'n', 'r', 't'], true)) {
+            if (isset(self::STRING_ESCAPES[$escaped])) {
                 $this->advance();
                 continue;
             }
@@ -223,10 +242,10 @@ final class Lexer
             }
         }
 
-        if (! $this->isAtEnd() && in_array($this->currentChar(), ['e', 'E'], true)) {
+        if (! $this->isAtEnd() && isset(self::EXPONENT_CHARS[$this->currentChar()])) {
             $this->advance();
 
-            if (! $this->isAtEnd() && in_array($this->currentChar(), ['+', '-'], true)) {
+            if (! $this->isAtEnd() && isset(self::SIGN_CHARS[$this->currentChar()])) {
                 $this->advance();
             }
 

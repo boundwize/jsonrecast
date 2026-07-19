@@ -150,6 +150,48 @@ final class NodeJsonTraverserTest extends TestCase
         );
     }
 
+    public function testParsedReplacementItemDropsDonorSourceAttributesWhenOriginalItemHasNone(): void
+    {
+        $donorDocument = (new JsonParser())->parse("[\n  9\n]");
+        $this->assertInstanceOf(ArrayNode::class, $donorDocument->value);
+
+        $donorItem = $donorDocument->value->items[0];
+        $this->assertTrue($donorItem->hasAttribute(NodeAttributes::START_OFFSET));
+        $this->assertTrue($donorItem->hasAttribute(NodeAttributes::ORIGINAL_TEXT));
+
+        $jsonDocument = new JsonDocument(new ArrayNode([new ArrayItemNode(new NumberNode('1'))]));
+
+        $nodeJsonTraversalResult = $this->traverse(
+            $jsonDocument,
+            new class ($donorItem) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly ArrayItemNode $arrayItemNode,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if (! $nodeJson instanceof ArrayItemNode || ! $nodeJsonPath->isArrayValue(0)) {
+                        return null;
+                    }
+
+                    return $this->arrayItemNode;
+                }
+            },
+        );
+
+        $this->assertTrue($nodeJsonTraversalResult->changeSet->isChanged($donorItem));
+        $this->assertSame('', $donorItem->beforeValue);
+        $this->assertSame('', $donorItem->afterValue);
+        $this->assertFalse($donorItem->hasAttribute(NodeAttributes::START_OFFSET));
+        $this->assertFalse($donorItem->hasAttribute(NodeAttributes::ORIGINAL_TEXT));
+
+        $this->assertSame(
+            "[\n    9\n]",
+            (new JsonPreservingPrinter($nodeJsonTraversalResult->changeSet))->print($nodeJsonTraversalResult->node),
+        );
+    }
+
     public function testNoHasChangedAttributeExists(): void
     {
         $this->assertFalse((new ReflectionClass(NodeAttributes::class))->hasConstant('HAS_CHANGED'));

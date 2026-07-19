@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast\Node\Helper;
 
 use function preg_match;
+use function str_contains;
 
 /**
  * @internal
@@ -36,5 +37,23 @@ final readonly class WhitespaceHelper
         }
 
         return $donorWhitespace;
+    }
+
+    /**
+     * Opening whitespace to use when an existing item is promoted to index 0.
+     *
+     * A multiline separator belongs to the promoted item's line and must move
+     * with it. Inline comma spacing does not belong after the opening delimiter,
+     * so the container's existing opening whitespace is retained in that case.
+     */
+    public static function openingBeforePromotedItem(
+        string $itemWhitespace,
+        string $openingWhitespace,
+    ): string {
+        if (str_contains($itemWhitespace, "\n") || str_contains($itemWhitespace, "\r")) {
+            return $itemWhitespace;
+        }
+
+        return $openingWhitespace;
     }
 }

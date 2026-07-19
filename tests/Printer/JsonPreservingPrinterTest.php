@@ -331,6 +331,30 @@ JSON,
         $this->assertSame('["second"]', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
     }
 
+    public function testItPreservesPromotedFirstArrayItemIndentation(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+[
+      1,
+  2
+]
+JSON,
+        );
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->removeAt(0);
+
+        $this->assertSame(
+            <<<'JSON'
+[
+  2
+]
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesCommaWhitespaceWhenMiddleInlineArrayItemIsRemoved(): void
     {
         $jsonDocument = (new JsonParser())->parse('["first", "second", "third"]');
@@ -381,6 +405,69 @@ JSON,
         $nodeChangeSet->markChanged($jsonDocument->value);
 
         $this->assertSame('{"second": 2}', (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument));
+    }
+
+    public function testItPreservesPromotedFirstObjectItemIndentation(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("{\n      \"gone\": 1,\n  \"keep\": 2\n}");
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->remove('gone');
+
+        $this->assertSame("{\n  \"keep\": 2\n}", (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItPreservesPromotedFirstObjectItemWiderIndentation(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "gone": 1,
+      "keep": 2
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->remove('gone');
+
+        $this->assertSame(
+            <<<'JSON'
+{
+      "keep": 2
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItPreservesPromotedFirstObjectItemIndentationWhenSetRemovesDuplicateKey(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            "{\n      \"duplicate\": 1,\n  \"keep\": 2,\n    \"duplicate\": 3\n}",
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('duplicate', new NumberNode('4'));
+
+        $this->assertSame(
+            "{\n  \"keep\": 2,\n    \"duplicate\": 4\n}",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItPreservesWobbledIndentationWhenMiddleAndLastArrayItemsAreRemoved(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("[\n      1,\n  2,\n    3\n]");
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+        $jsonDocument->value->removeAt(1);
+
+        $lastRemoval = (new JsonParser())->parse("[\n      1,\n  2,\n    3\n]");
+        $this->assertInstanceOf(ArrayNode::class, $lastRemoval->value);
+        $lastRemoval->value->removeAt(2);
+
+        $this->assertSame("[\n      1,\n    3\n]", (new JsonPreservingPrinter())->print($jsonDocument));
+        $this->assertSame("[\n      1,\n  2\n]", (new JsonPreservingPrinter())->print($lastRemoval));
     }
 
     public function testItPreservesCommaWhitespaceWhenMiddleInlineObjectItemIsRemoved(): void

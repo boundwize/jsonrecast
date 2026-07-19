@@ -63,10 +63,18 @@ final class ObjectNode extends AbstractNodeJson
             return;
         }
 
-        $item = $this->items[$lastIndex];
+        $item               = $this->items[$lastIndex];
+        $firstItemIsRemoved = ($matchingIndexes[0] ?? null) === 0;
 
         for ($i = count($matchingIndexes) - 1; $i >= 0; $i--) {
             array_splice($this->items, $matchingIndexes[$i], 1);
+        }
+
+        if ($firstItemIsRemoved) {
+            $this->afterOpenBrace = WhitespaceHelper::openingBeforePromotedItem(
+                $this->items[0]->beforeKey,
+                $this->afterOpenBrace,
+            );
         }
 
         $item->value = $nodeJson;
@@ -75,13 +83,15 @@ final class ObjectNode extends AbstractNodeJson
 
     public function remove(string $key): bool
     {
-        $removed = false;
+        $removed            = false;
+        $firstItemIsRemoved = false;
 
         for ($i = count($this->items) - 1; $i >= 0; $i--) {
             if ($this->items[$i]->key->value !== $key) {
                 continue;
             }
 
+            $firstItemIsRemoved = $firstItemIsRemoved || $i === 0;
             array_splice($this->items, $i, 1);
             $removed = true;
         }
@@ -89,6 +99,11 @@ final class ObjectNode extends AbstractNodeJson
         if ($removed) {
             if ($this->items === []) {
                 $this->afterOpenBrace = $this->beforeCloseBrace;
+            } elseif ($firstItemIsRemoved) {
+                $this->afterOpenBrace = WhitespaceHelper::openingBeforePromotedItem(
+                    $this->items[0]->beforeKey,
+                    $this->afterOpenBrace,
+                );
             }
 
             $this->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);

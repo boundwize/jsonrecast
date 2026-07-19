@@ -143,7 +143,9 @@ public function enterNode(NodeJson $node, NodeJsonPath $path): null|NodeJson|int
 }
 ```
 
-Array paths are reindexed after removals and insertions, so later visitors see the current array positions.
+Array paths are live and are reindexed after removals and insertions. This can
+make an index-based removal predicate match repeatedly; see the
+[live-index warning and safe removal patterns](../traversal-and-paths/#array-paths).
 
 ## Remove Empty Parents
 

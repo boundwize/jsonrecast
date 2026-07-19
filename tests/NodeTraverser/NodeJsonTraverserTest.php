@@ -251,6 +251,24 @@ JSON,
 JSON, (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
     }
 
+    public function testArrayIndexRemovalPredicateUsesLiveIndexes(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('[10,20,30]');
+
+        $nodeJsonTraversalResult = $this->traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?int
+            {
+                if (! $nodeJson instanceof ArrayItemNode || ! $nodeJsonPath->isArrayValue(0)) {
+                    return null;
+                }
+
+                return NodeJsonVisitor::REMOVE_NODE;
+            }
+        });
+
+        $this->assertSame('[]', (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
+    }
+
     public function testItPreservesPromotedFirstArrayItemIndentationWhenVisitorRemovesIt(): void
     {
         $jsonDocument = (new JsonParser())->parse(

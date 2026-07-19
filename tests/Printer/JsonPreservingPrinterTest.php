@@ -1153,6 +1153,58 @@ JSON,
         );
     }
 
+    public function testItKeepsTabResidualVerbatimWhenTargetIsTabIndented(): void
+    {
+        // Counterpart to testItNormalisesTabWithinPositiveResidual: a tab target takes the
+        // whole-unit branch, which copies the residual through unchanged, so the residual tab
+        // survives as a third tab instead of being normalised.
+        $fragment     = (new JsonParser())->parse(
+            "{\n    \"source\": {\n        \"a\": 1,\n        \t\"b\": 2,\n        \"c\": 3\n    }\n}",
+        );
+        $jsonDocument = (new JsonParser())->parse(
+            "{\n\t\"outer\": 1,\n\t\"grafted\": {}\n}",
+        );
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $sourceItem = $fragment->value->get('source');
+        $this->assertInstanceOf(ObjectItemNode::class, $sourceItem);
+
+        $jsonDocument->value->set('grafted', $sourceItem->value);
+
+        $this->assertSame(
+            "{\n\t\"outer\": 1,\n\t\"grafted\": {\n\t\t\"a\": 1,\n\t\t\t\"b\": 2,\n\t\t\"c\": 3\n\t}\n}",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItScalesResidualOfTabIndentedSourceToSpaceIndentedTarget(): void
+    {
+        // A two-tab indent unit does yield residuals: "b" sits at three tabs, half a unit short
+        // of level two, and that shortfall is scaled to the four-space target unit (6 spaces,
+        // one short of its siblings at 8). main copied the shortfall verbatim (7 spaces).
+        $fragment     = (new JsonParser())->parse(
+            "{\n\t\t\"source\": {\n\t\t\t\t\"a\": 1,\n\t\t\t\"b\": 2,\n\t\t\t\t\"c\": 3\n\t\t}\n}",
+        );
+        $jsonDocument = (new JsonParser())->parse(
+            "{\n    \"outer\": 1,\n    \"grafted\": {}\n}",
+        );
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $sourceItem = $fragment->value->get('source');
+        $this->assertInstanceOf(ObjectItemNode::class, $sourceItem);
+
+        $jsonDocument->value->set('grafted', $sourceItem->value);
+
+        $this->assertSame(
+            "{\n    \"outer\": 1,\n    \"grafted\": {\n        \"a\": 1,\n      \"b\": 2,\n        \"c\": 3\n    }\n}",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItScalesInconsistentIndentationWhenGraftingIntoNestedSpaceIndentedDocument(): void
     {
         $fragment     = (new JsonParser())->parse(

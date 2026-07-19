@@ -1128,7 +1128,7 @@ JSON,
         );
     }
 
-    public function testItScalesInconsistentIndentationWhenGraftingIntoNestedSlot(): void
+    public function testItScalesInconsistentIndentationWhenGraftingIntoNestedSpaceIndentedDocument(): void
     {
         $fragment     = (new JsonParser())->parse(
             <<<'JSON'

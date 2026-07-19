@@ -181,6 +181,54 @@ JSON, JsonRecast::print($jsonRecastResult));
         $this->assertSame(" \n{\"name\": \"new\"}\n ", JsonRecast::print($jsonRecastResult));
     }
 
+    public function testScalarEditPreservesUntouchedSiblingIndentStyle(): void
+    {
+        $source = "{\n\t\"t\": 1,\n  \"nest\": {\n    \"x\": 1\n  }\n}";
+
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse($source),
+            new class extends NodeJsonVisitorAbstract {
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if ($nodeJson instanceof NumberNode && $nodeJsonPath->isObjectValue('x')) {
+                        return new NumberNode('999');
+                    }
+
+                    return null;
+                }
+            },
+        );
+
+        $this->assertSame(
+            "{\n\t\"t\": 1,\n  \"nest\": {\n    \"x\": 999\n  }\n}",
+            JsonRecast::print($jsonRecastResult),
+        );
+    }
+
+    public function testScalarEditPreservesUntouchedMisalignedSiblingIndent(): void
+    {
+        $source = "{\n        \"deep\": 1,\n  \"nest\": {\n    \"x\": 1\n  }\n}";
+
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse($source),
+            new class extends NodeJsonVisitorAbstract {
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if ($nodeJson instanceof NumberNode && $nodeJsonPath->isObjectValue('x')) {
+                        return new NumberNode('999');
+                    }
+
+                    return null;
+                }
+            },
+        );
+
+        $this->assertSame(
+            "{\n        \"deep\": 1,\n  \"nest\": {\n    \"x\": 999\n  }\n}",
+            JsonRecast::print($jsonRecastResult),
+        );
+    }
+
     public function testDocumentReplacementPreservesRootTrailingWhitespace(): void
     {
         $jsonRecastResult = JsonRecast::traverse(

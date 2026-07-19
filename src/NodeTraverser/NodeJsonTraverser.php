@@ -23,6 +23,15 @@ use function is_int;
 
 final class NodeJsonTraverser
 {
+    private const ITEM_SOURCE_ATTRIBUTES = [
+        NodeAttributes::START_OFFSET,
+        NodeAttributes::END_OFFSET,
+        NodeAttributes::DEPTH,
+        NodeAttributes::INDENT,
+        NodeAttributes::NEWLINE,
+        NodeAttributes::ORIGINAL_TEXT,
+    ];
+
     /** @var list<NodeJsonVisitor> */
     private array $visitors = [];
 
@@ -50,7 +59,7 @@ final class NodeJsonTraverser
             }
 
             if ($result instanceof NodeJson) {
-                $result = $this->preserveDocumentFraming($nodeJson, $result);
+                $result = $this->preserveReplacementFraming($nodeJson, $result);
                 $this->nodeChangeSet->markChanged($result);
                 $nodeJson = $result;
             }
@@ -72,7 +81,7 @@ final class NodeJsonTraverser
             }
 
             if ($result instanceof NodeJson) {
-                $result = $this->preserveDocumentFraming($nodeJson, $result);
+                $result = $this->preserveReplacementFraming($nodeJson, $result);
                 $this->nodeChangeSet->markChanged($result);
                 $nodeJson = $result;
             }
@@ -94,7 +103,7 @@ final class NodeJsonTraverser
             }
 
             if ($result instanceof NodeJson) {
-                $result = $this->preserveDocumentFraming($nodeJson, $result);
+                $result = $this->preserveReplacementFraming($nodeJson, $result);
                 $this->nodeChangeSet->markChanged($result);
                 $nodeJson = $result;
             }
@@ -118,7 +127,7 @@ final class NodeJsonTraverser
             }
 
             if ($result instanceof NodeJson) {
-                $result = $this->preserveDocumentFraming($nodeJson, $result);
+                $result = $this->preserveReplacementFraming($nodeJson, $result);
                 $this->nodeChangeSet->markChanged($result);
                 $nodeJson = $result;
             }
@@ -241,16 +250,29 @@ final class NodeJsonTraverser
         return false;
     }
 
-    private function preserveDocumentFraming(NodeJson $previous, NodeJson $replacement): NodeJson
+    private function preserveReplacementFraming(NodeJson $previous, NodeJson $replacement): NodeJson
     {
-        if (
-            ! $previous instanceof JsonDocument
-            || ! $replacement instanceof JsonDocument
-            || $previous === $replacement
-        ) {
+        if ($previous === $replacement) {
             return $replacement;
         }
 
+        if ($previous instanceof JsonDocument && $replacement instanceof JsonDocument) {
+            return $this->preserveDocumentFraming($previous, $replacement);
+        }
+
+        if ($previous instanceof ArrayItemNode && $replacement instanceof ArrayItemNode) {
+            return $this->preserveArrayItemFraming($previous, $replacement);
+        }
+
+        if ($previous instanceof ObjectItemNode && $replacement instanceof ObjectItemNode) {
+            return $this->preserveObjectItemFraming($previous, $replacement);
+        }
+
+        return $replacement;
+    }
+
+    private function preserveDocumentFraming(JsonDocument $previous, JsonDocument $replacement): JsonDocument
+    {
         if ($replacement->beforeValue === '') {
             $replacement->beforeValue = $previous->beforeValue;
         }
@@ -259,14 +281,61 @@ final class NodeJsonTraverser
             $replacement->afterValue = $previous->afterValue;
         }
 
-        $this->copyDocumentAttribute($previous, $replacement, NodeAttributes::NEWLINE);
-        $this->copyDocumentAttribute($previous, $replacement, NodeAttributes::INDENT);
-        $this->copyDocumentAttribute($previous, $replacement, NodeAttributes::TRAILING_NEWLINE);
+        $this->copyAttribute($previous, $replacement, NodeAttributes::NEWLINE);
+        $this->copyAttribute($previous, $replacement, NodeAttributes::INDENT);
+        $this->copyAttribute($previous, $replacement, NodeAttributes::TRAILING_NEWLINE);
 
         return $replacement;
     }
 
-    private function copyDocumentAttribute(JsonDocument $source, JsonDocument $target, string $attribute): void
+    private function preserveArrayItemFraming(ArrayItemNode $previous, ArrayItemNode $replacement): ArrayItemNode
+    {
+        if ($replacement->beforeValue === '') {
+            $replacement->beforeValue = $previous->beforeValue;
+        }
+
+        if ($replacement->afterValue === '') {
+            $replacement->afterValue = $previous->afterValue;
+        }
+
+        $this->copyItemSourceAttributes($previous, $replacement);
+
+        return $replacement;
+    }
+
+    private function preserveObjectItemFraming(ObjectItemNode $previous, ObjectItemNode $replacement): ObjectItemNode
+    {
+        if ($replacement->beforeKey === '') {
+            $replacement->beforeKey = $previous->beforeKey;
+        }
+
+        if ($replacement->betweenKeyAndColon === '') {
+            $replacement->betweenKeyAndColon = $previous->betweenKeyAndColon;
+        }
+
+        if ($replacement->betweenColonAndValue === '') {
+            $replacement->betweenColonAndValue = $previous->betweenColonAndValue;
+        }
+
+        if ($replacement->afterValue === '') {
+            $replacement->afterValue = $previous->afterValue;
+        }
+
+        $this->copyItemSourceAttributes($previous, $replacement);
+
+        return $replacement;
+    }
+
+    private function copyItemSourceAttributes(
+        ArrayItemNode|ObjectItemNode $source,
+        ArrayItemNode|ObjectItemNode $target,
+    ): void {
+        foreach (self::ITEM_SOURCE_ATTRIBUTES as $attribute) {
+            $this->copyAttribute($source, $target, $attribute);
+        }
+    }
+
+    private function copyAttribute(NodeJson $source, NodeJson $target, string $attribute): void
     {
         if ($target->hasAttribute($attribute) || ! $source->hasAttribute($attribute)) {
             return;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast\Tests;
 
 use Boundwize\JsonRecast\JsonRecast;
+use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
 use Boundwize\JsonRecast\Node\JsonDocument;
@@ -288,6 +289,44 @@ JSON, JsonRecast::print($jsonRecastResult));
         );
 
         $this->assertSame('{"a":"new","b":"new"}', JsonRecast::print($jsonRecastResult));
+    }
+
+    public function testItPreservesInlineFormattingWhenArrayItemNodeIsReplaced(): void
+    {
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse('["a", "b"]'),
+            new class extends NodeJsonVisitorAbstract {
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if (! $nodeJson instanceof ArrayItemNode || ! $nodeJsonPath->isArrayValue(0)) {
+                        return null;
+                    }
+
+                    return new ArrayItemNode(new StringNode('x'));
+                }
+            },
+        );
+
+        $this->assertSame('["x", "b"]', JsonRecast::print($jsonRecastResult));
+    }
+
+    public function testItPreservesInlineFormattingWhenObjectItemNodeIsReplaced(): void
+    {
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse('{"a": 1, "b": 2}'),
+            new class extends NodeJsonVisitorAbstract {
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if (! $nodeJson instanceof ObjectItemNode || $nodeJson->key->value !== 'a') {
+                        return null;
+                    }
+
+                    return new ObjectItemNode(new StringNode('x'), new StringNode('y'));
+                }
+            },
+        );
+
+        $this->assertSame('{"x": "y", "b": 2}', JsonRecast::print($jsonRecastResult));
     }
 
     public function testObjectNodeSetUpdatesEffectiveDuplicateKeyValue(): void

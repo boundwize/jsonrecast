@@ -1038,6 +1038,51 @@ JSON,
         );
     }
 
+    public function testItScalesInconsistentIndentationWhenGraftingIntoSpaceIndentedDocument(): void
+    {
+        $fragment     = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "source": {
+        "a": 1,
+      "b": 2,
+        "c": 3
+    }
+}
+JSON,
+        );
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "outer": 1,
+  "grafted": {}
+}
+JSON,
+        );
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $sourceItem = $fragment->value->get('source');
+        $this->assertInstanceOf(ObjectItemNode::class, $sourceItem);
+
+        $jsonDocument->value->set('grafted', $sourceItem->value);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+  "outer": 1,
+  "grafted": {
+    "a": 1,
+   "b": 2,
+    "c": 3
+  }
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItReindentsChangedItemInsideGraftedObjectSubtree(): void
     {
         $jsonDocument = (new JsonParser())->parse(

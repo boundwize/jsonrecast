@@ -486,6 +486,31 @@ JSON,
         );
     }
 
+    public function testItCollapsesOpeningBlankLineWhenAllObjectItemsAreRemoved(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+
+    "gone": 1,
+  "keep": 2
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->remove('gone');
+        $jsonDocument->value->remove('keep');
+
+        $this->assertSame(
+            <<<'JSON'
+{
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesPromotedFirstObjectItemWiderIndentation(): void
     {
         $jsonDocument = (new JsonParser())->parse(

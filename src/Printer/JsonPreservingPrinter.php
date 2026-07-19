@@ -210,7 +210,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
         if (! $shouldPrintBestEffort) {
             [$shouldPrintBestEffort, $printedChangedItemValues] = $this->printChangedItemValues(
-                $containerNode->items,
+                $containerNode,
                 $printContext,
                 $childDetectScalarMutation,
                 $depth,
@@ -584,19 +584,16 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         return false;
     }
 
-    /**
-     * @param list<ArrayItemNode|ObjectItemNode> $items
-     * @return array{bool, array<int, string>}
-     */
+    /** @return array{bool, array<int, string>} */
     private function printChangedItemValues(
-        array $items,
+        ArrayNode|ObjectNode $containerNode,
         PrintContext $printContext,
         bool $detectScalarMutation,
         int $depth,
     ): array {
         $printedValues = [];
 
-        foreach ($items as $i => $item) {
+        foreach ($containerNode->items as $i => $item) {
             if (! $this->isChanged($item) && ! $this->isChanged($item->value)) {
                 continue;
             }
@@ -609,7 +606,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             );
 
             if (str_contains($printedValues[$i], "\n") || str_contains($printedValues[$i], "\r")) {
-                return [true, $printedValues];
+                return [! $this->hasContainerMultilineEdgeWhitespace($containerNode), $printedValues];
             }
         }
 

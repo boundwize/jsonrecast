@@ -24,6 +24,9 @@ use ReflectionMethod;
 use RuntimeException;
 
 use function array_reverse;
+use function sprintf;
+use function str_repeat;
+use function strlen;
 
 use const PHP_FLOAT_EPSILON;
 
@@ -1484,6 +1487,151 @@ JSON,
         );
     }
 
+    public function testItDoesNotInvertIndentationWhenDeepHoistingMisalignedLinesInChangedContainer(): void
+    {
+        $fragment     = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "wrapper": {
+        "inner": {
+     "p": 1,
+      "q": 2,
+            "r": 3
+        }
+    }
+}
+JSON,
+        );
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "a": 1
+}
+JSON,
+        );
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+
+        $wrapperItem = $fragment->value->get('wrapper');
+        $this->assertInstanceOf(ObjectItemNode::class, $wrapperItem);
+        $this->assertInstanceOf(ObjectNode::class, $wrapperItem->value);
+
+        $innerItem = $wrapperItem->value->get('inner');
+        $this->assertInstanceOf(ObjectItemNode::class, $innerItem);
+
+        $jsonDocument->value = $innerItem->value;
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($jsonDocument->value);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+ "p": 1,
+  "q": 2,
+        "r": 3
+}
+JSON,
+            (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument),
+        );
+    }
+
+    public function testItDoesNotInvertIndentationWhenDeepHoistingMirroredMisalignedLinesInChangedContainer(): void
+    {
+        $fragment     = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "wrapper": {
+    "inner": {
+   "p": 1,
+    "q": 2,
+      "r": 3
+    }
+  }
+}
+JSON,
+        );
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "a": 1
+}
+JSON,
+        );
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+
+        $wrapperItem = $fragment->value->get('wrapper');
+        $this->assertInstanceOf(ObjectItemNode::class, $wrapperItem);
+        $this->assertInstanceOf(ObjectNode::class, $wrapperItem->value);
+
+        $innerItem = $wrapperItem->value->get('inner');
+        $this->assertInstanceOf(ObjectItemNode::class, $innerItem);
+
+        $jsonDocument->value = $innerItem->value;
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($jsonDocument->value);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+"p": 1,
+ "q": 2,
+   "r": 3
+}
+JSON,
+            (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument),
+        );
+    }
+
+    public function testItKeepsInlineItemOnSameLineWhenDeepHoistingMisalignedLinesInChangedContainer(): void
+    {
+        $fragment     = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "wrapper": {
+    "inner": {
+   "p": 1, "q": 2,
+      "r": 3
+    }
+  }
+}
+JSON,
+        );
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "a": 1
+}
+JSON,
+        );
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+
+        $wrapperItem = $fragment->value->get('wrapper');
+        $this->assertInstanceOf(ObjectItemNode::class, $wrapperItem);
+        $this->assertInstanceOf(ObjectNode::class, $wrapperItem->value);
+
+        $innerItem = $wrapperItem->value->get('inner');
+        $this->assertInstanceOf(ObjectItemNode::class, $innerItem);
+
+        $jsonDocument->value = $innerItem->value;
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($jsonDocument->value);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+"p": 1, "q": 2,
+   "r": 3
+}
+JSON,
+            (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument),
+        );
+    }
+
     public function testItReindentsChangedItemInsideGraftedObjectSubtree(): void
     {
         $jsonDocument = (new JsonParser())->parse(
@@ -2439,23 +2587,60 @@ JSON,
             ['      ', '    ', '  ', -2],
         );
 
-        $this->assertSame(' ', $shallower);
-        $this->assertSame('  ', $deeper);
+        $this->assertSame('', $shallower);
+        $this->assertSame('', $deeper);
     }
 
-    public function testItDetectsClampedLineWithGridMultipleLengthButDifferentBytes(): void
+    public function testItKeepsReindentedLeadingWhitespaceMonotonicForSpaceIndentUnits(): void
+    {
+        foreach (['  ', '   ', '    '] as $originalIndent) {
+            foreach (['  ', '   ', '    '] as $targetIndent) {
+                if ($originalIndent === $targetIndent) {
+                    continue;
+                }
+
+                foreach ([-3, -2, -1, 0, 1, 2, 3] as $delta) {
+                    $previousLength = 0;
+
+                    for ($leadLength = 0; $leadLength <= 24; $leadLength++) {
+                        $reindented = $this->invokeJsonPreservingPrinterMethod(
+                            'reindentLeadingWhitespaceUnit',
+                            [str_repeat(' ', $leadLength), $originalIndent, $targetIndent, $delta],
+                        );
+
+                        $this->assertIsString($reindented);
+                        $this->assertGreaterThanOrEqual(
+                            $previousLength,
+                            strlen($reindented),
+                            sprintf(
+                                'Indentation inverted at lead %d for unit length %d -> %d with delta %d',
+                                $leadLength,
+                                strlen($originalIndent),
+                                strlen($targetIndent),
+                                $delta,
+                            ),
+                        );
+
+                        $previousLength = strlen($reindented);
+                    }
+                }
+            }
+        }
+    }
+
+    public function testItDetectsClampedLeadWithGridMultipleLengthButDifferentBytes(): void
     {
         $this->assertTrue($this->invokeJsonPreservingPrinterMethod(
-            'hasClampedLineOffOriginalIndentGrid',
-            [["{\n", "\t\t\t\t\"a\": 1\n", '}'], '    ', -1],
+            'hasClampedLeadOffOriginalIndentGrid',
+            [["\t\t\t\t"], '    ', -1],
         ));
     }
 
-    public function testItDoesNotDetectClampedLineWhenAllLinesSitOnOriginalIndentGrid(): void
+    public function testItDoesNotDetectClampedLeadWhenAllLeadsSitOnOriginalIndentGrid(): void
     {
         $this->assertFalse($this->invokeJsonPreservingPrinterMethod(
-            'hasClampedLineOffOriginalIndentGrid',
-            [["{\n", "        \"a\": 1\n", '    }'], '    ', -2],
+            'hasClampedLeadOffOriginalIndentGrid',
+            [['        '], '    ', -2],
         ));
     }
 

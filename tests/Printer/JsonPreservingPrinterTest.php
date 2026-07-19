@@ -358,6 +358,32 @@ JSON,
         );
     }
 
+    public function testItPreservesOpeningBlankLineWhenFirstArrayItemIsRemoved(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+[
+
+    1,
+  2
+]
+JSON,
+        );
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->removeAt(0);
+
+        $this->assertSame(
+            <<<'JSON'
+[
+
+  2
+]
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesCommaWhitespaceWhenMiddleInlineArrayItemIsRemoved(): void
     {
         $jsonDocument = (new JsonParser())->parse('["first", "second", "third"]');
@@ -428,6 +454,57 @@ JSON,
             <<<'JSON'
 {
   "keep": 2
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItPreservesOpeningBlankLineWhenFirstObjectItemIsRemoved(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+
+    "gone": 1,
+  "keep": 2
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->remove('gone');
+
+        $this->assertSame(
+            <<<'JSON'
+{
+
+  "keep": 2
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItCollapsesOpeningBlankLineWhenAllObjectItemsAreRemoved(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+
+    "gone": 1,
+  "keep": 2
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->remove('gone');
+        $jsonDocument->value->remove('keep');
+
+        $this->assertSame(
+            <<<'JSON'
+{
 }
 JSON,
             (new JsonPreservingPrinter())->print($jsonDocument),

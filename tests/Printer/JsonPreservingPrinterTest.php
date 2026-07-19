@@ -1128,6 +1128,31 @@ JSON,
         );
     }
 
+    public function testItNormalisesTabWithinPositiveResidual(): void
+    {
+        // The residual contains a tab (8 spaces + \t). main preserved the tab
+        // verbatim; the fix normalises it to the target unit's whitespace (5 spaces).
+        $fragment     = (new JsonParser())->parse(
+            "{\n    \"source\": {\n        \"a\": 1,\n        \t\"b\": 2,\n        \"c\": 3\n    }\n}",
+        );
+        $jsonDocument = (new JsonParser())->parse(
+            "{\n  \"outer\": 1,\n  \"grafted\": {}\n}",
+        );
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $sourceItem = $fragment->value->get('source');
+        $this->assertInstanceOf(ObjectItemNode::class, $sourceItem);
+
+        $jsonDocument->value->set('grafted', $sourceItem->value);
+
+        $this->assertSame(
+            "{\n  \"outer\": 1,\n  \"grafted\": {\n    \"a\": 1,\n     \"b\": 2,\n    \"c\": 3\n  }\n}",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItScalesInconsistentIndentationWhenGraftingIntoNestedSpaceIndentedDocument(): void
     {
         $fragment     = (new JsonParser())->parse(

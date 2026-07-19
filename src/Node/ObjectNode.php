@@ -84,14 +84,13 @@ final class ObjectNode extends AbstractNodeJson
     public function remove(string $key): bool
     {
         $removed            = false;
-        $firstItemIsRemoved = false;
+        $firstItemIsRemoved = isset($this->items[0]) && $this->items[0]->key->value === $key;
 
         for ($i = count($this->items) - 1; $i >= 0; $i--) {
             if ($this->items[$i]->key->value !== $key) {
                 continue;
             }
 
-            $firstItemIsRemoved = $firstItemIsRemoved || $i === 0;
             array_splice($this->items, $i, 1);
             $removed = true;
         }

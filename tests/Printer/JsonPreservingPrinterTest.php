@@ -2209,8 +2209,7 @@ JSON,
      * step measures indentation by byte length -- so "\t  " (strlen 3) reads as three tab
      * levels and expands to 12 spaces instead of returning to 6.
      *
-     * This byte-length ambiguity between "one tab + two spaces" and "three tabs" pre-dates
-     * this branch (main produces the same 12 spaces) and cannot be resolved without a
+     * This byte-length ambiguity between "one tab + two spaces" and "three tabs" cannot be resolved without a
      * visual-column-aware indent model. The assertions below pin the current output so any
      * future change to it -- a fix or a further regression -- is deliberate, not silent.
      */

@@ -708,6 +708,29 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $originalIndentLength    = strlen($originalIndent);
         $targetIndentLength      = strlen($targetIndent);
 
+        if (str_contains($originalIndent, "\t")) {
+            $wholeIndentLevel = 0;
+            $residualOffset   = 0;
+
+            while (
+                $residualOffset + $originalIndentLength <= $leadingWhitespaceLength
+                && substr_compare($leadingWhitespace, $originalIndent, $residualOffset, $originalIndentLength) === 0
+            ) {
+                $wholeIndentLevel++;
+                $residualOffset += $originalIndentLength;
+            }
+
+            $residualWhitespace = substr($leadingWhitespace, $residualOffset);
+
+            // A pure-space residual after tab units is carried verbatim: it is the exact
+            // remainder a space->tab conversion left behind, so byte-scaling it would
+            // misread "\t  " as three tab levels instead of one level plus two spaces.
+            if (strspn($residualWhitespace, ' ') === strlen($residualWhitespace)) {
+                return str_repeat($targetIndent, max($wholeIndentLevel + $delta, 0))
+                    . $residualWhitespace;
+            }
+        }
+
         $indentLevel = intdiv(
             $leadingWhitespaceLength + intdiv($originalIndentLength, 2),
             $originalIndentLength,

@@ -29,6 +29,7 @@ use function is_string;
 use function json_decode;
 use function json_encode;
 use function max;
+use function min;
 use function preg_split;
 use function str_contains;
 use function str_ends_with;
@@ -235,6 +236,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $output               = $this->openingDelimiter($containerNode);
         $lastIndex            = count($containerNode->items) - 1;
         $itemsInOriginalOrder = $this->getItemsInOriginalOrder($containerNode->items);
+        $interiorShift        = $this->resolveInteriorItemShift($containerNode, $printContext);
 
         foreach ($containerNode->items as $i => $item) {
             [$beforeItem, $afterValue] = $this->getItemLayout(
@@ -249,11 +251,10 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 ),
             );
 
-            $beforeItem = $this->reindentWhitespaceBeforeNode(
-                $item,
-                $beforeItem ?? $this->beforeItem($item),
-                $printContext->next(),
-            );
+            $beforeItem ??= $this->beforeItem($item);
+            $beforeItem   = $interiorShift !== null
+                ? $this->shiftWhitespaceBeforeNode($beforeItem, $interiorShift)
+                : $this->reindentWhitespaceBeforeNode($item, $beforeItem, $printContext->next());
 
             $output .= $item instanceof ObjectItemNode
                 ? $this->printObjectItemPreserving(
@@ -629,16 +630,11 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         string $whitespace,
         PrintContext $printContext,
     ): string {
-        if (! str_contains($whitespace, "\n") && ! str_contains($whitespace, "\r")) {
+        $lastNewlinePosition = $this->lastNewlinePosition($whitespace);
+
+        if ($lastNewlinePosition < 0) {
             return $whitespace;
         }
-
-        $lineFeedPosition       = strrpos($whitespace, "\n");
-        $carriageReturnPosition = strrpos($whitespace, "\r");
-        $lastNewlinePosition    = max(
-            $lineFeedPosition === false ? -1 : $lineFeedPosition,
-            $carriageReturnPosition === false ? -1 : $carriageReturnPosition,
-        );
 
         return substr($whitespace, 0, $lastNewlinePosition + 1)
             . $this->reindentLeadingWhitespace(
@@ -646,6 +642,63 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 substr($whitespace, $lastNewlinePosition + 1),
                 $printContext,
             );
+    }
+
+    private function shiftWhitespaceBeforeNode(string $whitespace, int $interiorShift): string
+    {
+        $lastNewlinePosition = $this->lastNewlinePosition($whitespace);
+
+        if ($lastNewlinePosition < 0) {
+            return $whitespace;
+        }
+
+        return substr($whitespace, 0, $lastNewlinePosition + 1)
+            . substr($whitespace, $lastNewlinePosition + 1 - $interiorShift);
+    }
+
+    private function lastNewlinePosition(string $whitespace): int
+    {
+        $lineFeedPosition       = strrpos($whitespace, "\n");
+        $carriageReturnPosition = strrpos($whitespace, "\r");
+
+        return max(
+            $lineFeedPosition === false ? -1 : $lineFeedPosition,
+            $carriageReturnPosition === false ? -1 : $carriageReturnPosition,
+        );
+    }
+
+    private function resolveInteriorItemShift(
+        ArrayNode|ObjectNode $containerNode,
+        PrintContext $printContext,
+    ): ?int {
+        $originalDepth = $containerNode->getAttribute(NodeAttributes::DEPTH);
+
+        if (! is_int($originalDepth)) {
+            return null;
+        }
+
+        $itemWhitespace = [$this->afterOpen($containerNode)];
+        foreach ($containerNode->items as $item) {
+            $itemWhitespace[] = $this->beforeItem($item);
+        }
+
+        $itemLeads = [];
+        foreach ($itemWhitespace as $whitespace) {
+            $lastNewlinePosition = $this->lastNewlinePosition($whitespace);
+
+            if ($lastNewlinePosition < 0) {
+                continue;
+            }
+
+            $itemLeads[] = substr($whitespace, $lastNewlinePosition + 1);
+        }
+
+        return $this->resolveOffGridInteriorShift(
+            $containerNode->getAttribute(NodeAttributes::INDENT),
+            $itemLeads,
+            $printContext->indentUnit(),
+            $printContext->level() - $originalDepth,
+        );
     }
 
     private function reindentLeadingWhitespace(
@@ -759,6 +812,13 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 . substr($leadingWhitespace, $residualOffset);
         }
 
+        if ($targetLevel < 0 || ($targetLevel === 0 && $residual < 0)) {
+            // Clamped lines plateau flush at the target container: lifting any of
+            // them (or keeping a scaled residual below the boundary) would print a
+            // shallower source line deeper than an aligned clamped sibling.
+            return '';
+        }
+
         $scaledResidual = intdiv(
             (abs($residual) * $targetIndentLength) + intdiv($originalIndentLength, 2),
             $originalIndentLength,
@@ -790,8 +850,25 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $lines = preg_split('/(?<=\r\n|\r|\n)/', $originalText);
 
         $output = $lines[0];
+        $count  = count($lines);
 
-        for ($i = 1, $count = count($lines); $i < $count; $i++) {
+        $interiorLeads = [];
+        for ($i = 1; $i < $count - 1; $i++) {
+            if (trim($lines[$i]) === '') {
+                continue;
+            }
+
+            $interiorLeads[] = substr($lines[$i], 0, strspn($lines[$i], " \t"));
+        }
+
+        $interiorShift = $this->resolveOffGridInteriorShift(
+            $nodeJson->getAttribute(NodeAttributes::INDENT),
+            $interiorLeads,
+            $printContext->indentUnit(),
+            $printContext->level() - $originalDepth,
+        );
+
+        for ($i = 1; $i < $count; $i++) {
             $line = $lines[$i];
 
             if (trim($line) === '') {
@@ -800,22 +877,90 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 continue;
             }
 
-            $leadingWhitespaceLength = 0;
-            while (
-                isset($line[$leadingWhitespaceLength])
-                && ($line[$leadingWhitespaceLength] === ' ' || $line[$leadingWhitespaceLength] === "\t")
-            ) {
-                $leadingWhitespaceLength++;
-            }
+            $leadingWhitespaceLength = strspn($line, " \t");
+            $leadingWhitespace       = substr($line, 0, $leadingWhitespaceLength);
 
-            $output .= $this->reindentLeadingWhitespace(
-                $nodeJson,
-                substr($line, 0, $leadingWhitespaceLength),
-                $printContext,
-            ) . substr($line, $leadingWhitespaceLength);
+            // Interior lines off the original indent grid carry intentional relative
+            // indentation that per-line level scaling would flatten; shift the whole
+            // interior by the depth delta instead. The closing line still scales so
+            // the bracket aligns with its container.
+            $output .= ($interiorShift !== null && $i < $count - 1
+                ? substr($leadingWhitespace, -$interiorShift)
+                : $this->reindentLeadingWhitespace($nodeJson, $leadingWhitespace, $printContext))
+                . substr($line, $leadingWhitespaceLength);
         }
 
         return $output;
+    }
+
+    /**
+     * Byte shift applied to every interior lead of a container whose lines sit off
+     * the original indent grid: the depth delta in target units, clamped so the
+     * shallowest interior lead lands at the margin instead of being truncated —
+     * relative indentation between the leads is preserved exactly.
+     *
+     * @param list<string> $interiorLeads
+     */
+    private function resolveOffGridInteriorShift(
+        mixed $originalIndent,
+        array $interiorLeads,
+        string $targetIndent,
+        int $delta,
+    ): ?int {
+        if (
+            ! is_string($originalIndent)
+            || $originalIndent === ''
+            || $originalIndent === $targetIndent
+            || $interiorLeads === []
+            || ! $this->hasClampedLeadOffOriginalIndentGrid($interiorLeads, $originalIndent, $delta)
+        ) {
+            return null;
+        }
+
+        $minimumLeadLength = strlen($interiorLeads[0]);
+        foreach ($interiorLeads as $interiorLead) {
+            $minimumLeadLength = min($minimumLeadLength, strlen($interiorLead));
+        }
+
+        return max($delta * strlen($targetIndent), -$minimumLeadLength);
+    }
+
+    /**
+     * @param list<string> $leads
+     */
+    private function hasClampedLeadOffOriginalIndentGrid(
+        array $leads,
+        string $originalIndent,
+        int $delta,
+    ): bool {
+        if ($delta >= 0) {
+            return false;
+        }
+
+        $originalIndentLength = strlen($originalIndent);
+
+        foreach ($leads as $lead) {
+            $leadLength = strlen($lead);
+
+            $indentLevel = intdiv(
+                $leadLength + intdiv($originalIndentLength, 2),
+                $originalIndentLength,
+            );
+
+            if ($indentLevel + $delta > 0) {
+                continue;
+            }
+
+            if ($leadLength % $originalIndentLength !== 0) {
+                return true;
+            }
+
+            if ($lead !== str_repeat($originalIndent, intdiv($leadLength, $originalIndentLength))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

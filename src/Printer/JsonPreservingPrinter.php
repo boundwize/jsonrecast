@@ -19,6 +19,7 @@ use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeTraverser\NodeChangeSet;
 use RuntimeException;
 
+use function abs;
 use function array_pop;
 use function count;
 use function intdiv;
@@ -705,25 +706,52 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     ): string {
         $leadingWhitespaceLength = strlen($leadingWhitespace);
         $originalIndentLength    = strlen($originalIndent);
-        $indentLevel             = intdiv(
+        $targetIndentLength      = strlen($targetIndent);
+
+        $indentLevel = intdiv(
             $leadingWhitespaceLength + intdiv($originalIndentLength, 2),
             $originalIndentLength,
         );
-        $residual                = $leadingWhitespaceLength - ($indentLevel * $originalIndentLength);
+        $residual    = $leadingWhitespaceLength - ($indentLevel * $originalIndentLength);
+
+        if ($targetIndentLength === 0) {
+            return $residual > 0
+                ? substr($leadingWhitespace, $leadingWhitespaceLength - $residual, $residual)
+                : '';
+        }
 
         $targetLevel  = $indentLevel + $delta;
         $targetPrefix = str_repeat($targetIndent, max($targetLevel, 0));
 
+        if (str_contains($targetIndent, "\t")) {
+            $wholeIndentLevel       = intdiv($leadingWhitespaceLength, $originalIndentLength);
+            $targetWholeIndentLevel = $wholeIndentLevel + $delta;
+
+            if ($targetWholeIndentLevel < 0) {
+                return '';
+            }
+
+            $residualOffset = $wholeIndentLevel * $originalIndentLength;
+
+            return str_repeat($targetIndent, $targetWholeIndentLevel)
+                . substr($leadingWhitespace, $residualOffset);
+        }
+
+        $scaledResidual = intdiv(
+            (abs($residual) * $targetIndentLength) + intdiv($originalIndentLength, 2),
+            $originalIndentLength,
+        );
+
+        if ($scaledResidual === 0) {
+            return $targetPrefix;
+        }
+
         if ($residual < 0) {
-            return substr($targetPrefix, 0, $residual);
+            return substr($targetPrefix, 0, -$scaledResidual);
         }
 
         if ($residual > 0) {
-            return $targetPrefix . substr(
-                $leadingWhitespace,
-                $leadingWhitespaceLength - $residual,
-                $residual,
-            );
+            return $targetPrefix . substr(str_repeat($targetIndent, $scaledResidual), 0, $scaledResidual);
         }
 
         return $targetPrefix;

@@ -993,6 +993,51 @@ JSON,
         );
     }
 
+    public function testItScalesInconsistentIndentationWhenGraftingIntoTabIndentedDocument(): void
+    {
+        $fragment     = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "source": {
+        "a": 1,
+      "b": 2,
+        "c": 3
+    }
+}
+JSON,
+        );
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+	"outer": 1,
+	"grafted": {}
+}
+JSON,
+        );
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $sourceItem = $fragment->value->get('source');
+        $this->assertInstanceOf(ObjectItemNode::class, $sourceItem);
+
+        $jsonDocument->value->set('grafted', $sourceItem->value);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+	"outer": 1,
+	"grafted": {
+		"a": 1,
+	  "b": 2,
+		"c": 3
+	}
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItReindentsChangedItemInsideGraftedObjectSubtree(): void
     {
         $jsonDocument = (new JsonParser())->parse(
@@ -1915,6 +1960,22 @@ JSON,
         $reflectionMethod = new ReflectionMethod(JsonPreservingPrinter::class, $methodName);
 
         return $reflectionMethod->invokeArgs(new JsonPreservingPrinter(), $arguments);
+    }
+
+    public function testItPreservesResidualWhitespaceWhenReindentingToTabs(): void
+    {
+        $this->assertSame("\t", $this->invokeJsonPreservingPrinterMethod(
+            'reindentLeadingWhitespaceUnit',
+            ['    ', '    ', "\t", 0],
+        ));
+        $this->assertSame("\t  ", $this->invokeJsonPreservingPrinterMethod(
+            'reindentLeadingWhitespaceUnit',
+            ['      ', '    ', "\t", 0],
+        ));
+        $this->assertSame("\t\t", $this->invokeJsonPreservingPrinterMethod(
+            'reindentLeadingWhitespaceUnit',
+            ['        ', '    ', "\t", 0],
+        ));
     }
 
     public function testItUsesEmptyDocumentIndentWhenPrintingNewContainers(): void

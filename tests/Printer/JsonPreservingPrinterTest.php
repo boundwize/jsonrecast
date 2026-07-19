@@ -2200,6 +2200,38 @@ JSON,
         ));
     }
 
+    /**
+     * Characterises a KNOWN LIMITATION, not desired behaviour: the space->tab->space
+     * round-trip is not reversible.
+     *
+     * The forward step correctly maps 6 spaces (a 4-space unit) to "\t  " (one tab plus a
+     * two-space residual). Once re-parsed, "\t" becomes the detected unit, and the reverse
+     * step measures indentation by byte length -- so "\t  " (strlen 3) reads as three tab
+     * levels and expands to 12 spaces instead of returning to 6.
+     *
+     * This byte-length ambiguity between "one tab + two spaces" and "three tabs" pre-dates
+     * this branch (main produces the same 12 spaces) and cannot be resolved without a
+     * visual-column-aware indent model. The assertions below pin the current output so any
+     * future change to it -- a fix or a further regression -- is deliberate, not silent.
+     */
+    public function testItDoesNotYetRoundTripResidualWhitespaceAcrossSpaceAndTabIndentStyles(): void
+    {
+        $tabIndented = $this->invokeJsonPreservingPrinterMethod(
+            'reindentLeadingWhitespaceUnit',
+            ['      ', '    ', "\t", 0],
+        );
+
+        // Forward: 6 spaces -> one tab + two-space residual. This part is correct.
+        $this->assertSame("\t  ", $tabIndented);
+
+        // Reverse: "\t  " should return to 6 spaces, but currently expands to 12.
+        // Change this to '      ' (6 spaces) if/when the round-trip is made reversible.
+        $this->assertSame('            ', $this->invokeJsonPreservingPrinterMethod(
+            'reindentLeadingWhitespaceUnit',
+            [$tabIndented, "\t", '    ', 0],
+        ));
+    }
+
     public function testItPreservesOnlyPositiveResidualWhitespaceForEmptyTargetIndent(): void
     {
         $this->assertSame(' ', $this->invokeJsonPreservingPrinterMethod(

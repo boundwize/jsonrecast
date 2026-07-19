@@ -35,7 +35,9 @@ use function str_ends_with;
 use function str_repeat;
 use function strlen;
 use function strrpos;
+use function strspn;
 use function substr;
+use function substr_compare;
 use function trim;
 use function usort;
 

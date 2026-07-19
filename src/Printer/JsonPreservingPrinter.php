@@ -19,6 +19,7 @@ use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeTraverser\NodeChangeSet;
 use RuntimeException;
 
+use function abs;
 use function array_pop;
 use function count;
 use function intdiv;
@@ -34,7 +35,9 @@ use function str_ends_with;
 use function str_repeat;
 use function strlen;
 use function strrpos;
+use function strspn;
 use function substr;
+use function substr_compare;
 use function trim;
 use function usort;
 
@@ -705,28 +708,74 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     ): string {
         $leadingWhitespaceLength = strlen($leadingWhitespace);
         $originalIndentLength    = strlen($originalIndent);
-        $indentLevel             = intdiv(
+        $targetIndentLength      = strlen($targetIndent);
+
+        if (str_contains($originalIndent, "\t")) {
+            $wholeIndentLevel = 0;
+            $residualOffset   = 0;
+
+            while (
+                $residualOffset + $originalIndentLength <= $leadingWhitespaceLength
+                && substr_compare($leadingWhitespace, $originalIndent, $residualOffset, $originalIndentLength) === 0
+            ) {
+                $wholeIndentLevel++;
+                $residualOffset += $originalIndentLength;
+            }
+
+            $residualWhitespace = substr($leadingWhitespace, $residualOffset);
+
+            // A pure-space residual after tab units is carried verbatim: it is the exact
+            // remainder a space->tab conversion left behind, so byte-scaling it would
+            // misread "\t  " as three tab levels instead of one level plus two spaces.
+            if (strspn($residualWhitespace, ' ') === strlen($residualWhitespace)) {
+                return str_repeat($targetIndent, max($wholeIndentLevel + $delta, 0))
+                    . $residualWhitespace;
+            }
+        }
+
+        $indentLevel = intdiv(
             $leadingWhitespaceLength + intdiv($originalIndentLength, 2),
             $originalIndentLength,
         );
-        $residual                = $leadingWhitespaceLength - ($indentLevel * $originalIndentLength);
+        $residual    = $leadingWhitespaceLength - ($indentLevel * $originalIndentLength);
+
+        if ($targetIndentLength === 0) {
+            return $residual > 0
+                ? substr($leadingWhitespace, $leadingWhitespaceLength - $residual, $residual)
+                : '';
+        }
 
         $targetLevel  = $indentLevel + $delta;
         $targetPrefix = str_repeat($targetIndent, max($targetLevel, 0));
 
+        if (str_contains($targetIndent, "\t")) {
+            $wholeIndentLevel       = intdiv($leadingWhitespaceLength, $originalIndentLength);
+            $targetWholeIndentLevel = $wholeIndentLevel + $delta;
+
+            if ($targetWholeIndentLevel < 0) {
+                return '';
+            }
+
+            $residualOffset = $wholeIndentLevel * $originalIndentLength;
+
+            return str_repeat($targetIndent, $targetWholeIndentLevel)
+                . substr($leadingWhitespace, $residualOffset);
+        }
+
+        $scaledResidual = intdiv(
+            (abs($residual) * $targetIndentLength) + intdiv($originalIndentLength, 2),
+            $originalIndentLength,
+        );
+
+        if ($scaledResidual === 0) {
+            return $targetPrefix;
+        }
+
         if ($residual < 0) {
-            return substr($targetPrefix, 0, $residual);
+            return substr($targetPrefix, 0, -$scaledResidual);
         }
 
-        if ($residual > 0) {
-            return $targetPrefix . substr(
-                $leadingWhitespace,
-                $leadingWhitespaceLength - $residual,
-                $residual,
-            );
-        }
-
-        return $targetPrefix;
+        return $targetPrefix . str_repeat(' ', $scaledResidual);
     }
 
     private function reindentOriginalText(

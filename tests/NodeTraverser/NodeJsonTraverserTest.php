@@ -185,6 +185,11 @@ final class NodeJsonTraverserTest extends TestCase
         $this->assertSame('', $donorItem->afterValue);
         $this->assertFalse($donorItem->hasAttribute(NodeAttributes::START_OFFSET));
         $this->assertFalse($donorItem->hasAttribute(NodeAttributes::ORIGINAL_TEXT));
+
+        $this->assertSame(
+            "[\n    9\n]",
+            (new JsonPreservingPrinter($nodeJsonTraversalResult->changeSet))->print($nodeJsonTraversalResult->node),
+        );
     }
 
     public function testNoHasChangedAttributeExists(): void

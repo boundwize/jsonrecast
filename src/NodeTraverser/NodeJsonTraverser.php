@@ -290,48 +290,36 @@ final class NodeJsonTraverser
 
     private function preserveArrayItemFraming(ArrayItemNode $previous, ArrayItemNode $replacement): ArrayItemNode
     {
-        if ($replacement->beforeValue === '') {
-            $replacement->beforeValue = $previous->beforeValue;
-        }
+        $replacement->beforeValue = $previous->beforeValue;
+        $replacement->afterValue  = $previous->afterValue;
 
-        if ($replacement->afterValue === '') {
-            $replacement->afterValue = $previous->afterValue;
-        }
-
-        $this->copyItemSourceAttributes($previous, $replacement);
+        $this->adoptItemSourceAttributes($previous, $replacement);
 
         return $replacement;
     }
 
     private function preserveObjectItemFraming(ObjectItemNode $previous, ObjectItemNode $replacement): ObjectItemNode
     {
-        if ($replacement->beforeKey === '') {
-            $replacement->beforeKey = $previous->beforeKey;
-        }
+        $replacement->beforeKey            = $previous->beforeKey;
+        $replacement->betweenKeyAndColon   = $previous->betweenKeyAndColon;
+        $replacement->betweenColonAndValue = $previous->betweenColonAndValue;
+        $replacement->afterValue           = $previous->afterValue;
 
-        if ($replacement->betweenKeyAndColon === '') {
-            $replacement->betweenKeyAndColon = $previous->betweenKeyAndColon;
-        }
-
-        if ($replacement->betweenColonAndValue === '') {
-            $replacement->betweenColonAndValue = $previous->betweenColonAndValue;
-        }
-
-        if ($replacement->afterValue === '') {
-            $replacement->afterValue = $previous->afterValue;
-        }
-
-        $this->copyItemSourceAttributes($previous, $replacement);
+        $this->adoptItemSourceAttributes($previous, $replacement);
 
         return $replacement;
     }
 
-    private function copyItemSourceAttributes(
+    private function adoptItemSourceAttributes(
         ArrayItemNode|ObjectItemNode $source,
         ArrayItemNode|ObjectItemNode $target,
     ): void {
         foreach (self::ITEM_SOURCE_ATTRIBUTES as $attribute) {
-            $this->copyAttribute($source, $target, $attribute);
+            if ($source->hasAttribute($attribute)) {
+                $target->setAttribute($attribute, $source->getAttribute($attribute));
+            } else {
+                $target->removeAttribute($attribute);
+            }
         }
     }
 

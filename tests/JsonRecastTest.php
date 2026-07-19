@@ -329,6 +329,76 @@ JSON, JsonRecast::print($jsonRecastResult));
         $this->assertSame('{"x": "y", "b": 2}', JsonRecast::print($jsonRecastResult));
     }
 
+    public function testItDoesNotCarryParsedArrayItemFramingIntoReplacedItemPosition(): void
+    {
+        $jsonDocument = JsonRecast::parse(
+            <<<'JSON'
+[
+  9
+]
+JSON,
+        );
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $replacementItem = $jsonDocument->value->items[0];
+
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse('[1,2]'),
+            new class ($replacementItem) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly ArrayItemNode $arrayItemNode,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if (! $nodeJson instanceof ArrayItemNode || ! $nodeJsonPath->isArrayValue(0)) {
+                        return null;
+                    }
+
+                    return $this->arrayItemNode;
+                }
+            },
+        );
+
+        $this->assertSame('[9,2]', JsonRecast::print($jsonRecastResult));
+    }
+
+    public function testItDoesNotCarryParsedObjectItemFramingIntoReplacedItemPosition(): void
+    {
+        $jsonDocument = JsonRecast::parse(
+            <<<'JSON'
+{
+  "k" : 9
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $replacementItem = $jsonDocument->value->items[0];
+
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse('{"a":1,"b":2}'),
+            new class ($replacementItem) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly ObjectItemNode $objectItemNode,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if (! $nodeJson instanceof ObjectItemNode || $nodeJson->key->value !== 'a') {
+                        return null;
+                    }
+
+                    return $this->objectItemNode;
+                }
+            },
+        );
+
+        $this->assertSame('{"k":9,"b":2}', JsonRecast::print($jsonRecastResult));
+    }
+
     public function testObjectNodeSetUpdatesEffectiveDuplicateKeyValue(): void
     {
         $jsonDocument = JsonRecast::parse('{"a":1,"a":2}');

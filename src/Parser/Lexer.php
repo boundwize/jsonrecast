@@ -110,9 +110,11 @@ final class Lexer
             throw $this->error('Unexpected character.');
         }
 
-        $length        = strlen($text);
-        $this->offset += $length;
-        $this->column += $length;
+        $length = strlen($text);
+
+        for ($i = 0; $i < $length; $i++) {
+            $this->advance();
+        }
 
         return new Token(self::KEYWORD_TOKENS[$text], $text, $startOffset, $this->offset, $line, $column);
     }

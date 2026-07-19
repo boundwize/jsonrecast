@@ -77,6 +77,30 @@ final class JsonParserErrorTest extends TestCase
         $this->fail('Expected parser to reject invalid JSON.');
     }
 
+    /**
+     * @return iterable<string, array{string, int, int}>
+     */
+    public static function newlinesAroundKeywordsProvider(): iterable
+    {
+        yield 'cr and lf separated by keyword' => ["[\rtrue\nfalse]", 3, 1];
+        yield 'crlf counted as single newline' => ["[\r\ntrue\r\nfalse]", 3, 1];
+    }
+
+    #[DataProvider('newlinesAroundKeywordsProvider')]
+    public function testItTracksNewlinesAroundKeywords(string $source, int $expectedLine, int $expectedColumn): void
+    {
+        try {
+            (new JsonParser())->parse($source);
+        } catch (ParseError $parseError) {
+            $this->assertSame($expectedLine, $parseError->sourceLine);
+            $this->assertSame($expectedColumn, $parseError->column);
+
+            return;
+        }
+
+        $this->fail('Expected parser to reject the missing comma.');
+    }
+
     public function testItRejectsJsonThatExceedsMaximumNestingDepth(): void
     {
         $json = str_repeat('[', 512) . '1' . str_repeat(']', 512);

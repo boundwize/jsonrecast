@@ -127,7 +127,45 @@ public function enterNode(NodeJson $node, NodeJsonPath $path): ?NodeJson
 }
 ```
 
-When an array visitor removes or inserts items, later visitors see the updated indexes.
+Array indexes are live: after a removal or insertion, traversal continues using the
+updated indexes.
+
+{: .warning }
+> Do not use a live array index as the removal predicate. For example, returning
+> `NodeJsonVisitor::REMOVE_NODE` whenever `$path->isArrayValue(0)` visits
+> `[10,20,30]` as index `0` three times and produces `[]`, not `[20,30]`. Each
+> removal shifts the next item to index `0`, where it matches again. Match the
+> item by value instead, or collect the original indexes first and remove them
+> from the parent array in descending order.
+
+To remove the value `10`, make the value—not its changing position—the predicate:
+
+```php
+if (
+    $node instanceof ArrayItemNode
+    && $node->value instanceof NumberNode
+    && $node->value->rawValue === '10'
+) {
+    return NodeJsonVisitor::REMOVE_NODE;
+}
+```
+
+For positional edits, collect against the unchanged parent and then remove in
+descending order so one removal cannot change a later target:
+
+```php
+$indexesToRemove = [];
+
+foreach ($array->items as $index => $item) {
+    if ($index === 0) {
+        $indexesToRemove[] = $index;
+    }
+}
+
+foreach (array_reverse($indexesToRemove) as $index) {
+    $array->removeAt($index);
+}
+```
 
 ## Multiple Visitors
 

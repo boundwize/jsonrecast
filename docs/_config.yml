@@ -40,6 +40,9 @@ callouts:
   note:
     title: Note
     color: blue
+  warning:
+    title: Warning
+    color: red
 
 exclude:
   - Gemfile

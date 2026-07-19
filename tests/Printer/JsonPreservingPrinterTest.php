@@ -1976,6 +1976,22 @@ JSON,
             'reindentLeadingWhitespaceUnit',
             ['        ', '    ', "\t", 0],
         ));
+        $this->assertSame('', $this->invokeJsonPreservingPrinterMethod(
+            'reindentLeadingWhitespaceUnit',
+            ['    ', '    ', "\t", -2],
+        ));
+    }
+
+    public function testItPreservesOnlyPositiveResidualWhitespaceForEmptyTargetIndent(): void
+    {
+        $this->assertSame(' ', $this->invokeJsonPreservingPrinterMethod(
+            'reindentLeadingWhitespaceUnit',
+            ['     ', '    ', '', 0],
+        ));
+        $this->assertSame('', $this->invokeJsonPreservingPrinterMethod(
+            'reindentLeadingWhitespaceUnit',
+            ['    ', '    ', '', 0],
+        ));
     }
 
     public function testItUsesEmptyDocumentIndentWhenPrintingNewContainers(): void

@@ -750,11 +750,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             return substr($targetPrefix, 0, -$scaledResidual);
         }
 
-        if ($residual > 0) {
-            return $targetPrefix . substr(str_repeat($targetIndent, $scaledResidual), 0, $scaledResidual);
-        }
-
-        return $targetPrefix;
+        return $targetPrefix . substr(str_repeat($targetIndent, $scaledResidual), 0, $scaledResidual);
     }
 
     private function reindentOriginalText(

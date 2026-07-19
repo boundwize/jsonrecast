@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Tests;
 
+use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use Boundwize\JsonRecast\JsonRecast;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
@@ -397,6 +398,55 @@ JSON,
         );
 
         $this->assertSame('{"k":9,"b":2}', JsonRecast::print($jsonRecastResult));
+    }
+
+    public function testItAdoptsOriginalItemStartOffsetWhenParsedItemReplacesLaterItem(): void
+    {
+        $jsonDocument = JsonRecast::parse(
+            <<<'JSON'
+[
+  9
+]
+JSON,
+        );
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $replacementItem = $jsonDocument->value->items[0];
+
+        $targetDocument = JsonRecast::parse('[1,2,3]');
+        $this->assertInstanceOf(ArrayNode::class, $targetDocument->value);
+
+        $originalStartOffset = $targetDocument->value->items[1]->getAttribute(NodeAttributes::START_OFFSET);
+        $this->assertNotSame(
+            $originalStartOffset,
+            $replacementItem->getAttribute(NodeAttributes::START_OFFSET),
+        );
+
+        $jsonRecastResult = JsonRecast::traverse(
+            $targetDocument,
+            new class ($replacementItem) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly ArrayItemNode $arrayItemNode,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if (! $nodeJson instanceof ArrayItemNode || ! $nodeJsonPath->isArrayValue(1)) {
+                        return null;
+                    }
+
+                    return $this->arrayItemNode;
+                }
+            },
+        );
+
+        $this->assertSame('[1,9,3]', JsonRecast::print($jsonRecastResult));
+        $this->assertInstanceOf(ArrayNode::class, $jsonRecastResult->document->value);
+        $this->assertSame(
+            $originalStartOffset,
+            $jsonRecastResult->document->value->items[1]->getAttribute(NodeAttributes::START_OFFSET),
+        );
     }
 
     public function testObjectNodeSetUpdatesEffectiveDuplicateKeyValue(): void

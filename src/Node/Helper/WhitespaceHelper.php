@@ -6,6 +6,8 @@ namespace Boundwize\JsonRecast\Node\Helper;
 
 use function preg_match;
 use function str_contains;
+use function strlen;
+use function substr;
 
 /**
  * @internal
@@ -43,17 +45,25 @@ final readonly class WhitespaceHelper
      * Opening whitespace to use when an existing item is promoted to index 0.
      *
      * A multiline separator belongs to the promoted item's line and must move
-     * with it. Inline comma spacing does not belong after the opening delimiter,
-     * so the container's existing opening whitespace is retained in that case.
+     * with it, while any decoration before the opening whitespace's final line
+     * (e.g. a decorative blank line) belongs to the container and stays. Inline
+     * comma spacing does not belong after the opening delimiter, so the
+     * container's existing opening whitespace is retained in that case.
      */
     public static function openingBeforePromotedItem(
         string $itemWhitespace,
         string $openingWhitespace,
     ): string {
-        if (str_contains($itemWhitespace, "\n") || str_contains($itemWhitespace, "\r")) {
-            return $itemWhitespace;
+        if (! str_contains($itemWhitespace, "\n") && ! str_contains($itemWhitespace, "\r")) {
+            return $openingWhitespace;
         }
 
-        return $openingWhitespace;
+        $closingLine = self::closingLine($openingWhitespace);
+
+        return substr(
+            $openingWhitespace,
+            0,
+            strlen($openingWhitespace) - strlen($closingLine),
+        ) . $itemWhitespace;
     }
 }

@@ -73,6 +73,39 @@ final class JsonValueTest extends TestCase
         JsonValue::from($value);
     }
 
+    public function testItRejectsInvalidUtf8StringValue(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('String value is not valid UTF-8.');
+
+        JsonValue::from("\xC3\x28");
+    }
+
+    public function testItRejectsInvalidUtf8ObjectKey(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('String value is not valid UTF-8.');
+
+        JsonValue::from(["\xC3\x28" => 1]);
+    }
+
+    public function testItRejectsInvalidUtf8ObjectPropertyName(): void
+    {
+        $value               = new stdClass();
+        $value->{"\xC3\x28"} = 1;
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('String value is not valid UTF-8.');
+
+        JsonValue::from($value);
+    }
+
+    public function testItAcceptsMultibyteAndEmbeddedNulStrings(): void
+    {
+        $this->assertInstanceOf(StringNode::class, JsonValue::from('café 😀'));
+        $this->assertInstanceOf(StringNode::class, JsonValue::from("a\x00b"));
+    }
+
     public function testJsonValueCreatesRecursiveObject(): void
     {
         $nodeJson = JsonValue::from([

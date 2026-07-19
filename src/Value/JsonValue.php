@@ -27,6 +27,7 @@ use function is_int;
 use function is_object;
 use function is_string;
 use function json_encode;
+use function preg_match;
 use function strpbrk;
 
 use const JSON_THROW_ON_ERROR;
@@ -45,7 +46,7 @@ final class JsonValue
         MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth);
 
         return match (true) {
-            is_string($value) => new StringNode($value),
+            is_string($value) => self::stringNode($value),
             is_float($value) && ! is_finite($value) => throw new InvalidArgumentException('Unsupported JSON value.'),
             is_int($value) => new NumberNode((string) $value),
             is_float($value) => new NumberNode(self::formatFloat($value)),
@@ -55,6 +56,15 @@ final class JsonValue
             is_object($value) => self::fromObject($value, $maximumDepth, $depth),
             default => throw new InvalidArgumentException('Unsupported JSON value.'),
         };
+    }
+
+    private static function stringNode(string $value): StringNode
+    {
+        if (preg_match('//u', $value) !== 1) {
+            throw new InvalidArgumentException('String value is not valid UTF-8.');
+        }
+
+        return new StringNode($value);
     }
 
     private static function formatFloat(float $value): string
@@ -86,7 +96,7 @@ final class JsonValue
 
         foreach ($value as $key => $item) {
             $items[] = new ObjectItemNode(
-                key: new StringNode((string) $key),
+                key: self::stringNode((string) $key),
                 value: self::fromValue($item, $maximumDepth, $depth + 1),
             );
         }
@@ -100,7 +110,7 @@ final class JsonValue
 
         foreach (get_object_vars($value) as $key => $item) {
             $items[] = new ObjectItemNode(
-                key: new StringNode((string) $key),
+                key: self::stringNode((string) $key),
                 value: self::fromValue($item, $maximumDepth, $depth + 1),
             );
         }

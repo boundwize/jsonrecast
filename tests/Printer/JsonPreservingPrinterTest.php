@@ -1128,6 +1128,57 @@ JSON,
         );
     }
 
+    public function testItScalesInconsistentIndentationWhenGraftingIntoNestedSlot(): void
+    {
+        $fragment     = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "source": {
+        "a": 1,
+      "b": 2,
+        "c": 3
+    }
+}
+JSON,
+        );
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "wrapper": {
+    "grafted": {}
+  }
+}
+JSON,
+        );
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $wrapperItem = $jsonDocument->value->get('wrapper');
+        $this->assertInstanceOf(ObjectItemNode::class, $wrapperItem);
+        $this->assertInstanceOf(ObjectNode::class, $wrapperItem->value);
+
+        $sourceItem = $fragment->value->get('source');
+        $this->assertInstanceOf(ObjectItemNode::class, $sourceItem);
+
+        $wrapperItem->value->set('grafted', $sourceItem->value);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+  "wrapper": {
+    "grafted": {
+      "a": 1,
+     "b": 2,
+      "c": 3
+    }
+  }
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItReindentsChangedItemInsideGraftedObjectSubtree(): void
     {
         $jsonDocument = (new JsonParser())->parse(

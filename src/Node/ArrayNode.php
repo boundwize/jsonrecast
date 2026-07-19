@@ -86,6 +86,11 @@ final class ArrayNode extends AbstractNodeJson
 
         if ($this->items === []) {
             $this->afterOpenBracket = $this->beforeCloseBracket;
+        } elseif ($index === 0) {
+            $this->afterOpenBracket = WhitespaceHelper::openingBeforePromotedItem(
+                $this->items[0]->beforeValue,
+                $this->afterOpenBracket,
+            );
         }
 
         $this->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);

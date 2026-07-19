@@ -7,6 +7,7 @@ namespace Boundwize\JsonRecast\NodeTraverser;
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
+use Boundwize\JsonRecast\Node\Helper\WhitespaceHelper;
 use Boundwize\JsonRecast\Node\JsonDocument;
 use Boundwize\JsonRecast\Node\NodeJson;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
@@ -155,6 +156,23 @@ final class NodeJsonTraverser
                         $containerNode->afterOpenBrace = $containerNode->beforeCloseBrace;
                     } else {
                         $containerNode->afterOpenBracket = $containerNode->beforeCloseBracket;
+                    }
+                } elseif ($i === 0) {
+                    $firstItem           = $containerNode->items[0];
+                    $firstItemWhitespace = $firstItem instanceof ObjectItemNode
+                        ? $firstItem->beforeKey
+                        : $firstItem->beforeValue;
+
+                    if ($containerNode instanceof ObjectNode) {
+                        $containerNode->afterOpenBrace = WhitespaceHelper::openingBeforePromotedItem(
+                            $firstItemWhitespace,
+                            $containerNode->afterOpenBrace,
+                        );
+                    } else {
+                        $containerNode->afterOpenBracket = WhitespaceHelper::openingBeforePromotedItem(
+                            $firstItemWhitespace,
+                            $containerNode->afterOpenBracket,
+                        );
                     }
                 }
 

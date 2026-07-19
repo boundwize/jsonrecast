@@ -251,6 +251,74 @@ JSON,
 JSON, (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node));
     }
 
+    public function testItPreservesPromotedFirstArrayItemIndentationWhenVisitorRemovesIt(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+[
+      1,
+  2
+]
+JSON,
+        );
+
+        $nodeJsonTraversalResult = $this->traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
+            private bool $removed = false;
+
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?int
+            {
+                if ($this->removed || ! $nodeJson instanceof ArrayItemNode) {
+                    return null;
+                }
+
+                $this->removed = true;
+
+                return NodeJsonVisitor::REMOVE_NODE;
+            }
+        });
+
+        $this->assertSame(
+            <<<'JSON'
+[
+  2
+]
+JSON,
+            (new JsonPreservingPrinter($nodeJsonTraversalResult->changeSet))->print($nodeJsonTraversalResult->node),
+        );
+    }
+
+    public function testItPreservesPromotedFirstObjectItemIndentationWhenVisitorRemovesIt(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+      "gone": 1,
+  "keep": 2
+}
+JSON,
+        );
+
+        $nodeJsonTraversalResult = $this->traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
+            public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?int
+            {
+                if (! $nodeJson instanceof ObjectItemNode || $nodeJson->key->value !== 'gone') {
+                    return null;
+                }
+
+                return NodeJsonVisitor::REMOVE_NODE;
+            }
+        });
+
+        $this->assertSame(
+            <<<'JSON'
+{
+  "keep": 2
+}
+JSON,
+            (new JsonPreservingPrinter($nodeJsonTraversalResult->changeSet))->print($nodeJsonTraversalResult->node),
+        );
+    }
+
     public function testItDoesNotDoubleIndentObjectItemAddedAfterVisitorRemovesAllItems(): void
     {
         $jsonDocument = (new JsonParser())->parse(

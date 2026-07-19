@@ -759,6 +759,13 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 . substr($leadingWhitespace, $residualOffset);
         }
 
+        if ($delta < 0 && $targetLevel <= 0 && $residual < 0) {
+            // Once the level prefix is clamped, applying a negative residual to that
+            // empty prefix can make a deeper source line shorter than its sibling.
+            // Keep it at the target container indentation instead.
+            return $targetIndent;
+        }
+
         $scaledResidual = intdiv(
             (abs($residual) * $targetIndentLength) + intdiv($originalIndentLength, 2),
             $originalIndentLength,
@@ -790,8 +797,19 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $lines = preg_split('/(?<=\r\n|\r|\n)/', $originalText);
 
         $output = $lines[0];
+        $count  = count($lines);
 
-        for ($i = 1, $count = count($lines); $i < $count; $i++) {
+        $originalIndent = $nodeJson->getAttribute(NodeAttributes::INDENT);
+        $shiftByUnits   = is_string($originalIndent)
+            && $originalIndent !== ''
+            && $originalIndent !== $printContext->indentUnit()
+            && $this->hasClampedLineOffOriginalIndentGrid(
+                $lines,
+                $originalIndent,
+                $printContext->level() - $originalDepth,
+            );
+
+        for ($i = 1; $i < $count; $i++) {
             $line = $lines[$i];
 
             if (trim($line) === '') {
@@ -808,14 +826,79 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 $leadingWhitespaceLength++;
             }
 
-            $output .= $this->reindentLeadingWhitespace(
-                $nodeJson,
-                substr($line, 0, $leadingWhitespaceLength),
-                $printContext,
-            ) . substr($line, $leadingWhitespaceLength);
+            $leadingWhitespace = substr($line, 0, $leadingWhitespaceLength);
+
+            // Interior lines off the original indent grid carry intentional relative
+            // indentation that per-line level scaling would flatten; shift the whole
+            // interior by the depth delta instead. The closing line still scales so
+            // the bracket aligns with its container.
+            $output .= ($shiftByUnits && $i < $count - 1
+                ? substr(
+                    $leadingWhitespace,
+                    strlen($printContext->indentUnit()) * ($originalDepth - $printContext->level()),
+                )
+                : $this->reindentLeadingWhitespace($nodeJson, $leadingWhitespace, $printContext))
+                . substr($line, $leadingWhitespaceLength);
         }
 
         return $output;
+    }
+
+    /**
+     * @param list<string> $lines
+     */
+    private function hasClampedLineOffOriginalIndentGrid(
+        array $lines,
+        string $originalIndent,
+        int $delta,
+    ): bool {
+        if ($delta >= 0) {
+            return false;
+        }
+
+        $originalIndentLength = strlen($originalIndent);
+
+        for ($i = 1, $count = count($lines); $i < $count - 1; $i++) {
+            $line = $lines[$i];
+
+            if (trim($line) === '') {
+                continue;
+            }
+
+            $leadingWhitespaceLength = 0;
+            while (
+                isset($line[$leadingWhitespaceLength])
+                && ($line[$leadingWhitespaceLength] === ' ' || $line[$leadingWhitespaceLength] === "\t")
+            ) {
+                $leadingWhitespaceLength++;
+            }
+
+            $indentLevel = intdiv(
+                $leadingWhitespaceLength + intdiv($originalIndentLength, 2),
+                $originalIndentLength,
+            );
+
+            if ($indentLevel + $delta > 0) {
+                continue;
+            }
+
+            if ($leadingWhitespaceLength % $originalIndentLength !== 0) {
+                return true;
+            }
+
+            $leadingWhitespace = substr($line, 0, $leadingWhitespaceLength);
+
+            if (
+                $leadingWhitespace !== str_repeat(
+                    $originalIndent,
+                    intdiv($leadingWhitespaceLength, $originalIndentLength),
+                )
+            ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

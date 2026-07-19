@@ -1392,6 +1392,98 @@ JSON,
         );
     }
 
+    public function testItDoesNotInvertIndentationWhenDeepHoistingMisalignedLines(): void
+    {
+        $fragment     = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "wrapper": {
+        "inner": {
+     "p": 1,
+      "q": 2,
+            "r": 3
+        }
+    }
+}
+JSON,
+        );
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "a": 1
+}
+JSON,
+        );
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+
+        $wrapperItem = $fragment->value->get('wrapper');
+        $this->assertInstanceOf(ObjectItemNode::class, $wrapperItem);
+        $this->assertInstanceOf(ObjectNode::class, $wrapperItem->value);
+
+        $innerItem = $wrapperItem->value->get('inner');
+        $this->assertInstanceOf(ObjectItemNode::class, $innerItem);
+
+        $jsonDocument->value = $innerItem->value;
+
+        $this->assertSame(
+            <<<'JSON'
+{
+ "p": 1,
+  "q": 2,
+        "r": 3
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItShiftsBlankAndAlignedDeeperLinesWhenDeepHoistingMisalignedLines(): void
+    {
+        $fragment     = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "wrapper": {
+        "inner": {
+            "deep": 4,
+
+     "p": 1
+        }
+    }
+}
+JSON,
+        );
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "a": 1
+}
+JSON,
+        );
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+
+        $wrapperItem = $fragment->value->get('wrapper');
+        $this->assertInstanceOf(ObjectItemNode::class, $wrapperItem);
+        $this->assertInstanceOf(ObjectNode::class, $wrapperItem->value);
+
+        $innerItem = $wrapperItem->value->get('inner');
+        $this->assertInstanceOf(ObjectItemNode::class, $innerItem);
+
+        $jsonDocument->value = $innerItem->value;
+
+        $this->assertSame(
+            <<<'JSON'
+{
+        "deep": 4,
+
+ "p": 1
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItReindentsChangedItemInsideGraftedObjectSubtree(): void
     {
         $jsonDocument = (new JsonParser())->parse(
@@ -2333,6 +2425,37 @@ JSON,
         $this->assertSame('', $this->invokeJsonPreservingPrinterMethod(
             'reindentLeadingWhitespaceUnit',
             ['    ', '    ', "\t", -2],
+        ));
+    }
+
+    public function testItKeepsDeepHoistIndentationMonotonicAcrossRoundingBoundary(): void
+    {
+        $shallower = $this->invokeJsonPreservingPrinterMethod(
+            'reindentLeadingWhitespaceUnit',
+            ['     ', '    ', '  ', -2],
+        );
+        $deeper    = $this->invokeJsonPreservingPrinterMethod(
+            'reindentLeadingWhitespaceUnit',
+            ['      ', '    ', '  ', -2],
+        );
+
+        $this->assertSame(' ', $shallower);
+        $this->assertSame('  ', $deeper);
+    }
+
+    public function testItDetectsClampedLineWithGridMultipleLengthButDifferentBytes(): void
+    {
+        $this->assertTrue($this->invokeJsonPreservingPrinterMethod(
+            'hasClampedLineOffOriginalIndentGrid',
+            [["{\n", "\t\t\t\t\"a\": 1\n", '}'], '    ', -1],
+        ));
+    }
+
+    public function testItDoesNotDetectClampedLineWhenAllLinesSitOnOriginalIndentGrid(): void
+    {
+        $this->assertFalse($this->invokeJsonPreservingPrinterMethod(
+            'hasClampedLineOffOriginalIndentGrid',
+            [["{\n", "        \"a\": 1\n", '    }'], '    ', -2],
         ));
     }
 

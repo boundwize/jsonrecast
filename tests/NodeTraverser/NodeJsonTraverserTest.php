@@ -87,7 +87,7 @@ final class NodeJsonTraverserTest extends TestCase
         $this->assertTrue($nodeJsonTraversalResult->changeSet->isChanged($objectNode));
     }
 
-    public function testDocumentReplacementKeepsExistingFramingAttributes(): void
+    public function testDocumentReplacementAdoptsOriginalDocumentFraming(): void
     {
         $jsonDocument = new JsonDocument(new NumberNode('1'), afterValue: ' ');
         $jsonDocument->setAttribute(NodeAttributes::NEWLINE, "\r\n");
@@ -113,9 +113,9 @@ final class NodeJsonTraverserTest extends TestCase
         );
 
         $this->assertSame($jsonDocument, $nodeJsonTraversalResult->node);
-        $this->assertSame("\r\n", $jsonDocument->getAttribute(NodeAttributes::NEWLINE));
+        $this->assertSame("\n", $jsonDocument->getAttribute(NodeAttributes::NEWLINE));
         $this->assertTrue($jsonDocument->getAttribute(NodeAttributes::TRAILING_NEWLINE));
-        $this->assertSame(' ', $jsonDocument->afterValue);
+        $this->assertSame("\n", $jsonDocument->afterValue);
     }
 
     public function testDocumentReplacementKeepsExistingIndentAttributeForPreservingPrinter(): void

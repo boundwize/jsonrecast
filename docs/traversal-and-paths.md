@@ -89,15 +89,15 @@ if (! $this->replaced && $node instanceof NumberNode && $node->rawValue === '1')
 }
 ```
 
-A `NodeJsonPath` verification also works as a guard. The values inside a replacement live at deeper paths than the value they replaced, so an exact path match can never re-trigger:
+A `NodeJsonPath` verification also works as a guard. The values inside a replacement live at deeper paths than the value they replaced, so bounding the depth can never re-trigger:
 
 ```php
-if ($node instanceof NumberNode && $node->rawValue === '1' && $path->matches([0])) {
+if ($node instanceof NumberNode && $node->rawValue === '1' && $path->depth() === 1) {
     return JsonValue::from(['m' => [1, 2]]);
 }
 ```
 
-The original `1` matches at path `[0]`. The `1` inside the replacement is visited at path `[0, 'm', 0]`, which no longer matches, so the visitor fires once. Bounding by `$path->depth()` works the same way when the exact location is not known in advance.
+The original `1` is visited at depth `1` (path `[0]`). The `1` inside the replacement is visited at depth `3` (path `[0, 'm', 0]`), so the visitor fires once. An exact match such as `$path->matches([0])` works the same way when the target location is known in advance.
 
 ## Change Tracking
 

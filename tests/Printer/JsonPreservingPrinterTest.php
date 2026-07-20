@@ -292,6 +292,50 @@ JSON,
         );
     }
 
+    public function testItUsesIndentUnitRatherThanRootIndentForIndentedEmptyObject(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            "        {\n"
+            . "        }",
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('name', JsonValue::from('jsonrecast'));
+
+        $this->assertSame(
+            "        {\n"
+            . "            \"name\": \"jsonrecast\"\n"
+            . "        }",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItDetectsIndentUnitFromNestingDeltaOfIndentedDocument(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            "        {\n"
+            . "            \"a\": {\n"
+            . "            }\n"
+            . "        }",
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $nestedItem = $jsonDocument->value->get('a');
+        $this->assertInstanceOf(ObjectItemNode::class, $nestedItem);
+        $this->assertInstanceOf(ObjectNode::class, $nestedItem->value);
+
+        $nestedItem->value->set('name', JsonValue::from('jsonrecast'));
+
+        $this->assertSame(
+            "        {\n"
+            . "            \"a\": {\n"
+            . "                \"name\": \"jsonrecast\"\n"
+            . "            }\n"
+            . "        }",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesDocumentFramingWhitespaceAfterRootValueReplacement(): void
     {
         $jsonDocument        = (new JsonParser())->parse("\n1\t");

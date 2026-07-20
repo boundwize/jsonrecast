@@ -24,8 +24,10 @@ use ReflectionMethod;
 use RuntimeException;
 
 use function array_reverse;
+use function intdiv;
 use function sprintf;
 use function str_repeat;
+use function str_split;
 use function strlen;
 
 use const PHP_FLOAT_EPSILON;
@@ -2767,6 +2769,178 @@ JSON,
                 }
             }
         }
+    }
+
+    /**
+     * A source unit wider than the assumed tab width (4) leaves residuals in
+     * source-space metric; carried verbatim onto tabs they overtake the next tab
+     * stop when tabs render narrower than the unit ("\t" + 7 spaces displays
+     * deeper than "\t\t" at tab width 4). The residual is scaled into the
+     * assumed-tab-width metric and capped at 3 spaces, so it can never cross a
+     * tab stop at any rendering width >= 4.
+     */
+    public function testItScalesWideUnitResidualWhenGraftingIntoTabIndentedDocument(): void
+    {
+        // "a"/"c" sit aligned at two 8-space units; "b" is misaligned one space short.
+        $fragment     = (new JsonParser())->parse(
+            "{\n"
+            . "        \"source\": {\n"
+            . "                \"a\": 1,\n"
+            . "               \"b\": 2,\n"
+            . "                \"c\": 3\n"
+            . "        }\n"
+            . "}",
+        );
+        $jsonDocument = (new JsonParser())->parse("{\n\t\"outer\": 1,\n\t\"grafted\": {}\n}");
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $sourceItem = $fragment->value->get('source');
+        $this->assertInstanceOf(ObjectItemNode::class, $sourceItem);
+
+        $jsonDocument->value->set('grafted', $sourceItem->value);
+
+        // "b": 15sp = one whole unit + 7 residual spaces, scaled 7 -> capped 3.
+        $this->assertSame(
+            "{\n"
+            . "\t\"outer\": 1,\n"
+            . "\t\"grafted\": {\n"
+            . "\t\t\"a\": 1,\n"
+            . "\t   \"b\": 2,\n"
+            . "\t\t\"c\": 3\n"
+            . "\t}\n"
+            . "}",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    /**
+     * Control for testItScalesWideUnitResidualWhenGraftingIntoTabIndentedDocument:
+     * units no wider than the assumed tab width keep their residual bytes
+     * verbatim, so the space->tab->space round-trip contract for those units is
+     * intact.
+     */
+    public function testItKeepsNarrowUnitResidualVerbatimWhenGraftingIntoTabIndentedDocument(): void
+    {
+        // 4-space unit, "b" misaligned at 7sp: the 3 residual spaces carry verbatim.
+        $fragment     = (new JsonParser())->parse(
+            "{\n"
+            . "    \"source\": {\n"
+            . "        \"a\": 1,\n"
+            . "       \"b\": 2,\n"
+            . "        \"c\": 3\n"
+            . "    }\n"
+            . "}",
+        );
+        $jsonDocument = (new JsonParser())->parse("{\n\t\"outer\": 1,\n\t\"grafted\": {}\n}");
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $sourceItem = $fragment->value->get('source');
+        $this->assertInstanceOf(ObjectItemNode::class, $sourceItem);
+
+        $jsonDocument->value->set('grafted', $sourceItem->value);
+
+        $this->assertSame(
+            "{\n"
+            . "\t\"outer\": 1,\n"
+            . "\t\"grafted\": {\n"
+            . "\t\t\"a\": 1,\n"
+            . "\t   \"b\": 2,\n"
+            . "\t\t\"c\": 3\n"
+            . "\t}\n"
+            . "}",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    /**
+     * Reverse direction of the narrow-unit control: a verbatim tab-side residual
+     * ("\t   ") restores the original 7 spaces when grafted back into a
+     * space-indented document.
+     */
+    public function testItRestoresNarrowUnitResidualWhenGraftingTabSourceIntoSpaceIndentedDocument(): void
+    {
+        $fragment     = (new JsonParser())->parse(
+            "{\n\t\"source\": {\n\t\t\"a\": 1,\n\t   \"b\": 2,\n\t\t\"c\": 3\n\t}\n}",
+        );
+        $jsonDocument = (new JsonParser())->parse("{\n    \"outer\": 1,\n    \"grafted\": {}\n}");
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $sourceItem = $fragment->value->get('source');
+        $this->assertInstanceOf(ObjectItemNode::class, $sourceItem);
+
+        $jsonDocument->value->set('grafted', $sourceItem->value);
+
+        $this->assertSame(
+            "{\n"
+            . "    \"outer\": 1,\n"
+            . "    \"grafted\": {\n"
+            . "        \"a\": 1,\n"
+            . "       \"b\": 2,\n"
+            . "        \"c\": 3\n"
+            . "    }\n"
+            . "}",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItKeepsReindentedLeadingWhitespaceVisuallyMonotonicForTabTargets(): void
+    {
+        foreach ([2, 3, 4, 6, 8] as $originalIndentLength) {
+            foreach ([-3, -2, -1, 0, 1, 2, 3] as $delta) {
+                // Tab width 2 is excluded: verbatim narrow-unit residuals (up to
+                // 3 spaces) can cross a 2-wide tab stop, an accepted limitation.
+                foreach ([4, 8] as $tabWidth) {
+                    $previousColumn = 0;
+
+                    for ($leadLength = 0; $leadLength <= 24; $leadLength++) {
+                        $reindented = $this->invokeJsonPreservingPrinterMethod(
+                            'reindentLeadingWhitespaceUnit',
+                            [
+                                str_repeat(' ', $leadLength),
+                                str_repeat(' ', $originalIndentLength),
+                                "\t",
+                                $delta,
+                            ],
+                        );
+
+                        $this->assertIsString($reindented);
+
+                        $column = $this->visualColumnAtTabWidth($reindented, $tabWidth);
+                        $this->assertGreaterThanOrEqual(
+                            $previousColumn,
+                            $column,
+                            sprintf(
+                                'Visual indentation inverted at lead %d for unit %d, delta %d, tab width %d',
+                                $leadLength,
+                                $originalIndentLength,
+                                $delta,
+                                $tabWidth,
+                            ),
+                        );
+
+                        $previousColumn = $column;
+                    }
+                }
+            }
+        }
+    }
+
+    private function visualColumnAtTabWidth(string $leadingWhitespace, int $tabWidth): int
+    {
+        $column = 0;
+        foreach (str_split($leadingWhitespace) as $character) {
+            $column = $character === "\t"
+                ? (intdiv($column, $tabWidth) + 1) * $tabWidth
+                : $column + 1;
+        }
+
+        return $column;
     }
 
     public function testItDetectsClampedLeadWithGridMultipleLengthButDifferentBytes(): void

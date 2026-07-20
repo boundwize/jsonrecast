@@ -47,6 +47,16 @@ use const JSON_UNESCAPED_UNICODE;
 
 final readonly class JsonPreservingPrinter implements JsonPrinter
 {
+    /**
+     * Tab rendering width assumed when a space-indented source is regrafted into
+     * a tab-indented target. The reader's real tab width is unknowable, so the
+     * space residual of a unit wider than this is scaled into this metric and
+     * capped one short of it — a residual carried verbatim (e.g. 7 spaces of an
+     * 8-space unit) would overtake the next tab stop and invert nesting order
+     * whenever tabs render narrower than the source unit.
+     */
+    private const ASSUMED_TAB_WIDTH = 4;
+
     /** @var positive-int */
     private int $maximumDepth;
 
@@ -806,10 +816,33 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 return '';
             }
 
-            $residualOffset = $wholeIndentLevel * $originalIndentLength;
+            $residualOffset     = $wholeIndentLevel * $originalIndentLength;
+            $residualWhitespace = substr($leadingWhitespace, $residualOffset);
+
+            // A space residual of a unit wider than the assumed tab width is in
+            // source-space metric: glued verbatim onto tabs it overtakes the next
+            // tab stop when tabs render narrower than the unit, printing the
+            // misaligned line visually deeper than its aligned siblings.
+            if (
+                $originalIndentLength > self::ASSUMED_TAB_WIDTH
+                && ! str_contains($originalIndent, "\t")
+                && $residualWhitespace !== ''
+                && strspn($residualWhitespace, ' ') === strlen($residualWhitespace)
+            ) {
+                $scaledResidualLength = min(
+                    intdiv(
+                        (strlen($residualWhitespace) * self::ASSUMED_TAB_WIDTH) + intdiv($originalIndentLength, 2),
+                        $originalIndentLength,
+                    ),
+                    self::ASSUMED_TAB_WIDTH - 1,
+                );
+
+                return str_repeat($targetIndent, $targetWholeIndentLevel)
+                    . str_repeat(' ', $scaledResidualLength);
+            }
 
             return str_repeat($targetIndent, $targetWholeIndentLevel)
-                . substr($leadingWhitespace, $residualOffset);
+                . $residualWhitespace;
         }
 
         if ($targetLevel < 0 || ($targetLevel === 0 && $residual < 0)) {

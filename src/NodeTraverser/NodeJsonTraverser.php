@@ -273,12 +273,30 @@ final class NodeJsonTraverser
 
     private function preserveDocumentFraming(JsonDocument $previous, JsonDocument $replacement): JsonDocument
     {
-        $replacement->beforeValue = $previous->beforeValue;
-        $replacement->afterValue  = $previous->afterValue;
+        // a parsed replacement carries its donor document's root framing, which must not
+        // survive the move; a synthetic replacement keeps whatever framing was set on it
+        if ($replacement->hasAttribute(NodeAttributes::SOURCE)) {
+            $replacement->beforeValue = $previous->beforeValue;
+            $replacement->afterValue  = $previous->afterValue;
 
-        $this->adoptAttribute($previous, $replacement, NodeAttributes::NEWLINE);
-        $this->adoptAttribute($previous, $replacement, NodeAttributes::INDENT);
-        $this->adoptAttribute($previous, $replacement, NodeAttributes::TRAILING_NEWLINE);
+            $this->adoptAttribute($previous, $replacement, NodeAttributes::NEWLINE);
+            $this->adoptAttribute($previous, $replacement, NodeAttributes::INDENT);
+            $this->adoptAttribute($previous, $replacement, NodeAttributes::TRAILING_NEWLINE);
+
+            return $replacement;
+        }
+
+        if ($replacement->beforeValue === '') {
+            $replacement->beforeValue = $previous->beforeValue;
+        }
+
+        if ($replacement->afterValue === '') {
+            $replacement->afterValue = $previous->afterValue;
+        }
+
+        $this->copyAttribute($previous, $replacement, NodeAttributes::NEWLINE);
+        $this->copyAttribute($previous, $replacement, NodeAttributes::INDENT);
+        $this->copyAttribute($previous, $replacement, NodeAttributes::TRAILING_NEWLINE);
 
         return $replacement;
     }
@@ -323,5 +341,14 @@ final class NodeJsonTraverser
         }
 
         $target->removeAttribute($attribute);
+    }
+
+    private function copyAttribute(NodeJson $source, NodeJson $target, string $attribute): void
+    {
+        if ($target->hasAttribute($attribute) || ! $source->hasAttribute($attribute)) {
+            return;
+        }
+
+        $target->setAttribute($attribute, $source->getAttribute($attribute));
     }
 }

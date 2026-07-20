@@ -250,6 +250,32 @@ JSON, JsonRecast::print($jsonRecastResult));
         $this->assertSame("1\n\n", JsonRecast::print($jsonRecastResult));
     }
 
+    public function testParsedDocumentReplacementAdoptsTargetRootFraming(): void
+    {
+        $jsonDocument = JsonRecast::parse(" \n1\n ");
+
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse("\t0\r\n"),
+            new class ($jsonDocument) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly JsonDocument $jsonDocument,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if (! $nodeJson instanceof JsonDocument || ! $nodeJsonPath->isRoot()) {
+                        return null;
+                    }
+
+                    return $this->jsonDocument;
+                }
+            },
+        );
+
+        $this->assertSame("\t1\r\n", JsonRecast::print($jsonRecastResult));
+    }
+
     public function testItPrintsArrayItemReplacementFromParsedNode(): void
     {
         $jsonRecastResult = JsonRecast::traverse(

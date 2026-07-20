@@ -273,6 +273,19 @@ final class NodeJsonTraverser
 
     private function preserveDocumentFraming(JsonDocument $previous, JsonDocument $replacement): JsonDocument
     {
+        // a parsed replacement carries its donor document's root framing, which must not
+        // survive the move; a synthetic replacement keeps whatever framing was set on it
+        if ($replacement->hasAttribute(NodeAttributes::SOURCE)) {
+            $replacement->beforeValue = $previous->beforeValue;
+            $replacement->afterValue  = $previous->afterValue;
+
+            $this->adoptAttribute($previous, $replacement, NodeAttributes::NEWLINE);
+            $this->adoptAttribute($previous, $replacement, NodeAttributes::INDENT);
+            $this->adoptAttribute($previous, $replacement, NodeAttributes::TRAILING_NEWLINE);
+
+            return $replacement;
+        }
+
         if ($replacement->beforeValue === '') {
             $replacement->beforeValue = $previous->beforeValue;
         }
@@ -315,12 +328,19 @@ final class NodeJsonTraverser
         ArrayItemNode|ObjectItemNode $target,
     ): void {
         foreach (self::ITEM_SOURCE_ATTRIBUTES as $attribute) {
-            if ($source->hasAttribute($attribute)) {
-                $target->setAttribute($attribute, $source->getAttribute($attribute));
-            } else {
-                $target->removeAttribute($attribute);
-            }
+            $this->adoptAttribute($source, $target, $attribute);
         }
+    }
+
+    private function adoptAttribute(NodeJson $source, NodeJson $target, string $attribute): void
+    {
+        if ($source->hasAttribute($attribute)) {
+            $target->setAttribute($attribute, $source->getAttribute($attribute));
+
+            return;
+        }
+
+        $target->removeAttribute($attribute);
     }
 
     private function copyAttribute(NodeJson $source, NodeJson $target, string $attribute): void

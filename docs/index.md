@@ -32,6 +32,16 @@ JsonRecast is a PHP library for tools that need to read, edit, and rewrite JSON 
 1. TOC
 {:toc}
 
+## How It Works
+
+<p align="center">
+    <img alt="JsonRecast flow: parse JSON into a JsonDocument, optionally traverse it with visitors, then print with the original formatting preserved" src="{{ '/assets/how-it-works.svg' | relative_url }}" width="360">
+</p>
+
+- `JsonRecast::parse()` runs the `Lexer` and `JsonParser` to build a `JsonDocument`, an editable AST.
+- `JsonRecast::traverse()` walks the document with your `NodeJsonVisitor` and returns a `JsonRecastResult` whose `NodeChangeSet` tracks the changed nodes. This step is optional — you can also edit the AST directly.
+- `JsonRecast::print()` accepts either result and uses the `JsonPreservingPrinter` to write the JSON back with the original formatting preserved where possible.
+
 ## Why Use JsonRecast
 
 - Build config migration tools that preserve a user's formatting choices.

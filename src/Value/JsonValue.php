@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Value;
 
+use BackedEnum;
 use Boundwize\JsonRecast\Guard\MaximumDepthGuard;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
@@ -15,6 +16,7 @@ use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use InvalidArgumentException;
+use UnitEnum;
 
 use function array_is_list;
 use function array_map;
@@ -53,6 +55,8 @@ final class JsonValue
             is_bool($value) => new BooleanNode($value),
             $value === null => new NullNode(),
             is_array($value) => self::fromArray($value, $maximumDepth, $depth),
+            $value instanceof BackedEnum => self::fromValue($value->value, $maximumDepth, $depth),
+            $value instanceof UnitEnum => throw new InvalidArgumentException('Unsupported JSON value.'),
             is_object($value) => self::fromObject($value, $maximumDepth, $depth),
             default => throw new InvalidArgumentException('Unsupported JSON value.'),
         };

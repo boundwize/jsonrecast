@@ -10,6 +10,9 @@ use Boundwize\JsonRecast\Node\NullNode;
 use Boundwize\JsonRecast\Node\NumberNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
+use Boundwize\JsonRecast\Tests\Value\Fixture\IntegerBackedPriority;
+use Boundwize\JsonRecast\Tests\Value\Fixture\PureDirection;
+use Boundwize\JsonRecast\Tests\Value\Fixture\StringBackedStatus;
 use Boundwize\JsonRecast\Value\JsonValue;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -218,6 +221,39 @@ final class JsonValueTest extends TestCase
         $this->assertSame('foo', $nodeJson->items[0]->key->value);
         $this->assertInstanceOf(StringNode::class, $nodeJson->items[0]->value);
         $this->assertSame('bar', $nodeJson->items[0]->value->value);
+    }
+
+    public function testItCreatesStringNodeFromStringBackedEnum(): void
+    {
+        $nodeJson = JsonValue::from(StringBackedStatus::Active);
+
+        $this->assertInstanceOf(StringNode::class, $nodeJson);
+        $this->assertSame('active', $nodeJson->value);
+    }
+
+    public function testItCreatesNumberNodeFromIntegerBackedEnum(): void
+    {
+        $nodeJson = JsonValue::from(IntegerBackedPriority::High);
+
+        $this->assertInstanceOf(NumberNode::class, $nodeJson);
+        $this->assertSame('10', $nodeJson->rawValue);
+    }
+
+    public function testItCreatesScalarNodeFromBackedEnumInsideArray(): void
+    {
+        $nodeJson = JsonValue::from(['status' => StringBackedStatus::Active]);
+
+        $this->assertInstanceOf(ObjectNode::class, $nodeJson);
+        $this->assertInstanceOf(StringNode::class, $nodeJson->items[0]->value);
+        $this->assertSame('active', $nodeJson->items[0]->value->value);
+    }
+
+    public function testItRejectsPureEnum(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unsupported JSON value.');
+
+        JsonValue::from(PureDirection::North);
     }
 
     private function nestedArray(int $depth): mixed

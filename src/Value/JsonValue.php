@@ -76,7 +76,8 @@ final class JsonValue
             return self::fromObject($jsonSerializable, $maximumDepth, $depth);
         }
 
-        return self::fromValue($serializedValue, $maximumDepth, $depth);
+        // count the hop as a level so cyclic or endless jsonSerialize() chains hit the depth guard
+        return self::fromValue($serializedValue, $maximumDepth, $depth + 1);
     }
 
     private static function stringNode(string $value): StringNode

@@ -13,6 +13,7 @@ use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\Tests\Value\Fixture\IntegerBackedPriority;
 use Boundwize\JsonRecast\Tests\Value\Fixture\PureDirection;
 use Boundwize\JsonRecast\Tests\Value\Fixture\SerializableDirection;
+use Boundwize\JsonRecast\Tests\Value\Fixture\SerializableLink;
 use Boundwize\JsonRecast\Tests\Value\Fixture\StringBackedStatus;
 use Boundwize\JsonRecast\Value\JsonValue;
 use InvalidArgumentException;
@@ -314,6 +315,47 @@ final class JsonValueTest extends TestCase
                 }
             },
         );
+    }
+
+    public function testItRejectsCyclicJsonSerializableObjects(): void
+    {
+        $serializableLink = new SerializableLink();
+        $otherLink        = new SerializableLink($serializableLink);
+
+        $serializableLink->next = $otherLink;
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
+        JsonValue::from($serializableLink);
+    }
+
+    public function testItRejectsJsonSerializableChainExceedingMaximumNestingDepth(): void
+    {
+        $value = 'end';
+
+        for ($link = 0; $link < 600; $link++) {
+            $value = new SerializableLink($value);
+        }
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
+        JsonValue::from($value);
+    }
+
+    public function testItAcceptsJsonSerializableChainWithinMaximumNestingDepth(): void
+    {
+        $value = 'end';
+
+        for ($link = 0; $link < 10; $link++) {
+            $value = new SerializableLink($value);
+        }
+
+        $nodeJson = JsonValue::from($value);
+
+        $this->assertInstanceOf(StringNode::class, $nodeJson);
+        $this->assertSame('end', $nodeJson->value);
     }
 
     public function testItUsesJsonSerializableRepresentationFromEnum(): void

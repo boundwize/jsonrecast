@@ -2772,14 +2772,13 @@ JSON,
     }
 
     /**
-     * A source unit wider than the assumed tab width (4) leaves residuals in
-     * source-space metric; carried verbatim onto tabs they overtake the next tab
-     * stop when tabs render narrower than the unit ("\t" + 7 spaces displays
-     * deeper than "\t\t" at tab width 4). The residual is scaled into the
-     * assumed-tab-width metric and capped at 3 spaces, so it can never cross a
-     * tab stop at any rendering width >= 4.
+     * A space-unit residual is in source-space metric; carried verbatim onto
+     * tabs it overtakes the next tab stop when tabs render narrower than the
+     * unit ("\t" + 7 spaces displays deeper than "\t\t" at tab width 4). The
+     * residual is capped at two spaces — the narrowest common tab width — so it
+     * can never pass a tab stop at any rendering width >= 2.
      */
-    public function testItScalesWideUnitResidualWhenGraftingIntoTabIndentedDocument(): void
+    public function testItCapsWideUnitResidualWhenGraftingIntoTabIndentedDocument(): void
     {
         // "a"/"c" sit aligned at two 8-space units; "b" is misaligned one space short.
         $fragment     = (new JsonParser())->parse(
@@ -2801,13 +2800,13 @@ JSON,
 
         $jsonDocument->value->set('grafted', $sourceItem->value);
 
-        // "b": 15sp = one whole unit + 7 residual spaces, scaled 7 -> capped 3.
+        // "b": 15sp = one whole unit + 7 residual spaces -> capped to 2.
         $this->assertSame(
             "{\n"
             . "\t\"outer\": 1,\n"
             . "\t\"grafted\": {\n"
             . "\t\t\"a\": 1,\n"
-            . "\t   \"b\": 2,\n"
+            . "\t  \"b\": 2,\n"
             . "\t\t\"c\": 3\n"
             . "\t}\n"
             . "}",
@@ -2816,14 +2815,13 @@ JSON,
     }
 
     /**
-     * Control for testItScalesWideUnitResidualWhenGraftingIntoTabIndentedDocument:
-     * units no wider than the assumed tab width keep their residual bytes
-     * verbatim, so the space->tab->space round-trip contract for those units is
-     * intact.
+     * Counterpart to testItCapsWideUnitResidualWhenGraftingIntoTabIndentedDocument:
+     * narrow units cap the same way — a 3-space residual carried verbatim would
+     * pass a tab stop at tab width 2.
      */
-    public function testItKeepsNarrowUnitResidualVerbatimWhenGraftingIntoTabIndentedDocument(): void
+    public function testItCapsNarrowUnitResidualWhenGraftingIntoTabIndentedDocument(): void
     {
-        // 4-space unit, "b" misaligned at 7sp: the 3 residual spaces carry verbatim.
+        // 4-space unit, "b" misaligned at 7sp: 3 residual spaces -> capped to 2.
         $fragment     = (new JsonParser())->parse(
             "{\n"
             . "    \"source\": {\n"
@@ -2848,7 +2846,7 @@ JSON,
             . "\t\"outer\": 1,\n"
             . "\t\"grafted\": {\n"
             . "\t\t\"a\": 1,\n"
-            . "\t   \"b\": 2,\n"
+            . "\t  \"b\": 2,\n"
             . "\t\t\"c\": 3\n"
             . "\t}\n"
             . "}",
@@ -2857,9 +2855,10 @@ JSON,
     }
 
     /**
-     * Reverse direction of the narrow-unit control: a verbatim tab-side residual
-     * ("\t   ") restores the original 7 spaces when grafted back into a
-     * space-indented document.
+     * The tab->space direction is untouched by the residual cap: spaces render
+     * 1:1 at every tab width, so a tab-side space residual ("\t   ") cannot
+     * invert nesting and restores its original 7 spaces byte-exactly when
+     * grafted into a space-indented document.
      */
     public function testItRestoresNarrowUnitResidualWhenGraftingTabSourceIntoSpaceIndentedDocument(): void
     {
@@ -2893,9 +2892,7 @@ JSON,
     {
         foreach ([2, 3, 4, 6, 8] as $originalIndentLength) {
             foreach ([-3, -2, -1, 0, 1, 2, 3] as $delta) {
-                // Tab width 2 is excluded: verbatim narrow-unit residuals (up to
-                // 3 spaces) can cross a 2-wide tab stop, an accepted limitation.
-                foreach ([4, 8] as $tabWidth) {
+                foreach ([2, 4, 8] as $tabWidth) {
                     $previousColumn = 0;
 
                     for ($leadLength = 0; $leadLength <= 24; $leadLength++) {
@@ -2973,6 +2970,20 @@ JSON,
         $this->assertSame('      ', $this->invokeJsonPreservingPrinterMethod(
             'reindentLeadingWhitespaceUnit',
             [$tabIndented, "\t", '    ', 0],
+        ));
+
+        // A residual wider than the tab-side cap round-trips approximately:
+        // 7 spaces -> "\t  " -> 6 spaces. Display safety at every tab width
+        // beats byte-perfect restoration of an off-grid lead.
+        $cappedTabIndented = $this->invokeJsonPreservingPrinterMethod(
+            'reindentLeadingWhitespaceUnit',
+            ['       ', '    ', "\t", 0],
+        );
+
+        $this->assertSame("\t  ", $cappedTabIndented);
+        $this->assertSame('      ', $this->invokeJsonPreservingPrinterMethod(
+            'reindentLeadingWhitespaceUnit',
+            [$cappedTabIndented, "\t", '    ', 0],
         ));
     }
 

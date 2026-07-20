@@ -48,14 +48,17 @@ use const JSON_UNESCAPED_UNICODE;
 final readonly class JsonPreservingPrinter implements JsonPrinter
 {
     /**
-     * Tab rendering width assumed when a space-indented source is regrafted into
-     * a tab-indented target. The reader's real tab width is unknowable, so the
-     * space residual of a unit wider than this is scaled into this metric and
-     * capped one short of it — a residual carried verbatim (e.g. 7 spaces of an
-     * 8-space unit) would overtake the next tab stop and invert nesting order
-     * whenever tabs render narrower than the source unit.
+     * Widest space residual carried onto a tab-indented lead for a source line
+     * that sits off its space-unit indent grid. The reader's tab rendering
+     * width is unknowable, so a wider run glued onto tabs (e.g. the 7-space
+     * remainder of an 8-space unit) can overtake the next tab stop and print
+     * the misaligned line visually deeper than its aligned siblings; a residual
+     * no wider than the narrowest common tab width (2) can never pass a tab
+     * stop. Residuals within the cap keep their bytes — and their exact
+     * space->tab->space round trip — while wider ones are truncated, trading
+     * byte reversibility for correct nesting order at every tab width.
      */
-    private const ASSUMED_TAB_WIDTH = 4;
+    private const MAXIMUM_TAB_RESIDUAL_LENGTH = 2;
 
     /** @var positive-int */
     private int $maximumDepth;
@@ -819,26 +822,16 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             $residualOffset     = $wholeIndentLevel * $originalIndentLength;
             $residualWhitespace = substr($leadingWhitespace, $residualOffset);
 
-            // A space residual of a unit wider than the assumed tab width is in
-            // source-space metric: glued verbatim onto tabs it overtakes the next
-            // tab stop when tabs render narrower than the unit, printing the
-            // misaligned line visually deeper than its aligned siblings.
+            // A space residual glued verbatim onto tabs is in source-space
+            // metric and overtakes the next tab stop whenever tabs render
+            // narrower than the source unit, printing the misaligned line
+            // visually deeper than its aligned siblings.
             if (
-                $originalIndentLength > self::ASSUMED_TAB_WIDTH
-                && ! str_contains($originalIndent, "\t")
-                && $residualWhitespace !== ''
+                ! str_contains($originalIndent, "\t")
                 && strspn($residualWhitespace, ' ') === strlen($residualWhitespace)
             ) {
-                $scaledResidualLength = min(
-                    intdiv(
-                        (strlen($residualWhitespace) * self::ASSUMED_TAB_WIDTH) + intdiv($originalIndentLength, 2),
-                        $originalIndentLength,
-                    ),
-                    self::ASSUMED_TAB_WIDTH - 1,
-                );
-
                 return str_repeat($targetIndent, $targetWholeIndentLevel)
-                    . str_repeat(' ', $scaledResidualLength);
+                    . substr($residualWhitespace, 0, self::MAXIMUM_TAB_RESIDUAL_LENGTH);
             }
 
             return str_repeat($targetIndent, $targetWholeIndentLevel)

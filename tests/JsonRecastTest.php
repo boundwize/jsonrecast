@@ -252,13 +252,13 @@ JSON, JsonRecast::print($jsonRecastResult));
 
     public function testParsedDocumentReplacementAdoptsTargetRootFraming(): void
     {
-        $replacementDocument = JsonRecast::parse(" \n1\n ");
+        $jsonDocument = JsonRecast::parse(" \n1\n ");
 
         $jsonRecastResult = JsonRecast::traverse(
             JsonRecast::parse("\t0\r\n"),
-            new class ($replacementDocument) extends NodeJsonVisitorAbstract {
+            new class ($jsonDocument) extends NodeJsonVisitorAbstract {
                 public function __construct(
-                    private readonly JsonDocument $replacementDocument,
+                    private readonly JsonDocument $jsonDocument,
                 ) {
                 }
 
@@ -268,7 +268,7 @@ JSON, JsonRecast::print($jsonRecastResult));
                         return null;
                     }
 
-                    return $this->replacementDocument;
+                    return $this->jsonDocument;
                 }
             },
         );

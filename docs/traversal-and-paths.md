@@ -56,6 +56,49 @@ Hook return values mean:
 
 The root node, document value, object keys, and scalar values cannot be removed directly. Remove their containing `ObjectItemNode` or `ArrayItemNode` instead.
 
+## Replacement Nodes Are Traversed
+
+Replacement nodes are traversed again, so your visitors see the values inside a replacement. This is intentional: it lets later rules process what an earlier rule produced.
+
+It also means a visitor whose replacement contains its own trigger replaces forever — each pass installs a fresh trigger inside the previous replacement:
+
+```php
+public function enterNode(NodeJson $node, NodeJsonPath $path): ?NodeJson
+{
+    if ($node instanceof NumberNode && $node->rawValue === '1') {
+        return JsonValue::from(['m' => [1, 2]]); // contains another 1
+    }
+
+    return null;
+}
+```
+
+{: .warning }
+> A self-triggering replacement nests the tree deeper on every pass until PHP
+> exhausts its memory limit. The resulting fatal error surfaces during path
+> allocation, far from the visitor that caused it. Making the replacement
+> impossible to re-match is your responsibility as the visitor author.
+
+Guard the replacement with a fire-once flag:
+
+```php
+if (! $this->replaced && $node instanceof NumberNode && $node->rawValue === '1') {
+    $this->replaced = true;
+
+    return JsonValue::from(['m' => [1, 2]]);
+}
+```
+
+A `NodeJsonPath` verification also works as a guard. The values inside a replacement live at deeper paths than the value they replaced, so an exact path match can never re-trigger:
+
+```php
+if ($node instanceof NumberNode && $node->rawValue === '1' && $path->matches([0])) {
+    return JsonValue::from(['m' => [1, 2]]);
+}
+```
+
+The original `1` matches at path `[0]`. The `1` inside the replacement is visited at path `[0, 'm', 0]`, which no longer matches, so the visitor fires once. Bounding by `$path->depth()` works the same way when the exact location is not known in advance.
+
 ## Change Tracking
 
 JsonRecast keeps change metadata outside the AST. The traverser records a change when a visitor returns a node.

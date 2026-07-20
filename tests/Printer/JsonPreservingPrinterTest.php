@@ -310,6 +310,26 @@ JSON,
         );
     }
 
+    public function testItUsesIndentUnitForIndentedEmptyObjectPrecededByBlankLines(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            "\n"
+            . "        {\n"
+            . "        }",
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('name', JsonValue::from('jsonrecast'));
+
+        $this->assertSame(
+            "\n"
+            . "        {\n"
+            . "            \"name\": \"jsonrecast\"\n"
+            . "        }",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItDetectsIndentUnitFromNestingDeltaOfIndentedDocument(): void
     {
         $jsonDocument = (new JsonParser())->parse(

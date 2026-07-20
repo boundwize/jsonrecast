@@ -363,15 +363,9 @@ final class JsonParser
 
     private function rootIndent(string $source): string
     {
-        if (preg_match('/^\s*/', $source, $matches) !== 1) {
-            return '';
-        }
+        preg_match('/^(?:[ \t]*\R)*([ \t]*)/', $source, $matches);
 
-        if (preg_match('/[ \t]*$/', $matches[0], $lineMatches) !== 1) {
-            return '';
-        }
-
-        return $lineMatches[0];
+        return $matches[1] ?? '';
     }
 
     /**

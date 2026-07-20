@@ -16,6 +16,7 @@ use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use InvalidArgumentException;
+use JsonSerializable;
 use UnitEnum;
 
 use function array_is_list;
@@ -55,11 +56,24 @@ final class JsonValue
             is_bool($value) => new BooleanNode($value),
             $value === null => new NullNode(),
             is_array($value) => self::fromArray($value, $maximumDepth, $depth),
+            $value instanceof JsonSerializable => self::fromJsonSerializable($value, $maximumDepth, $depth),
             $value instanceof BackedEnum => self::fromValue($value->value, $maximumDepth, $depth),
             $value instanceof UnitEnum => throw new InvalidArgumentException('Unsupported JSON value.'),
             is_object($value) => self::fromObject($value, $maximumDepth, $depth),
             default => throw new InvalidArgumentException('Unsupported JSON value.'),
         };
+    }
+
+    private static function fromJsonSerializable(JsonSerializable $value, int $maximumDepth, int $depth): NodeJson
+    {
+        $serializedValue = $value->jsonSerialize();
+
+        // json_encode() serializes the object's properties when jsonSerialize() returns $this
+        if ($serializedValue === $value) {
+            return self::fromObject($value, $maximumDepth, $depth);
+        }
+
+        return self::fromValue($serializedValue, $maximumDepth, $depth);
     }
 
     private static function stringNode(string $value): StringNode

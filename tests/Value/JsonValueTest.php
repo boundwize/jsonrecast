@@ -12,9 +12,11 @@ use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\Tests\Value\Fixture\IntegerBackedPriority;
 use Boundwize\JsonRecast\Tests\Value\Fixture\PureDirection;
+use Boundwize\JsonRecast\Tests\Value\Fixture\SerializableDirection;
 use Boundwize\JsonRecast\Tests\Value\Fixture\StringBackedStatus;
 use Boundwize\JsonRecast\Value\JsonValue;
 use InvalidArgumentException;
+use JsonSerializable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use stdClass;
@@ -246,6 +248,80 @@ final class JsonValueTest extends TestCase
         $this->assertInstanceOf(ObjectNode::class, $nodeJson);
         $this->assertInstanceOf(StringNode::class, $nodeJson->items[0]->value);
         $this->assertSame('active', $nodeJson->items[0]->value->value);
+    }
+
+    public function testItCreatesNodeFromJsonSerializableRepresentation(): void
+    {
+        $nodeJson = JsonValue::from(
+            new class implements JsonSerializable {
+                public function jsonSerialize(): mixed
+                {
+                    return 'jsonrecast';
+                }
+            },
+        );
+
+        $this->assertInstanceOf(StringNode::class, $nodeJson);
+        $this->assertSame('jsonrecast', $nodeJson->value);
+    }
+
+    public function testItCreatesRecursiveNodeFromJsonSerializableArrayRepresentation(): void
+    {
+        $nodeJson = JsonValue::from(
+            new class implements JsonSerializable {
+                public function jsonSerialize(): mixed
+                {
+                    return ['name' => 'jsonrecast'];
+                }
+            },
+        );
+
+        $this->assertInstanceOf(ObjectNode::class, $nodeJson);
+        $this->assertSame('name', $nodeJson->items[0]->key->value);
+        $this->assertInstanceOf(StringNode::class, $nodeJson->items[0]->value);
+        $this->assertSame('jsonrecast', $nodeJson->items[0]->value->value);
+    }
+
+    public function testItSerializesObjectPropertiesWhenJsonSerializeReturnsSelf(): void
+    {
+        $nodeJson = JsonValue::from(
+            new class implements JsonSerializable {
+                public string $name = 'jsonrecast';
+
+                public function jsonSerialize(): mixed
+                {
+                    return $this;
+                }
+            },
+        );
+
+        $this->assertInstanceOf(ObjectNode::class, $nodeJson);
+        $this->assertSame('name', $nodeJson->items[0]->key->value);
+        $this->assertInstanceOf(StringNode::class, $nodeJson->items[0]->value);
+        $this->assertSame('jsonrecast', $nodeJson->items[0]->value->value);
+    }
+
+    public function testItRejectsSelfReferencingJsonSerializableThatExceedsMaximumNestingDepth(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
+        JsonValue::from(
+            new class implements JsonSerializable {
+                public function jsonSerialize(): mixed
+                {
+                    return [$this];
+                }
+            },
+        );
+    }
+
+    public function testItUsesJsonSerializableRepresentationFromEnum(): void
+    {
+        $nodeJson = JsonValue::from(SerializableDirection::North);
+
+        $this->assertInstanceOf(StringNode::class, $nodeJson);
+        $this->assertSame('north', $nodeJson->value);
     }
 
     public function testItRejectsPureEnum(): void

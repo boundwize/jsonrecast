@@ -23,9 +23,11 @@ use function count;
 use function implode;
 use function is_string;
 use function json_decode;
+use function preg_match;
 use function preg_match_all;
 use function str_contains;
 use function str_ends_with;
+use function str_starts_with;
 use function strlen;
 use function substr;
 
@@ -337,14 +339,33 @@ final class JsonParser
     {
         preg_match_all('/(?:\r\n|\r|\n)([ \t]+)(?=\S)/', $source, $matches);
 
+        $rootIndent = $this->rootIndent($source);
+
         /** @var array<string, true> $lineIndents */
         $lineIndents = [];
 
         foreach ($matches[1] as $lineIndent) {
+            // the root value's own indentation is the document base, not an indent unit;
+            // only the extra whitespace beyond it reveals the per-level indentation
+            if (str_starts_with($lineIndent, $rootIndent)) {
+                $lineIndent = substr($lineIndent, strlen($rootIndent));
+            }
+
+            if ($lineIndent === '') {
+                continue;
+            }
+
             $lineIndents[$lineIndent] = true;
         }
 
         return $this->shortestIndent(array_keys($lineIndents)) ?? '    ';
+    }
+
+    private function rootIndent(string $source): string
+    {
+        preg_match('/^(?:[ \t]*\R)*([ \t]*)/', $source, $matches);
+
+        return $matches[1] ?? '';
     }
 
     /**

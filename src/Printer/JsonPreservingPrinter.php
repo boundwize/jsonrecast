@@ -47,6 +47,19 @@ use const JSON_UNESCAPED_UNICODE;
 
 final readonly class JsonPreservingPrinter implements JsonPrinter
 {
+    /**
+     * Widest space residual carried onto a tab-indented lead for a source line
+     * that sits off its space-unit indent grid. The reader's tab rendering
+     * width is unknowable, so a wider run glued onto tabs (e.g. the 7-space
+     * remainder of an 8-space unit) can overtake the next tab stop and print
+     * the misaligned line visually deeper than its aligned siblings; a residual
+     * no wider than the narrowest common tab width (2) can never pass a tab
+     * stop. Residuals within the cap keep their bytes — and their exact
+     * space->tab->space round trip — while wider ones are truncated, trading
+     * byte reversibility for correct nesting order at every tab width.
+     */
+    private const MAXIMUM_TAB_RESIDUAL_LENGTH = 2;
+
     /** @var positive-int */
     private int $maximumDepth;
 
@@ -806,10 +819,23 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 return '';
             }
 
-            $residualOffset = $wholeIndentLevel * $originalIndentLength;
+            $residualOffset     = $wholeIndentLevel * $originalIndentLength;
+            $residualWhitespace = substr($leadingWhitespace, $residualOffset);
+
+            // A space residual glued verbatim onto tabs is in source-space
+            // metric and overtakes the next tab stop whenever tabs render
+            // narrower than the source unit, printing the misaligned line
+            // visually deeper than its aligned siblings.
+            if (
+                ! str_contains($originalIndent, "\t")
+                && strspn($residualWhitespace, ' ') === strlen($residualWhitespace)
+            ) {
+                return str_repeat($targetIndent, $targetWholeIndentLevel)
+                    . substr($residualWhitespace, 0, self::MAXIMUM_TAB_RESIDUAL_LENGTH);
+            }
 
             return str_repeat($targetIndent, $targetWholeIndentLevel)
-                . substr($leadingWhitespace, $residualOffset);
+                . $residualWhitespace;
         }
 
         if ($targetLevel < 0 || ($targetLevel === 0 && $residual < 0)) {

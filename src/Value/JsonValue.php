@@ -64,13 +64,16 @@ final class JsonValue
         };
     }
 
-    private static function fromJsonSerializable(JsonSerializable $value, int $maximumDepth, int $depth): NodeJson
-    {
-        $serializedValue = $value->jsonSerialize();
+    private static function fromJsonSerializable(
+        JsonSerializable $jsonSerializable,
+        int $maximumDepth,
+        int $depth
+    ): NodeJson {
+        $serializedValue = $jsonSerializable->jsonSerialize();
 
         // json_encode() serializes the object's properties when jsonSerialize() returns $this
-        if ($serializedValue === $value) {
-            return self::fromObject($value, $maximumDepth, $depth);
+        if ($serializedValue === $jsonSerializable) {
+            return self::fromObject($jsonSerializable, $maximumDepth, $depth);
         }
 
         return self::fromValue($serializedValue, $maximumDepth, $depth);

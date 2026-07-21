@@ -18,6 +18,7 @@ use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeTraverser\NodeChangeSet;
 use RuntimeException;
+use SplObjectStorage;
 
 use function abs;
 use function array_pop;
@@ -46,7 +47,7 @@ use function usort;
 use const JSON_UNESCAPED_SLASHES;
 use const JSON_UNESCAPED_UNICODE;
 
-final readonly class JsonPreservingPrinter implements JsonPrinter
+final class JsonPreservingPrinter implements JsonPrinter
 {
     /**
      * Widest space residual carried onto a tab-indented lead for a source line
@@ -62,14 +63,24 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     private const MAXIMUM_TAB_RESIDUAL_LENGTH = 2;
 
     /** @var positive-int */
-    private int $maximumDepth;
+    private readonly int $maximumDepth;
+
+    /**
+     * Change results memoized per node for the duration of a single print()
+     * run: isChanged() walks the node's whole subtree, so without memoization
+     * every level of printing re-walks the subtrees beneath it.
+     *
+     * @var SplObjectStorage<NodeJson, bool>
+     */
+    private SplObjectStorage $memoizedChangeResults;
 
     public function __construct(
-        private ?NodeChangeSet $nodeChangeSet = null,
-        private ?string $indent = null,
+        private readonly ?NodeChangeSet $nodeChangeSet = null,
+        private readonly ?string $indent = null,
         int $maximumDepth = MaximumDepthGuard::DEFAULT_MAXIMUM_DEPTH,
     ) {
-        $this->maximumDepth = MaximumDepthGuard::validateMaximumDepth($maximumDepth);
+        $this->maximumDepth          = MaximumDepthGuard::validateMaximumDepth($maximumDepth);
+        $this->memoizedChangeResults = new SplObjectStorage();
     }
 
     public function print(NodeJson $nodeJson): string
@@ -82,7 +93,14 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $indent      = $this->indent
             ?? (is_string($nodeIndent) ? $nodeIndent : '    ');
 
-        return $this->printNode($nodeJson, new PrintContext($indent, $newline), depth: 0);
+        try {
+            return $this->printNode($nodeJson, new PrintContext($indent, $newline), depth: 0);
+        } finally {
+            // Results memoized during this run must not leak into the next one
+            // (the tree or change set may be mutated in between), and dropping
+            // them also releases the node references they hold.
+            $this->memoizedChangeResults = new SplObjectStorage();
+        }
     }
 
     private function printNode(
@@ -250,6 +268,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $output               = $this->openingDelimiter($containerNode);
         $lastIndex            = count($containerNode->items) - 1;
         $itemsInOriginalOrder = $this->getItemsInOriginalOrder($containerNode->items);
+        $isInOriginalOrder    = $itemsInOriginalOrder === $containerNode->items;
         $interiorShift        = $this->resolveInteriorItemShift($containerNode, $printContext);
         $childPrintContext    = $printContext->next();
         $containerAfterOpen   = $this->adoptNewlineStyle(
@@ -267,7 +286,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
             [$beforeItem, $afterValue] = $this->getItemLayout(
                 $containerNode->items,
                 $i,
-                $itemsInOriginalOrder,
+                $isInOriginalOrder ? $item : $itemsInOriginalOrder[$i],
                 $containerAfterOpen,
                 $containerBeforeClose,
             );
@@ -500,19 +519,17 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
     /**
      * @param list<ArrayItemNode|ObjectItemNode> $items
-     * @param list<ArrayItemNode|ObjectItemNode> $itemsInOriginalOrder
      * @return array{?string, string}
      */
     private function getItemLayout(
         array $items,
         int $index,
-        array $itemsInOriginalOrder,
+        ArrayItemNode|ObjectItemNode $layoutDonor,
         string $containerAfterOpen,
         string $containerBeforeClose,
     ): array {
         $item        = $items[$index];
         $lastIndex   = count($items) - 1;
-        $layoutDonor = $itemsInOriginalOrder === $items ? $item : $itemsInOriginalOrder[$index];
         $beforeValue = $index === 0 ? $containerAfterOpen : null;
         $afterValue  = $index === $lastIndex ? $containerBeforeClose : $layoutDonor->afterValue;
 
@@ -1094,6 +1111,8 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     {
         /** @var list<array{item: T, startOffset: float, currentIndex: int}> $itemsWithStartOffsets */
         $itemsWithStartOffsets = [];
+        $previousStartOffset   = null;
+        $isInOriginalOrder     = true;
 
         foreach ($items as $i => $item) {
             $startOffset = $item->getAttribute(NodeAttributes::START_OFFSET);
@@ -1102,11 +1121,24 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 $startOffset = $this->getSyntheticStartOffset($items, $i);
             }
 
+            $startOffset = (float) $startOffset;
+
+            if ($previousStartOffset !== null && $startOffset < $previousStartOffset) {
+                $isInOriginalOrder = false;
+            }
+
+            $previousStartOffset = $startOffset;
+
             $itemsWithStartOffsets[] = [
                 'item'         => $item,
-                'startOffset'  => (float) $startOffset,
+                'startOffset'  => $startOffset,
                 'currentIndex' => $i,
             ];
+        }
+
+        // Non-decreasing offsets sort to themselves (ties keep index order).
+        if ($isInOriginalOrder) {
+            return $items;
         }
 
         usort(
@@ -1193,6 +1225,19 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     }
 
     private function isChanged(NodeJson $nodeJson): bool
+    {
+        if ($this->memoizedChangeResults->offsetExists($nodeJson)) {
+            return $this->memoizedChangeResults[$nodeJson];
+        }
+
+        $isChanged = $this->resolveIsChanged($nodeJson);
+
+        $this->memoizedChangeResults[$nodeJson] = $isChanged;
+
+        return $isChanged;
+    }
+
+    private function resolveIsChanged(NodeJson $nodeJson): bool
     {
         if ($this->nodeChangeSet instanceof NodeChangeSet && $this->nodeChangeSet->isChanged($nodeJson)) {
             return true;

@@ -34,6 +34,7 @@ use function preg_split;
 use function str_contains;
 use function str_ends_with;
 use function str_repeat;
+use function str_replace;
 use function strlen;
 use function strrpos;
 use function strspn;
@@ -251,10 +252,14 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $itemsInOriginalOrder = $this->getItemsInOriginalOrder($containerNode->items);
         $interiorShift        = $this->resolveInteriorItemShift($containerNode, $printContext);
         $childPrintContext    = $printContext->next();
-        $containerAfterOpen   = $this->afterOpen($containerNode);
+        $containerAfterOpen   = $this->adoptNewlineStyle(
+            $this->afterOpen($containerNode),
+            $containerNode,
+            $printContext,
+        );
         $containerBeforeClose = $this->reindentWhitespaceBeforeNode(
             $containerNode,
-            $this->beforeClose($containerNode),
+            $this->adoptNewlineStyle($this->beforeClose($containerNode), $containerNode, $printContext),
             $printContext,
         );
 
@@ -267,7 +272,11 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 $containerBeforeClose,
             );
 
+            $newlineSource = $this->newlineStyleSource($item, $containerNode);
+            $afterValue    = $this->adoptNewlineStyle($afterValue, $newlineSource, $printContext);
+
             $beforeItem ??= $this->beforeItem($item);
+            $beforeItem   = $this->adoptNewlineStyle($beforeItem, $newlineSource, $printContext);
             $beforeItem   = $interiorShift !== null
                 ? $this->shiftWhitespaceBeforeNode($beforeItem, $interiorShift)
                 : $this->reindentWhitespaceBeforeNode($item, $beforeItem, $childPrintContext);
@@ -354,7 +363,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     {
         $beforeClose = $this->reindentWhitespaceBeforeNode(
             $containerNode,
-            $this->beforeClose($containerNode),
+            $this->adoptNewlineStyle($this->beforeClose($containerNode), $containerNode, $printContext),
             $printContext,
         );
 
@@ -422,7 +431,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
         return $beforeKey
             . $this->printNode($objectItemNode->key, $printContext, $detectScalarMutation, $depth)
-            . $this->objectItemSeparator($objectItemNode)
+            . $this->adoptNewlineStyle($this->objectItemSeparator($objectItemNode), $objectItemNode, $printContext)
             . ($printedValue
                 ?? $this->printNode($objectItemNode->value, $printContext, $detectScalarMutation, $depth))
             . $afterValue;
@@ -436,7 +445,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         ?string $printedValue = null,
     ): string {
         return $this->printNode($objectItemNode->key, $printContext, $detectScalarMutation, $depth)
-            . $this->objectItemSeparator($objectItemNode)
+            . $this->adoptNewlineStyle($this->objectItemSeparator($objectItemNode), $objectItemNode, $printContext)
             . ($printedValue
                 ?? $this->printNode($objectItemNode->value, $printContext, $detectScalarMutation, $depth));
     }
@@ -492,7 +501,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
     /**
      * @param list<ArrayItemNode|ObjectItemNode> $items
      * @param list<ArrayItemNode|ObjectItemNode> $itemsInOriginalOrder
-     * @return array{?string, ?string}
+     * @return array{?string, string}
      */
     private function getItemLayout(
         array $items,
@@ -675,6 +684,48 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
         return substr($whitespace, 0, $lastNewlinePosition + 1)
             . substr($whitespace, $lastNewlinePosition + 1 - $interiorShift);
+    }
+
+    /**
+     * Line endings spliced from another document's original text are converted
+     * to the host's newline style, mirroring how leading whitespace is converted
+     * to the host's indent unit. The parser stamps a single detected NEWLINE per
+     * document, so a same-document node always matches the print context and its
+     * bytes pass through untouched — including minority endings in a mixed-EOL
+     * source; only cross-document grafts differ and get converted.
+     */
+    private function adoptNewlineStyle(
+        string $text,
+        NodeJson $nodeJson,
+        PrintContext $printContext,
+    ): string {
+        if (! str_contains($text, "\n") && ! str_contains($text, "\r")) {
+            return $text;
+        }
+
+        $nodeNewline = $nodeJson->getAttribute(NodeAttributes::NEWLINE);
+
+        if (! is_string($nodeNewline) || $nodeNewline === $printContext->newline) {
+            return $text;
+        }
+
+        $normalized = str_replace(["\r\n", "\r"], "\n", $text);
+
+        return $printContext->newline === "\n"
+            ? $normalized
+            : str_replace("\n", $printContext->newline, $normalized);
+    }
+
+    /**
+     * A synthetic item carries no NEWLINE of its own but may inherit layout
+     * whitespace from its container's parsed items, so the container decides
+     * the newline style for it.
+     */
+    private function newlineStyleSource(
+        ArrayItemNode|ObjectItemNode $item,
+        ArrayNode|ObjectNode $containerNode,
+    ): NodeJson {
+        return is_string($item->getAttribute(NodeAttributes::NEWLINE)) ? $item : $containerNode;
     }
 
     private function lastNewlinePosition(string $whitespace): int
@@ -874,6 +925,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         string $originalText,
         PrintContext $printContext,
     ): string {
+        $originalText  = $this->adoptNewlineStyle($originalText, $nodeJson, $printContext);
         $originalDepth = $nodeJson->getAttribute(NodeAttributes::DEPTH);
 
         if (! is_int($originalDepth)) {

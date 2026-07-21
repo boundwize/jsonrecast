@@ -276,6 +276,269 @@ JSON, JsonRecast::print($jsonRecastResult));
         $this->assertSame("\t1\r\n", JsonRecast::print($jsonRecastResult));
     }
 
+    public function testCrossDocumentGraftAdoptsHostNewlineStyle(): void
+    {
+        $jsonDocument = JsonRecast::parse(
+            "{\r\n    \"x\": {\r\n        \"deep\": true\r\n    },\r\n    \"y\": [1, 2]\r\n}\r\n",
+        );
+
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse("{\n  \"a\": 1\n}\n"),
+            new class ($jsonDocument->value) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly NodeJson $nodeJson,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if ($nodeJson instanceof NumberNode && $nodeJsonPath->isObjectValue('a')) {
+                        return $this->nodeJson;
+                    }
+
+                    return null;
+                }
+            },
+        );
+
+        $this->assertSame(
+            "{\n  \"a\": {\n    \"x\": {\n      \"deep\": true\n    },\n    \"y\": [1, 2]\n  }\n}\n",
+            JsonRecast::print($jsonRecastResult),
+        );
+    }
+
+    public function testCrossDocumentGraftAdoptsCarriageReturnLineFeedHostNewlineStyle(): void
+    {
+        $jsonDocument = JsonRecast::parse("{\n    \"x\": true,\n    \"y\": [1, 2]\n}\n");
+
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse("{\r\n  \"a\": 1\r\n}\r\n"),
+            new class ($jsonDocument->value) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly NodeJson $nodeJson,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if ($nodeJson instanceof NumberNode && $nodeJsonPath->isObjectValue('a')) {
+                        return $this->nodeJson;
+                    }
+
+                    return null;
+                }
+            },
+        );
+
+        $this->assertSame(
+            "{\r\n  \"a\": {\r\n    \"x\": true,\r\n    \"y\": [1, 2]\r\n  }\r\n}\r\n",
+            JsonRecast::print($jsonRecastResult),
+        );
+    }
+
+    public function testCrossDocumentGraftWithMatchingNewlineStyleKeepsNewlineBytes(): void
+    {
+        $jsonDocument = JsonRecast::parse("{\r\n  \"x\": true\r\n}\r\n");
+
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse("{\r\n  \"a\": 1\r\n}\r\n"),
+            new class ($jsonDocument->value) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly NodeJson $nodeJson,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if ($nodeJson instanceof NumberNode && $nodeJsonPath->isObjectValue('a')) {
+                        return $this->nodeJson;
+                    }
+
+                    return null;
+                }
+            },
+        );
+
+        $this->assertSame(
+            "{\r\n  \"a\": {\r\n    \"x\": true\r\n  }\r\n}\r\n",
+            JsonRecast::print($jsonRecastResult),
+        );
+    }
+
+    public function testCrossDocumentGraftWithChangedDonorItemAdoptsHostNewlineStyle(): void
+    {
+        $jsonDocument = JsonRecast::parse("{\r\n    \"x\": true,\r\n    \"y\": [1, 2]\r\n}\r\n");
+
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse("{\n  \"a\": 1\n}\n"),
+            new class ($jsonDocument->value) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly NodeJson $nodeJson,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if ($nodeJson instanceof NumberNode && $nodeJsonPath->isObjectValue('a')) {
+                        return $this->nodeJson;
+                    }
+
+                    if ($nodeJson instanceof BooleanNode && $nodeJsonPath->isObjectValue('x')) {
+                        return new BooleanNode(false);
+                    }
+
+                    return null;
+                }
+            },
+        );
+
+        $this->assertSame(
+            "{\n  \"a\": {\n    \"x\": false,\n    \"y\": [1, 2]\n  }\n}\n",
+            JsonRecast::print($jsonRecastResult),
+        );
+    }
+
+    public function testObjectSetWithCrossDocumentNodeAdoptsHostNewlineStyle(): void
+    {
+        $jsonDocument = JsonRecast::parse("{\r\n    \"x\": true,\r\n    \"y\": [1, 2]\r\n}\r\n");
+
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse("{\n  \"a\": 1\n}\n"),
+            new class ($jsonDocument->value) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly NodeJson $nodeJson,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if ($nodeJson instanceof ObjectNode && $nodeJsonPath->isRoot()) {
+                        $nodeJson->set('b', $this->nodeJson);
+                    }
+
+                    return null;
+                }
+            },
+        );
+
+        $this->assertSame(
+            "{\n  \"a\": 1,\n  \"b\": {\n    \"x\": true,\n    \"y\": [1, 2]\n  }\n}\n",
+            JsonRecast::print($jsonRecastResult),
+        );
+    }
+
+    public function testArrayAppendWithCrossDocumentNodeAdoptsHostNewlineStyle(): void
+    {
+        $jsonDocument = JsonRecast::parse("{\r\n    \"x\": true\r\n}\r\n");
+
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse("[\n  1\n]\n"),
+            new class ($jsonDocument->value) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly NodeJson $nodeJson,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if ($nodeJson instanceof ArrayNode && $nodeJsonPath->isRoot()) {
+                        $nodeJson->append($this->nodeJson);
+                    }
+
+                    return null;
+                }
+            },
+        );
+
+        $this->assertSame(
+            "[\n  1,\n  {\n    \"x\": true\n  }\n]\n",
+            JsonRecast::print($jsonRecastResult),
+        );
+    }
+
+    public function testObjectSetIntoCrossDocumentGraftedContainerAdoptsHostNewlineStyle(): void
+    {
+        $jsonDocument = JsonRecast::parse("{\r\n    \"x\": true,\r\n    \"y\": [1, 2]\r\n}\r\n");
+        $objectNode   = $jsonDocument->value;
+        $this->assertInstanceOf(ObjectNode::class, $objectNode);
+        $objectNode->set('z', new NumberNode('3'));
+
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse("{\n  \"a\": 1\n}\n"),
+            new class ($objectNode) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly NodeJson $nodeJson,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if ($nodeJson instanceof NumberNode && $nodeJsonPath->isObjectValue('a')) {
+                        return $this->nodeJson;
+                    }
+
+                    return null;
+                }
+            },
+        );
+
+        $this->assertSame(
+            "{\n  \"a\": {\n    \"x\": true,\n    \"y\": [1, 2],\n    \"z\": 3\n  }\n}\n",
+            JsonRecast::print($jsonRecastResult),
+        );
+    }
+
+    public function testCrossDocumentGraftAdoptsCarriageReturnOnlyHostNewlineStyle(): void
+    {
+        $jsonDocument = JsonRecast::parse("{\n    \"x\": true,\n    \"y\": [1, 2]\n}\n");
+
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse("{\r  \"a\": 1\r}\r"),
+            new class ($jsonDocument->value) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly NodeJson $nodeJson,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if ($nodeJson instanceof NumberNode && $nodeJsonPath->isObjectValue('a')) {
+                        return $this->nodeJson;
+                    }
+
+                    return null;
+                }
+            },
+        );
+
+        $this->assertSame(
+            "{\r  \"a\": {\r    \"x\": true,\r    \"y\": [1, 2]\r  }\r}\r",
+            JsonRecast::print($jsonRecastResult),
+        );
+    }
+
+    public function testScalarEditPreservesMixedNewlineHostBytes(): void
+    {
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse("{\r\n  \"a\": 1,\n  \"b\": 2\r\n}"),
+            new class extends NodeJsonVisitorAbstract {
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if ($nodeJson instanceof NumberNode && $nodeJsonPath->isObjectValue('b')) {
+                        return new NumberNode('3');
+                    }
+
+                    return null;
+                }
+            },
+        );
+
+        $this->assertSame(
+            "{\r\n  \"a\": 1,\n  \"b\": 3\r\n}",
+            JsonRecast::print($jsonRecastResult),
+        );
+    }
+
     public function testItPrintsArrayItemReplacementFromParsedNode(): void
     {
         $jsonRecastResult = JsonRecast::traverse(

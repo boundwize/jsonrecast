@@ -250,29 +250,32 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         $lastIndex            = count($containerNode->items) - 1;
         $itemsInOriginalOrder = $this->getItemsInOriginalOrder($containerNode->items);
         $interiorShift        = $this->resolveInteriorItemShift($containerNode, $printContext);
+        $childPrintContext    = $printContext->next();
+        $containerAfterOpen   = $this->afterOpen($containerNode);
+        $containerBeforeClose = $this->reindentWhitespaceBeforeNode(
+            $containerNode,
+            $this->beforeClose($containerNode),
+            $printContext,
+        );
 
         foreach ($containerNode->items as $i => $item) {
             [$beforeItem, $afterValue] = $this->getItemLayout(
                 $containerNode->items,
                 $i,
                 $itemsInOriginalOrder,
-                $this->afterOpen($containerNode),
-                $this->reindentWhitespaceBeforeNode(
-                    $containerNode,
-                    $this->beforeClose($containerNode),
-                    $printContext,
-                ),
+                $containerAfterOpen,
+                $containerBeforeClose,
             );
 
             $beforeItem ??= $this->beforeItem($item);
             $beforeItem   = $interiorShift !== null
                 ? $this->shiftWhitespaceBeforeNode($beforeItem, $interiorShift)
-                : $this->reindentWhitespaceBeforeNode($item, $beforeItem, $printContext->next());
+                : $this->reindentWhitespaceBeforeNode($item, $beforeItem, $childPrintContext);
 
             $output .= $item instanceof ObjectItemNode
                 ? $this->printObjectItemPreserving(
                     $item,
-                    $printContext->next(),
+                    $childPrintContext,
                     $beforeItem,
                     $afterValue,
                     $detectScalarMutation,
@@ -281,7 +284,7 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                 )
                 : $this->printArrayItemPreserving(
                     $item,
-                    $printContext->next(),
+                    $childPrintContext,
                     $beforeItem,
                     $afterValue,
                     $detectScalarMutation,
@@ -313,14 +316,17 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
 
         $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($containerNode);
         $output               = $this->openingDelimiter($containerNode);
+        $lastIndex            = count($containerNode->items) - 1;
+        $childPrintContext    = $printContext->next();
+        $childIndentation     = $printContext->childIndentation();
 
         foreach ($containerNode->items as $i => $item) {
             $output .= $printContext->newline
-                . $printContext->childIndentation()
+                . $childIndentation
                 . ($item instanceof ObjectItemNode
                     ? $this->printObjectItemBestEffort(
                         $item,
-                        $printContext->next(),
+                        $childPrintContext,
                         $detectScalarMutation,
                         $depth + 1,
                         $printedChangedItemValues[$i] ?? null,
@@ -328,12 +334,12 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
                     : ($printedChangedItemValues[$i]
                         ?? $this->printNode(
                             $item->value,
-                            $printContext->next(),
+                            $childPrintContext,
                             $detectScalarMutation,
                             $depth + 1,
                         )));
 
-            if ($i < count($containerNode->items) - 1) {
+            if ($i < $lastIndex) {
                 $output .= ',';
             }
         }
@@ -605,21 +611,23 @@ final readonly class JsonPreservingPrinter implements JsonPrinter
         bool $detectScalarMutation,
         int $depth,
     ): array {
-        $printedValues = [];
+        $printedValues     = [];
+        $childPrintContext = $printContext->next();
 
         foreach ($containerNode->items as $i => $item) {
             if (! $this->isChanged($item) && ! $this->isChanged($item->value)) {
                 continue;
             }
 
-            $printedValues[$i] = $this->printNode(
+            $printedValue      = $this->printNode(
                 $item->value,
-                $printContext->next(),
+                $childPrintContext,
                 $detectScalarMutation,
                 $depth + 1,
             );
+            $printedValues[$i] = $printedValue;
 
-            if (str_contains($printedValues[$i], "\n") || str_contains($printedValues[$i], "\r")) {
+            if (str_contains($printedValue, "\n") || str_contains($printedValue, "\r")) {
                 return [! $this->hasContainerMultilineEdgeWhitespace($containerNode), $printedValues];
             }
         }

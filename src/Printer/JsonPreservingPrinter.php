@@ -1226,7 +1226,7 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     private function isChanged(NodeJson $nodeJson): bool
     {
-        if ($this->memoizedChangeResults->contains($nodeJson)) {
+        if ($this->memoizedChangeResults->offsetExists($nodeJson)) {
             return $this->memoizedChangeResults[$nodeJson];
         }
 

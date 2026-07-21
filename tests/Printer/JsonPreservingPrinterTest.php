@@ -3021,4 +3021,38 @@ JSON,
             (new JsonPreservingPrinter())->print($jsonDocument),
         );
     }
+
+    public function testItReflectsMutationsWhenPrinterIsReusedAcrossPrintRuns(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"name": "old"}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonPreservingPrinter = new JsonPreservingPrinter();
+        $this->assertSame('{"name": "old"}', $jsonPreservingPrinter->print($jsonDocument));
+
+        $jsonDocument->value->set('name', JsonValue::from('new'));
+
+        $this->assertSame('{"name": "new"}', $jsonPreservingPrinter->print($jsonDocument));
+    }
+
+    public function testItReflectsMutationsAfterPrintRunThrows(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a": "x", "b": "y"}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonPreservingPrinter = new JsonPreservingPrinter();
+        $jsonDocument->value->set('b', new StringNode("\xB1"));
+
+        try {
+            $jsonPreservingPrinter->print($jsonDocument);
+            $this->fail('Expected the invalid UTF-8 string to fail encoding.');
+        } catch (RuntimeException $runtimeException) {
+            $this->assertSame('Unable to encode JSON string.', $runtimeException->getMessage());
+        }
+
+        $jsonDocument->value->set('a', JsonValue::from('z'));
+        $jsonDocument->value->set('b', JsonValue::from('w'));
+
+        $this->assertSame('{"a": "z", "b": "w"}', $jsonPreservingPrinter->print($jsonDocument));
+    }
 }

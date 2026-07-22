@@ -216,7 +216,7 @@ TXT,
 
         $this->assertStringContainsString(
             'value: StringNode(value: "value")',
-            (new AstDumper(maximumDepth: 3))->dump($arrayNode),
+            (new AstDumper(maximumDepth: 2))->dump($arrayNode),
         );
     }
 

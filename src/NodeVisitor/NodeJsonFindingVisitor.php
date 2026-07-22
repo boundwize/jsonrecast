@@ -8,7 +8,7 @@ use Boundwize\JsonRecast\Node\NodeJson;
 use Boundwize\JsonRecast\NodePath\NodeJsonPath;
 use Closure;
 
-final class FindingVisitor extends NodeJsonVisitorAbstract
+final class NodeJsonFindingVisitor extends NodeJsonVisitorAbstract
 {
     /** @var list<NodeJson> */
     private array $foundNodes = [];

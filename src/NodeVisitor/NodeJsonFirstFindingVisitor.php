@@ -8,7 +8,7 @@ use Boundwize\JsonRecast\Node\NodeJson;
 use Boundwize\JsonRecast\NodePath\NodeJsonPath;
 use Closure;
 
-final class FirstFindingVisitor extends NodeJsonVisitorAbstract
+final class NodeJsonFirstFindingVisitor extends NodeJsonVisitorAbstract
 {
     private ?NodeJson $nodeJson = null;
 

@@ -7,8 +7,8 @@ namespace Boundwize\JsonRecast;
 use Boundwize\JsonRecast\Node\NodeJson;
 use Boundwize\JsonRecast\NodePath\NodeJsonPath;
 use Boundwize\JsonRecast\NodeTraverser\NodeJsonTraverser;
-use Boundwize\JsonRecast\NodeVisitor\FindingVisitor;
-use Boundwize\JsonRecast\NodeVisitor\FirstFindingVisitor;
+use Boundwize\JsonRecast\NodeVisitor\NodeJsonFindingVisitor;
+use Boundwize\JsonRecast\NodeVisitor\NodeJsonFirstFindingVisitor;
 
 /**
  * Read-only query helper. Traversal order and visited nodes are identical to
@@ -23,13 +23,13 @@ final class NodeJsonFinder
      */
     public function find(NodeJson $nodeJson, callable $filter): array
     {
-        $findingVisitor = new FindingVisitor($filter(...));
+        $nodeJsonFindingVisitor = new NodeJsonFindingVisitor($filter(...));
 
         $nodeJsonTraverser = new NodeJsonTraverser();
-        $nodeJsonTraverser->addVisitor($findingVisitor);
+        $nodeJsonTraverser->addVisitor($nodeJsonFindingVisitor);
         $nodeJsonTraverser->traverse($nodeJson);
 
-        return $findingVisitor->getFoundNodes();
+        return $nodeJsonFindingVisitor->getFoundNodes();
     }
 
     /**
@@ -37,13 +37,13 @@ final class NodeJsonFinder
      */
     public function findFirst(NodeJson $nodeJson, callable $filter): ?NodeJson
     {
-        $firstFindingVisitor = new FirstFindingVisitor($filter(...));
+        $nodeJsonFirstFindingVisitor = new NodeJsonFirstFindingVisitor($filter(...));
 
         $nodeJsonTraverser = new NodeJsonTraverser();
-        $nodeJsonTraverser->addVisitor($firstFindingVisitor);
+        $nodeJsonTraverser->addVisitor($nodeJsonFirstFindingVisitor);
         $nodeJsonTraverser->traverse($nodeJson);
 
-        return $firstFindingVisitor->getFoundNode();
+        return $nodeJsonFirstFindingVisitor->getFoundNode();
     }
 
     /**

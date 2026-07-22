@@ -71,11 +71,7 @@ final readonly class AstDumper
         bool $isRoot = false,
         int $depth = 0,
     ): array {
-        if (
-            ! $nodeJson instanceof JsonDocument
-            && ! $nodeJson instanceof ObjectItemNode
-            && ! $nodeJson instanceof ArrayItemNode
-        ) {
+        if ($nodeJson instanceof ObjectNode || $nodeJson instanceof ArrayNode) {
             MaximumDepthGuard::guardMaximumDepth($this->maximumDepth, $depth);
         }
 

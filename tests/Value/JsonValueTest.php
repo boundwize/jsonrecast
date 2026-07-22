@@ -185,6 +185,17 @@ final class JsonValueTest extends TestCase
         $this->assertInstanceOf(ArrayNode::class, $nodeJson);
     }
 
+    public function testItAcceptsEmptyCollectionAtMaximumNestingDepth(): void
+    {
+        // value conversion mirrors json_encode(), which lets an empty container occupy
+        // the final depth level (json_encode([[]], depth: 2) succeeds), while parsing
+        // mirrors json_decode(), which rejects it (json_decode('[[]]', depth: 2))
+        $this->assertInstanceOf(ArrayNode::class, JsonValue::from([], maximumDepth: 1));
+        $this->assertInstanceOf(ObjectNode::class, JsonValue::from(new stdClass(), maximumDepth: 1));
+        $this->assertInstanceOf(ArrayNode::class, JsonValue::from([[]], maximumDepth: 2));
+        $this->assertInstanceOf(ObjectNode::class, JsonValue::from(['value' => new stdClass()], maximumDepth: 2));
+    }
+
     public function testMaximumNestingDepthMustBeGreaterThanZero(): void
     {
         $this->expectException(InvalidArgumentException::class);

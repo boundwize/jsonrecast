@@ -145,6 +145,35 @@ final class JsonParserErrorTest extends TestCase
         (new JsonParser(maximumDepth: 2))->parse('{"1":[2],"2":2}');
     }
 
+    /**
+     * @return iterable<string, array{string, int}>
+     */
+    public static function emptyCollectionAtMaximumDepthProvider(): iterable
+    {
+        yield 'root empty array' => ['[]', 1];
+        yield 'root empty object' => ['{}', 1];
+        yield 'nested empty array' => ['[[]]', 2];
+        yield 'nested empty object' => ['{"value":{}}', 2];
+    }
+
+    #[DataProvider('emptyCollectionAtMaximumDepthProvider')]
+    public function testItRejectsEmptyCollectionAtMaximumNestingDepth(string $json, int $maximumDepth): void
+    {
+        $this->expectException(ParseError::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
+        (new JsonParser(maximumDepth: $maximumDepth))->parse($json);
+    }
+
+    public function testEmptyCollectionParsesWithinMaximumNestingDepth(): void
+    {
+        $json = '{"value":{}}';
+
+        $jsonDocument = (new JsonParser(maximumDepth: 3))->parse($json);
+
+        $this->assertSame($json, $jsonDocument->getAttribute(NodeAttributes::ORIGINAL_TEXT));
+    }
+
     public function testMaximumNestingDepthMustBeGreaterThanZero(): void
     {
         $this->expectException(InvalidArgumentException::class);

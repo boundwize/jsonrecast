@@ -83,16 +83,7 @@ final class JsonParser
 
     private function parseValue(int $depth): NodeJson
     {
-        if (MaximumDepthGuard::isExceeded($this->maximumDepth, $depth)) {
-            $token = $this->currentToken();
-
-            throw new ParseError(
-                MaximumDepthGuard::EXCEEDED_MESSAGE,
-                $token->startOffset,
-                $token->line,
-                $token->column,
-            );
-        }
+        $this->guardMaximumDepth($depth);
 
         return match ($this->currentToken()->type) {
             TokenType::LEFT_BRACE, TokenType::LEFT_BRACKET => $this->parseCollection($depth),
@@ -118,6 +109,10 @@ final class JsonParser
         $beforeItem      = $this->readWhitespace();
 
         if ($this->currentToken()->type === $closeTokenType) {
+            // json_decode() counts the container itself against the depth limit even
+            // when it has no items, so an empty container still occupies $depth + 1
+            $this->guardMaximumDepth($depth + 1);
+
             $close = $this->consume($closeTokenType);
             $node  = $isObject
                 ? new ObjectNode([], afterOpenBrace: $beforeItem, beforeCloseBrace: $beforeItem)
@@ -295,6 +290,22 @@ final class JsonParser
     private function currentToken(): Token
     {
         return $this->tokens[$this->position] ?? $this->tokens[count($this->tokens) - 1];
+    }
+
+    private function guardMaximumDepth(int $depth): void
+    {
+        if (! MaximumDepthGuard::isExceeded($this->maximumDepth, $depth)) {
+            return;
+        }
+
+        $token = $this->currentToken();
+
+        throw new ParseError(
+            MaximumDepthGuard::EXCEEDED_MESSAGE,
+            $token->startOffset,
+            $token->line,
+            $token->column,
+        );
     }
 
     private function unexpectedToken(string $expected): ParseError

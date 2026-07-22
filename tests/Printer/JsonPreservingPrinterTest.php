@@ -223,12 +223,40 @@ JSON,
 
     public function testItRejectsNodeThatExceedsMaximumNestingDepth(): void
     {
-        $nodeJson = JsonValue::from([[0]], maximumDepth: 3);
+        // mirrors json_encode([[[0]]], depth: 2), which fails, while
+        // json_encode([[0]], depth: 2) succeeds
+        $nodeJson = JsonValue::from([[[0]]], maximumDepth: 4);
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Maximum stack depth exceeded.');
 
         (new JsonPreservingPrinter(maximumDepth: 2))->print(new JsonDocument($nodeJson));
+    }
+
+    public function testItPrintsScalarAtMaximumNestingDepth(): void
+    {
+        // mirrors json_encode([1], depth: 1): only entering another container
+        // consumes a nesting level, scalar leaves do not exceed the depth
+        $arrayNode = new ArrayNode([
+            new ArrayItemNode(new NumberNode('1')),
+        ]);
+
+        $this->assertSame(
+            "[\n    1\n]",
+            (new JsonPreservingPrinter(maximumDepth: 1))->print(new JsonDocument($arrayNode)),
+        );
+
+        $objectNode = new ObjectNode([
+            new ObjectItemNode(
+                new StringNode('value'),
+                new NumberNode('1'),
+            ),
+        ]);
+
+        $this->assertSame(
+            "{\n    \"value\": 1\n}",
+            (new JsonPreservingPrinter(maximumDepth: 1))->print(new JsonDocument($objectNode)),
+        );
     }
 
     public function testMaximumNestingDepthCanBeOverridden(): void

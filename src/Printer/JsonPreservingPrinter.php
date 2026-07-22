@@ -109,11 +109,9 @@ final class JsonPreservingPrinter implements JsonPrinter
         bool $detectScalarMutation = false,
         int $depth = 0,
     ): string {
-        if (
-            ! $nodeJson instanceof JsonDocument
-            && ! $nodeJson instanceof ObjectItemNode
-            && ! $nodeJson instanceof ArrayItemNode
-        ) {
+        // json_encode() only consumes a nesting level when entering a container,
+        // so scalar leaves at the final allowed depth are printable
+        if ($nodeJson instanceof ObjectNode || $nodeJson instanceof ArrayNode) {
             MaximumDepthGuard::guardMaximumDepth($this->maximumDepth, $depth);
         }
 
@@ -176,11 +174,9 @@ final class JsonPreservingPrinter implements JsonPrinter
 
             [$currentNode, $depth] = $entry;
 
-            if (
-                ! $currentNode instanceof JsonDocument
-                && ! $currentNode instanceof ObjectItemNode
-                && ! $currentNode instanceof ArrayItemNode
-            ) {
+            // json_encode() only consumes a nesting level when entering a container,
+            // so scalar leaves at the final allowed depth are printable
+            if ($currentNode instanceof ObjectNode || $currentNode instanceof ArrayNode) {
                 MaximumDepthGuard::guardMaximumDepth($this->maximumDepth, $depth);
             }
 

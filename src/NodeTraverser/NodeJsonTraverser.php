@@ -37,6 +37,8 @@ final class NodeJsonTraverser
 
     private NodeChangeSet $nodeChangeSet;
 
+    private bool $stopTraversal = false;
+
     public function __construct()
     {
         $this->nodeChangeSet = new NodeChangeSet();
@@ -50,9 +52,14 @@ final class NodeJsonTraverser
     public function traverse(NodeJson $nodeJson): NodeJsonTraversalResult
     {
         $this->nodeChangeSet = new NodeChangeSet();
+        $this->stopTraversal = false;
 
         foreach ($this->visitors as $visitor) {
             $result = $visitor->beforeTraverse($nodeJson);
+
+            if ($result === NodeJsonVisitor::STOP_TRAVERSAL) {
+                throw new LogicException('STOP_TRAVERSAL cannot be returned from beforeTraverse().');
+            }
 
             if ($this->isRemoveNode($result)) {
                 throw new LogicException('Cannot remove root node during beforeTraverse().');
@@ -76,6 +83,10 @@ final class NodeJsonTraverser
         foreach ($this->visitors as $visitor) {
             $result = $visitor->afterTraverse($nodeJson);
 
+            if ($result === NodeJsonVisitor::STOP_TRAVERSAL) {
+                throw new LogicException('STOP_TRAVERSAL cannot be returned from afterTraverse().');
+            }
+
             if ($this->isRemoveNode($result)) {
                 throw new LogicException('Cannot remove root node during afterTraverse().');
             }
@@ -98,6 +109,12 @@ final class NodeJsonTraverser
         foreach ($this->visitors as $visitor) {
             $result = $visitor->enterNode($nodeJson, $nodeJsonPath);
 
+            if ($result === NodeJsonVisitor::STOP_TRAVERSAL) {
+                $this->stopTraversal = true;
+
+                return $nodeJson;
+            }
+
             if ($this->isRemoveNode($result)) {
                 return NodeJsonVisitor::REMOVE_NODE;
             }
@@ -119,8 +136,18 @@ final class NodeJsonTraverser
             $this->traverseArrayItem($nodeJson, $nodeJsonPath);
         }
 
+        if ($this->stopTraversal) {
+            return $nodeJson;
+        }
+
         foreach ($this->visitors as $visitor) {
             $result = $visitor->leaveNode($nodeJson, $nodeJsonPath);
+
+            if ($result === NodeJsonVisitor::STOP_TRAVERSAL) {
+                $this->stopTraversal = true;
+
+                return $nodeJson;
+            }
 
             if ($this->isRemoveNode($result)) {
                 return NodeJsonVisitor::REMOVE_NODE;
@@ -199,6 +226,10 @@ final class NodeJsonTraverser
 
             $containerNode->items[$i] = $result;
             $i++;
+
+            if ($this->stopTraversal) {
+                return;
+            }
         }
     }
 
@@ -215,6 +246,10 @@ final class NodeJsonTraverser
         }
 
         $objectItemNode->key = $keyResult;
+
+        if ($this->stopTraversal) {
+            return;
+        }
 
         $valuePath   = $nodeJsonPath->childObjectKey($objectItemNode->key->value);
         $valueResult = $this->traverseNode($objectItemNode->value, $valuePath);

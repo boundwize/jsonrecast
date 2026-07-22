@@ -17,6 +17,7 @@ use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use InvalidArgumentException;
 use JsonSerializable;
+use stdClass;
 use UnitEnum;
 
 use function array_is_list;
@@ -67,18 +68,29 @@ final class JsonValue
         int $maximumDepth,
         int $depth
     ): NodeJson {
-        $serializedValue = $jsonSerializable->jsonSerialize();
+        // jsonSerialize() hops never consume a container nesting level, mirroring
+        // json_encode(); the hop count is capped at maximumDepth separately so
+        // cyclic or endless jsonSerialize() chains are rejected instead of
+        // recursing until the stack is exhausted
+        $hops = 0;
 
-        // json_encode() serializes the object's properties when jsonSerialize() returns $this
-        if ($serializedValue === $jsonSerializable) {
-            return self::fromObject($jsonSerializable, $maximumDepth, $depth);
+        while (true) {
+            MaximumDepthGuard::guardMaximumDepth($maximumDepth, $hops);
+
+            $serializedValue = $jsonSerializable->jsonSerialize();
+
+            // json_encode() serializes the object's properties when jsonSerialize() returns $this
+            if ($serializedValue === $jsonSerializable) {
+                return self::fromObject($jsonSerializable, $maximumDepth, $depth);
+            }
+
+            if (! $serializedValue instanceof JsonSerializable) {
+                return self::fromValue($serializedValue, $maximumDepth, $depth);
+            }
+
+            $jsonSerializable = $serializedValue;
+            $hops++;
         }
-
-        // count the hop as a level so cyclic or endless jsonSerialize() chains are
-        // rejected, even though json_encode() does not consume a level for the hop
-        MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth + 1);
-
-        return self::fromValue($serializedValue, $maximumDepth, $depth + 1);
     }
 
     private static function stringNode(string $value): StringNode
@@ -133,6 +145,13 @@ final class JsonValue
 
     private static function fromObject(object $value, int $maximumDepth, int $depth): ObjectNode
     {
+        // only stdClass and jsonSerialize()-returns-$this objects convert;
+        // supported object types are extended here deliberately instead of
+        // silently serializing any object's public properties
+        if (! $value instanceof stdClass && ! $value instanceof JsonSerializable) {
+            throw new InvalidArgumentException('Unsupported JSON value.');
+        }
+
         MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth);
 
         $items = [];

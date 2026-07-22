@@ -170,9 +170,13 @@ TXT,
 
     public function testItRejectsNodeThatExceedsMaximumNestingDepth(): void
     {
+        // mirrors json_encode([[["value"]]], depth: 2), which fails, while
+        // json_encode([["value"]], depth: 2) succeeds
         $arrayNode = new ArrayNode([
             new ArrayItemNode(new ArrayNode([
-                new ArrayItemNode(new StringNode('value')),
+                new ArrayItemNode(new ArrayNode([
+                    new ArrayItemNode(new StringNode('value')),
+                ])),
             ])),
         ]);
 
@@ -180,6 +184,26 @@ TXT,
         $this->expectExceptionMessage('Maximum stack depth exceeded.');
 
         (new AstDumper(maximumDepth: 2))->dump($arrayNode);
+    }
+
+    public function testItDumpsScalarAtMaximumNestingDepth(): void
+    {
+        // mirrors json_encode(["value"], depth: 1): only entering another
+        // container consumes a nesting level, scalar leaves do not exceed
+        // the depth
+        $arrayNode = new ArrayNode([
+            new ArrayItemNode(new StringNode('value')),
+        ]);
+
+        $this->assertSame(
+            <<<'TXT'
+ArrayNode
+└── items (1 item)
+    └── [0]: ArrayItemNode
+        └── value: StringNode(value: "value")
+TXT,
+            (new AstDumper(maximumDepth: 1))->dump($arrayNode),
+        );
     }
 
     public function testMaximumNestingDepthCanBeOverridden(): void
@@ -192,7 +216,7 @@ TXT,
 
         $this->assertStringContainsString(
             'value: StringNode(value: "value")',
-            (new AstDumper(maximumDepth: 3))->dump($arrayNode),
+            (new AstDumper(maximumDepth: 2))->dump($arrayNode),
         );
     }
 

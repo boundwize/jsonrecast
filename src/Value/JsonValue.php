@@ -46,8 +46,6 @@ final class JsonValue
 
     private static function fromValue(mixed $value, int $maximumDepth, int $depth): NodeJson
     {
-        MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth);
-
         return match (true) {
             is_string($value) => self::stringNode($value),
             is_float($value) && ! is_finite($value) => throw new InvalidArgumentException('Unsupported JSON value.'),
@@ -76,7 +74,10 @@ final class JsonValue
             return self::fromObject($jsonSerializable, $maximumDepth, $depth);
         }
 
-        // count the hop as a level so cyclic or endless jsonSerialize() chains hit the depth guard
+        // count the hop as a level so cyclic or endless jsonSerialize() chains are
+        // rejected, even though json_encode() does not consume a level for the hop
+        MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth + 1);
+
         return self::fromValue($serializedValue, $maximumDepth, $depth + 1);
     }
 
@@ -105,6 +106,10 @@ final class JsonValue
      */
     private static function fromArray(array $value, int $maximumDepth, int $depth): NodeJson
     {
+        // json_encode() only consumes a nesting level when entering a container,
+        // so scalar leaves at the final allowed depth are convertible
+        MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth);
+
         if (array_is_list($value)) {
             return new ArrayNode(array_map(
                 static fn(mixed $item): ArrayItemNode => new ArrayItemNode(
@@ -128,6 +133,8 @@ final class JsonValue
 
     private static function fromObject(object $value, int $maximumDepth, int $depth): ObjectNode
     {
+        MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth);
+
         $items = [];
 
         foreach (get_object_vars($value) as $key => $item) {

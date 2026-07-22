@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Tests\Printer;
 
+use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
 use Boundwize\JsonRecast\Node\NullNode;
 use Boundwize\JsonRecast\Node\NumberNode;
+use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\Printer\JsonPrettyPrinter;
@@ -54,12 +56,40 @@ final class JsonPrettyPrinterTest extends TestCase
 
     public function testItRejectsNodeThatExceedsMaximumNestingDepth(): void
     {
-        $nodeJson = JsonValue::from([[0]], maximumDepth: 3);
+        // mirrors json_encode([[[0]]], depth: 2), which fails, while
+        // json_encode([[0]], depth: 2) succeeds
+        $nodeJson = JsonValue::from([[[0]]], maximumDepth: 3);
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Maximum stack depth exceeded.');
 
         (new JsonPrettyPrinter(maximumDepth: 2))->print($nodeJson);
+    }
+
+    public function testItPrintsScalarAtMaximumNestingDepth(): void
+    {
+        // mirrors json_encode([1], depth: 1): only entering another container
+        // consumes a nesting level, scalar leaves do not exceed the depth
+        $arrayNode = new ArrayNode([
+            new ArrayItemNode(new NumberNode('1')),
+        ]);
+
+        $this->assertSame(
+            "[\n    1\n]",
+            (new JsonPrettyPrinter(maximumDepth: 1))->print($arrayNode),
+        );
+
+        $objectNode = new ObjectNode([
+            new ObjectItemNode(
+                new StringNode('value'),
+                new NumberNode('1'),
+            ),
+        ]);
+
+        $this->assertSame(
+            "{\n    \"value\": 1\n}",
+            (new JsonPrettyPrinter(maximumDepth: 1))->print($objectNode),
+        );
     }
 
     public function testMaximumNestingDepthCanBeOverridden(): void

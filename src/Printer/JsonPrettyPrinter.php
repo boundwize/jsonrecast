@@ -43,11 +43,9 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
 
     private function printNode(NodeJson $nodeJson, PrintContext $printContext, int $depth): string
     {
-        if (
-            ! $nodeJson instanceof JsonDocument
-            && ! $nodeJson instanceof ObjectItemNode
-            && ! $nodeJson instanceof ArrayItemNode
-        ) {
+        // json_encode() only consumes a nesting level when entering a container,
+        // so scalar leaves at the final allowed depth are printable
+        if ($nodeJson instanceof ObjectNode || $nodeJson instanceof ArrayNode) {
             MaximumDepthGuard::guardMaximumDepth($this->maximumDepth, $depth);
         }
 

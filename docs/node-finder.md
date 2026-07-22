@@ -75,7 +75,23 @@ Without the finder, the same lookup is a chain of `get()` calls with an `instanc
 
 ## Auditing a Whole File
 
-Flag every insecure `http://` URL, wherever it appears — top level, inside `repositories`, or anywhere a future schema puts one. Because the filter sees every node with its path, it can collect a report while it matches:
+Flag every insecure `http://` URL, wherever it appears — top level, inside `repositories`, or anywhere a future schema puts one. From the `$document` object, you can resolve the matching nodes, eg:
+
+```php
+$insecureNodes = $finder->find(
+    $document,
+    static fn (NodeJson $node, NodeJsonPath $path): bool =>
+        $node instanceof StringNode
+        && str_starts_with($node->value, 'http://'),
+);
+
+// $insecureNodes:
+// [
+//     StringNode { value: 'http://repo.internal.example/' },
+// ]
+```
+
+You can also find with extracted nodes data: found nodes do not record their own paths, so when the report should also say *where* each problem is, extract it in the filter as it arrives:
 
 ```php
 $insecure = [];
@@ -84,7 +100,12 @@ $finder->find(
     $document,
     static function (NodeJson $node, NodeJsonPath $path) use (&$insecure): bool {
         if ($node instanceof StringNode && str_starts_with($node->value, 'http://')) {
-            $insecure[] = [$node->value, $path];
+            $insecure[] = [
+                'value'     => $node->value,
+                'path_info' => array_map(
+                    static fn ($segment) => $segment->value, $path->segments()
+                ),
+            ];
 
             return true;
         }
@@ -93,10 +114,16 @@ $finder->find(
     },
 );
 
-// $insecure: [['http://repo.internal.example/', path ['repositories', 0, 'url']]]
+// $insecure:
+// [
+//     [
+//         'value'     => 'http://repo.internal.example/',
+//         'path_info' => ['repositories', 0, 'url'],
+//     ],
+// ]
 ```
 
-This is the shape of most lint-style checks: no fixed paths, one predicate, and the path arrives for free so the report can say *where* the problem is.
+This is the shape of most lint-style checks: no fixed paths, one predicate. Prefer the returned node list when the nodes alone are enough; reach for the collecting filter only when the location matters too.
 
 ## Skipping Work When Nothing Changes
 
@@ -158,7 +185,10 @@ $commands = $finder->find(
         && ! $path->isRoot(),
 );
 
-// one match: the StringNode "phpunit"
+// $commands:
+// [
+//     StringNode { value: 'phpunit' },
+// ]
 ```
 
 Paths passed to the filter are relative to the node the search starts from — inside `$scripts`, the `"phpunit"` value lives at `['test']`, not `['scripts', 'test']`.

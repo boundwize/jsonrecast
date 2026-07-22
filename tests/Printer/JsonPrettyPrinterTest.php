@@ -15,6 +15,7 @@ use Boundwize\JsonRecast\Value\JsonValue;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
+use stdClass;
 
 final class JsonPrettyPrinterTest extends TestCase
 {
@@ -74,5 +75,22 @@ final class JsonPrettyPrinterTest extends TestCase
         $this->expectExceptionMessage('Maximum depth must be greater than 0.');
 
         new JsonPrettyPrinter(maximumDepth: 0);
+    }
+
+    public function testItPrintsEmptyCollectionAtMaximumNestingDepth(): void
+    {
+        // printing mirrors json_encode(), which lets an empty container occupy the
+        // final depth level (json_encode([[]], depth: 2) succeeds), while parsing
+        // mirrors json_decode(), which rejects it (json_decode('[[]]', depth: 2))
+        $this->assertSame('[]', (new JsonPrettyPrinter(maximumDepth: 1))->print(new ArrayNode([])));
+        $this->assertSame('{}', (new JsonPrettyPrinter(maximumDepth: 1))->print(new ObjectNode([])));
+        $this->assertSame(
+            "[\n    []\n]",
+            (new JsonPrettyPrinter(maximumDepth: 2))->print(JsonValue::from([[]])),
+        );
+        $this->assertSame(
+            "{\n    \"value\": {}\n}",
+            (new JsonPrettyPrinter(maximumDepth: 2))->print(JsonValue::from(['value' => new stdClass()])),
+        );
     }
 }

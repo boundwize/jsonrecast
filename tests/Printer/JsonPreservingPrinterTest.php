@@ -259,6 +259,25 @@ JSON,
         new JsonPreservingPrinter(maximumDepth: 0);
     }
 
+    public function testItPrintsEmptyCollectionAtMaximumNestingDepth(): void
+    {
+        // printing mirrors json_encode(), which lets an empty container occupy the
+        // final depth level (json_encode([[]], depth: 2) succeeds), while parsing
+        // mirrors json_decode(), which rejects it (json_decode('[[]]', depth: 2))
+        $this->assertSame(
+            '[]',
+            (new JsonPreservingPrinter(maximumDepth: 1))->print(new JsonDocument(new ArrayNode([]))),
+        );
+        $this->assertSame(
+            '{}',
+            (new JsonPreservingPrinter(maximumDepth: 1))->print(new JsonDocument(new ObjectNode([]))),
+        );
+        $this->assertSame(
+            "[\n    []\n]",
+            (new JsonPreservingPrinter(maximumDepth: 2))->print(new JsonDocument(JsonValue::from([[]]))),
+        );
+    }
+
     public function testItPreservesTrailingNewlineWhenDocumentAfterValueIsEmpty(): void
     {
         $jsonDocument = new JsonDocument(new StringNode('json'));

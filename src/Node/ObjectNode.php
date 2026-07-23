@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast\Node;
 
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
+use Boundwize\JsonRecast\Node\Helper\LayoutCoordinateHelper;
 use Boundwize\JsonRecast\Node\Helper\StartOffsetHelper;
 use Boundwize\JsonRecast\Node\Helper\WhitespaceHelper;
 
@@ -136,6 +137,7 @@ final class ObjectNode extends AbstractNodeJson
         );
         $objectItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         $objectItemNode->setAttribute(NodeAttributes::START_OFFSET, $this->startOffsetForAppendedItem());
+        LayoutCoordinateHelper::setForNewItem($objectItemNode, $this, $styleDonor);
 
         if ($lastItem instanceof ObjectItemNode) {
             $lastItem->afterValue = $this->separatorAfterValue();

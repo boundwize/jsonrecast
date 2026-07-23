@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast\Node;
 
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
+use Boundwize\JsonRecast\Node\Helper\LayoutCoordinateHelper;
 use Boundwize\JsonRecast\Node\Helper\StartOffsetHelper;
 use Boundwize\JsonRecast\Node\Helper\WhitespaceHelper;
 
@@ -35,6 +36,7 @@ final class ArrayNode extends AbstractNodeJson
     {
         $index         = $this->normalizeInsertionIndex($index);
         $itemCount     = count($this->items);
+        $styleDonor    = $this->styleDonorForInsertedItem($index);
         $beforeValue   = $this->beforeValueForInsertedItem($index);
         $arrayItemNode = new ArrayItemNode(
             value: $nodeJson,
@@ -43,6 +45,7 @@ final class ArrayNode extends AbstractNodeJson
         );
         $arrayItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         $arrayItemNode->setAttribute(NodeAttributes::START_OFFSET, $this->startOffsetForInsertedItem($index));
+        LayoutCoordinateHelper::setForNewItem($arrayItemNode, $this, $styleDonor);
 
         if ($index === 0 && $this->items !== []) {
             $this->items[0]->beforeValue = $this->beforeValueForAppendedItem();
@@ -96,6 +99,19 @@ final class ArrayNode extends AbstractNodeJson
         $this->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
 
         return true;
+    }
+
+    private function styleDonorForInsertedItem(int $index): ?ArrayItemNode
+    {
+        if ($index === 0 || $this->items === []) {
+            return null;
+        }
+
+        if (array_key_exists($index, $this->items)) {
+            return $this->items[$index];
+        }
+
+        return StartOffsetHelper::findStyleDonor($this->items) ?? $this->items[count($this->items) - 1];
     }
 
     private function normalizeInsertionIndex(int $index): int

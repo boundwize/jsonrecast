@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 732 254" width="732" height="254" role="img" aria-label="JsonRecast bumps a dependency, adds one, and removes an entry in composer.json while preserving the original formatting">
+  <style>
+    :root {
+      --panel:   #f6f8fa;
+      --header:  #eaeef2;
+      --border:  #d0d7de;
+      --punct:   #1f2328;
+      --key:     #0550ae;
+      --str:     #0a3069;
+      --muted:   #57606a;
+      --add:     #1a7f37;
+      --del:     #cf222e;
+      --mod:     #9a6700;
+      --arrow:   #2da44e;
+      --add-bg:  rgba(46, 160, 67, 0.16);
+      --del-bg:  rgba(248, 81, 73, 0.16);
+      --mod-bg:  rgba(212, 167, 44, 0.18);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --panel:   #161b22;
+        --header:  #21262d;
+        --border:  #30363d;
+        --punct:   #e6edf3;
+        --key:     #79c0ff;
+        --str:     #a5d6ff;
+        --muted:   #8b949e;
+        --add:     #3fb950;
+        --del:     #f85149;
+        --mod:     #d29922;
+        --arrow:   #3fb950;
+        --add-bg:  rgba(46, 160, 67, 0.22);
+        --del-bg:  rgba(248, 81, 73, 0.22);
+        --mod-bg:  rgba(187, 128, 9, 0.25);
+      }
+    }
+    text {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      white-space: pre;
+    }
+    .panel   { fill: var(--panel); stroke: var(--border); stroke-width: 1; }
+    .header  { fill: var(--header); }
+    .hline   { stroke: var(--border); stroke-width: 1; }
+    .fname   { fill: var(--muted); font-size: 11px; }
+    .tag     { fill: var(--muted); font-size: 10px; letter-spacing: 0.4px; }
+    .p       { fill: var(--punct); }
+    .k       { fill: var(--key); }
+    .s       { fill: var(--str); }
+    .add-bg  { fill: var(--add-bg); }
+    .del-bg  { fill: var(--del-bg); }
+    .mod-bg  { fill: var(--mod-bg); }
+    .add     { fill: var(--add); font-weight: 700; }
+    .del     { fill: var(--del); font-weight: 700; }
+    .mod     { fill: var(--mod); font-weight: 700; }
+    .arrow   { fill: var(--arrow); }
+    .caption { fill: var(--muted); font-size: 11px; }
+    .brand   { fill: var(--arrow); font-size: 12px; font-weight: 700; }
+    .legend  { fill: var(--muted); font-size: 11px; }
+  </style>
+
+  <!-- ============ BEFORE PANEL ============ -->
+  <g transform="translate(16, 16)">
+    <rect class="panel" x="0.5" y="0.5" width="307" height="203" rx="8"/>
+    <path class="header" d="M 1 8 a 7 7 0 0 1 7 -7 h 292 a 7 7 0 0 1 7 7 v 22 h -306 z"/>
+    <line class="hline" x1="1" y1="30" x2="307" y2="30"/>
+    <text class="fname" x="14" y="20" xml:space="preserve">composer.json</text>
+    <text class="tag" x="294" y="20" text-anchor="end" xml:space="preserve">INPUT</text>
+
+    <!-- removed line (7) -->
+    <rect class="del-bg" x="6" y="158" width="296" height="20" rx="4"/>
+    <text class="del" x="10" y="172" xml:space="preserve">−</text>
+
+    <text class="p" x="22" y="52"  xml:space="preserve">{</text>
+    <text x="22" y="72"  xml:space="preserve"><tspan class="p">    </tspan><tspan class="k">"name"</tspan><tspan class="p">    : </tspan><tspan class="s">"acme/shop"</tspan><tspan class="p">,</tspan></text>
+    <text x="22" y="92"  xml:space="preserve"><tspan class="p">    </tspan><tspan class="k">"require"</tspan><tspan class="p">: {</tspan></text>
+    <text x="22" y="112" xml:space="preserve"><tspan class="p">        </tspan><tspan class="k">"php"</tspan><tspan class="p">: </tspan><tspan class="s">"&gt;=8.1"</tspan><tspan class="p">,</tspan></text>
+    <text x="22" y="132" xml:space="preserve"><tspan class="p">        </tspan><tspan class="k">"monolog/monolog"</tspan><tspan class="p">: </tspan><tspan class="s">"^2.9"</tspan></text>
+    <text class="p" x="22" y="152" xml:space="preserve">    },</text>
+    <text x="22" y="172" xml:space="preserve"><tspan class="p">    </tspan><tspan class="k">"minimum-stability"</tspan><tspan class="p">: </tspan><tspan class="s">"dev"</tspan></text>
+    <text class="p" x="22" y="192" xml:space="preserve">}</text>
+  </g>
+
+  <!-- ============ ARROW ============ -->
+  <g>
+    <text class="brand" x="366" y="98" text-anchor="middle" xml:space="preserve">JsonRecast</text>
+    <path class="arrow" d="M 334 114 h 40 v -8 l 24 12 l -24 12 v -8 h -40 z"/>
+    <text class="caption" x="366" y="146" text-anchor="middle" xml:space="preserve">formatting</text>
+    <text class="caption" x="366" y="160" text-anchor="middle" xml:space="preserve">preserved</text>
+  </g>
+
+  <!-- ============ AFTER PANEL ============ -->
+  <g transform="translate(408, 16)">
+    <rect class="panel" x="0.5" y="0.5" width="307" height="203" rx="8"/>
+    <path class="header" d="M 1 8 a 7 7 0 0 1 7 -7 h 292 a 7 7 0 0 1 7 7 v 22 h -306 z"/>
+    <line class="hline" x1="1" y1="30" x2="307" y2="30"/>
+    <text class="fname" x="14" y="20" xml:space="preserve">composer.json</text>
+    <text class="tag" x="294" y="20" text-anchor="end" xml:space="preserve">OUTPUT</text>
+
+    <!-- modified line (5) -->
+    <rect class="mod-bg" x="6" y="118" width="296" height="20" rx="4"/>
+    <text class="mod" x="10" y="132" xml:space="preserve">~</text>
+    <!-- added line (6) -->
+    <rect class="add-bg" x="6" y="138" width="296" height="20" rx="4"/>
+    <text class="add" x="10" y="152" xml:space="preserve">+</text>
+
+    <text class="p" x="22" y="52"  xml:space="preserve">{</text>
+    <text x="22" y="72"  xml:space="preserve"><tspan class="p">    </tspan><tspan class="k">"name"</tspan><tspan class="p">    : </tspan><tspan class="s">"acme/shop"</tspan><tspan class="p">,</tspan></text>
+    <text x="22" y="92"  xml:space="preserve"><tspan class="p">    </tspan><tspan class="k">"require"</tspan><tspan class="p">: {</tspan></text>
+    <text x="22" y="112" xml:space="preserve"><tspan class="p">        </tspan><tspan class="k">"php"</tspan><tspan class="p">: </tspan><tspan class="s">"&gt;=8.1"</tspan><tspan class="p">,</tspan></text>
+    <text x="22" y="132" xml:space="preserve"><tspan class="p">        </tspan><tspan class="k">"monolog/monolog"</tspan><tspan class="p">: </tspan><tspan class="s">"^3.6"</tspan><tspan class="p">,</tspan></text>
+    <text x="22" y="152" xml:space="preserve"><tspan class="p">        </tspan><tspan class="k">"guzzlehttp/guzzle"</tspan><tspan class="p">: </tspan><tspan class="s">"^7.8"</tspan></text>
+    <text class="p" x="22" y="172" xml:space="preserve">    }</text>
+    <text class="p" x="22" y="192" xml:space="preserve">}</text>
+  </g>
+
+  <!-- ============ LEGEND ============ -->
+  <g transform="translate(0, 240)">
+    <g transform="translate(196, 0)">
+      <text class="mod" x="0" y="0" xml:space="preserve">~</text>
+      <text class="legend" x="12" y="0" xml:space="preserve">value replaced</text>
+    </g>
+    <g transform="translate(326, 0)">
+      <text class="add" x="0" y="0" xml:space="preserve">+</text>
+      <text class="legend" x="12" y="0" xml:space="preserve">entry added</text>
+    </g>
+    <g transform="translate(437, 0)">
+      <text class="del" x="0" y="0" xml:space="preserve">−</text>
+      <text class="legend" x="12" y="0" xml:space="preserve">entry removed</text>
+    </g>
+  </g>
+</svg>

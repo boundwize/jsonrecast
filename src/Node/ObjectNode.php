@@ -167,13 +167,13 @@ final class ObjectNode extends AbstractNodeJson
         return $objectItemNode->betweenColonAndValue;
     }
 
-    private function beforeKeyForAppendedItem(?ObjectItemNode $styleDonor): string
+    private function beforeKeyForAppendedItem(?ObjectItemNode $objectItemNode): string
     {
         $itemCount = count($this->items);
 
-        if ($styleDonor instanceof ObjectItemNode) {
+        if ($objectItemNode instanceof ObjectItemNode) {
             $beforeKey = WhitespaceHelper::separatorAfterOpening(
-                $styleDonor->beforeKey,
+                $objectItemNode->beforeKey,
                 $this->afterOpenBrace,
             );
 

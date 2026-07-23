@@ -179,7 +179,7 @@ $autoload = $finder->findFirst(
 $stringNodes = $finder->findInstanceOf($document, StringNode::class);
 ```
 
-`findFirst()` stops traversing as soon as the filter matches. The finder is read-only by design: find nodes with `NodeJsonFinder`, modify them with a `NodeJsonTraverser` visitor so changes are tracked for the preserving printer.
+`findFirst()` stops traversing as soon as the filter matches. The finder is intended for locating and inspecting nodes: find them with `NodeJsonFinder`; for transformations, prefer a `NodeJsonTraverser` visitor, which makes the editing intent explicit and records changes in the `NodeChangeSet`.
 
 ## Documentation
 

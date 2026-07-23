@@ -230,13 +230,15 @@ Matching on the *item* and reading its `value` property selects exactly the stri
 
 ## Finder Reads, Visitors Write
 
-`NodeJsonFinder` is a query helper. The returned nodes are live references into the tree, so mutating them works in memory — but it bypasses the `NodeChangeSet` that the preserving printer relies on:
+`NodeJsonFinder` is intended for locating and inspecting nodes. Returned nodes are live references into the tree, so direct mutation is possible and can be detected by the preserving printer:
 
 ```php
 $constraint = $finder->findFirst($document, /* ... */);
 
-$constraint->value = '^4.0'; // in memory only; the preserving printer keeps the original text
+$constraint->value = '^4.0'; // works, but finder-driven mutation is not the recommended workflow
 ```
+
+For transformations, prefer `NodeJsonTraverser` with a visitor. Visitors make the editing intent explicit, provide the node path during modification, and record changes in `NodeChangeSet`.
 
 - **Find nodes:** `NodeJsonFinder`
 - **Modify nodes:** `NodeJsonTraverser` with a visitor that returns the changed node

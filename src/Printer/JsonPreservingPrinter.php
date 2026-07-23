@@ -946,7 +946,7 @@ final class JsonPreservingPrinter implements JsonPrinter
         }
 
         /** @var list<string> $lines */
-        $lines = preg_split('/(?<=\r\n|\r|\n)/', $originalText);
+        $lines = preg_split('/(?<=\n)|(?<=\r)(?!\n)/', $originalText);
 
         $output = $lines[0];
         $count  = count($lines);

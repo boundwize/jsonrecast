@@ -34,11 +34,10 @@ final class ArrayNode extends AbstractNodeJson
 
     public function insert(int $index, NodeJson $nodeJson): void
     {
-        $index         = $this->normalizeInsertionIndex($index);
-        $itemCount     = count($this->items);
-        $styleDonor    = $this->styleDonorForInsertedItem($index);
-        $beforeValue   = $this->beforeValueForInsertedItem($index);
-        $arrayItemNode = new ArrayItemNode(
+        $index                      = $this->normalizeInsertionIndex($index);
+        $itemCount                  = count($this->items);
+        [$beforeValue, $styleDonor] = $this->layoutForInsertedItem($index);
+        $arrayItemNode              = new ArrayItemNode(
             value: $nodeJson,
             beforeValue: $beforeValue,
             afterValue: $this->afterValueForInsertedItem($index),
@@ -48,7 +47,7 @@ final class ArrayNode extends AbstractNodeJson
         LayoutCoordinateHelper::setForNewItem($arrayItemNode, $this, $styleDonor);
 
         if ($index === 0 && $this->items !== []) {
-            $this->items[0]->beforeValue = $this->beforeValueForAppendedItem();
+            [$this->items[0]->beforeValue] = $this->layoutForAppendedItem();
             $this->items[0]->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         }
 
@@ -101,19 +100,6 @@ final class ArrayNode extends AbstractNodeJson
         return true;
     }
 
-    private function styleDonorForInsertedItem(int $index): ?ArrayItemNode
-    {
-        if ($index === 0 || $this->items === []) {
-            return null;
-        }
-
-        if (array_key_exists($index, $this->items)) {
-            return $this->items[$index];
-        }
-
-        return StartOffsetHelper::findStyleDonor($this->items) ?? $this->items[count($this->items) - 1];
-    }
-
     private function normalizeInsertionIndex(int $index): int
     {
         $itemCount = count($this->items);
@@ -129,24 +115,29 @@ final class ArrayNode extends AbstractNodeJson
         return $index;
     }
 
-    private function beforeValueForInsertedItem(int $index): string
+    /**
+     * @return array{string, ?ArrayItemNode}
+     */
+    private function layoutForInsertedItem(int $index): array
     {
         if ($index === 0) {
             if (
                 $this->items === []
                 && (str_contains($this->afterOpenBracket, "\n") || str_contains($this->afterOpenBracket, "\r"))
             ) {
-                return $this->afterOpenBracket . $this->indentForNewItem();
+                return [$this->afterOpenBracket . $this->indentForNewItem(), null];
             }
 
-            return $this->afterOpenBracket;
+            return [$this->afterOpenBracket, null];
         }
 
         if (array_key_exists($index, $this->items)) {
-            return $this->items[$index]->beforeValue;
+            $styleDonor = $this->items[$index];
+
+            return [$styleDonor->beforeValue, $styleDonor];
         }
 
-        return $this->beforeValueForAppendedItem();
+        return $this->layoutForAppendedItem();
     }
 
     private function afterValueForInsertedItem(int $index): string
@@ -179,19 +170,27 @@ final class ArrayNode extends AbstractNodeJson
         return '';
     }
 
-    private function beforeValueForAppendedItem(): string
+    /**
+     * @return array{string, ?ArrayItemNode}
+     */
+    private function layoutForAppendedItem(): array
     {
-        $itemCount   = count($this->items);
+        $itemCount = count($this->items);
+
+        if ($itemCount === 0) {
+            return [$this->afterOpenBracket, null];
+        }
+
         $styleDonor  = StartOffsetHelper::findStyleDonor($this->items) ?? $this->items[$itemCount - 1];
         $beforeValue = WhitespaceHelper::separatorAfterOpening($styleDonor->beforeValue, $this->afterOpenBracket);
 
         if ($beforeValue !== '' || $itemCount > 1) {
-            return $beforeValue;
+            return [$beforeValue, $styleDonor];
         }
 
         // Single item at position 0: beforeValue equals afterOpenBracket ('' for inline).
         // A new item needs the separator space, so default to ' '.
-        return ' ';
+        return [' ', $styleDonor];
     }
 
     private function startOffsetForInsertedItem(int $index): float

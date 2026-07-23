@@ -1909,6 +1909,119 @@ JSON,
         );
     }
 
+    public function testItReindentsObjectItemAppendedAfterContainerIsHoisted(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "wrap": {
+    "inner": {
+      "a": 1
+    }
+  }
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $wrapItem = $jsonDocument->value->get('wrap');
+        $this->assertInstanceOf(ObjectItemNode::class, $wrapItem);
+        $this->assertInstanceOf(ObjectNode::class, $wrapItem->value);
+
+        $innerItem = $wrapItem->value->get('inner');
+        $this->assertInstanceOf(ObjectItemNode::class, $innerItem);
+        $this->assertInstanceOf(ObjectNode::class, $innerItem->value);
+
+        $jsonDocument->value->set('top', $innerItem->value);
+        $jsonDocument->value->remove('wrap');
+
+        $innerItem->value->set('b', new NumberNode('2'));
+
+        $this->assertSame(
+            <<<'JSON'
+{
+  "top": {
+    "a": 1,
+    "b": 2
+  }
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItReindentsArrayItemsInsertedAfterContainerIsHoisted(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "wrap": {
+    "inner": [
+      1,
+      2
+    ]
+  }
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $wrapItem = $jsonDocument->value->get('wrap');
+        $this->assertInstanceOf(ObjectItemNode::class, $wrapItem);
+        $this->assertInstanceOf(ObjectNode::class, $wrapItem->value);
+
+        $innerItem = $wrapItem->value->get('inner');
+        $this->assertInstanceOf(ObjectItemNode::class, $innerItem);
+        $this->assertInstanceOf(ArrayNode::class, $innerItem->value);
+
+        $jsonDocument->value->set('top', $innerItem->value);
+        $jsonDocument->value->remove('wrap');
+
+        $innerItem->value->insert(1, new NumberNode('3'));
+        $innerItem->value->append(new NumberNode('4'));
+
+        $this->assertSame(
+            <<<'JSON'
+{
+  "top": [
+    1,
+    3,
+    2,
+    4
+  ]
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItAdoptsHostIndentForItemAppendedAfterCrossDocumentGraft(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("{\n\t\"grafted\": null\n}");
+        $fragment     = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "a": 1
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+
+        $jsonDocument->value->set('grafted', $fragment->value);
+        $fragment->value->set('b', new NumberNode('2'));
+
+        $this->assertSame(
+            "{\n"
+            . "\t\"grafted\": {\n"
+            . "\t\t\"a\": 1,\n"
+            . "\t\t\"b\": 2\n"
+            . "\t}\n"
+            . "}",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPrettyPrintsInlineAncestorArrayWhenNestedMutationPrintsMultiline(): void
     {
         $jsonDocument = (new JsonParser())->parse(

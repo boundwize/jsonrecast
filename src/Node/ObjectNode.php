@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast\Node;
 
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
+use Boundwize\JsonRecast\Node\Helper\LayoutCoordinateHelper;
 use Boundwize\JsonRecast\Node\Helper\StartOffsetHelper;
 use Boundwize\JsonRecast\Node\Helper\WhitespaceHelper;
 
@@ -116,7 +117,7 @@ final class ObjectNode extends AbstractNodeJson
         $itemCount  = count($this->items);
         $lastItem   = $itemCount > 0 ? $this->items[$itemCount - 1] : null;
         $styleDonor = StartOffsetHelper::findStyleDonor($this->items) ?? $lastItem;
-        $beforeKey  = $this->beforeKeyForAppendedItem();
+        $beforeKey  = $this->beforeKeyForAppendedItem($styleDonor);
         $afterValue = $styleDonor !== null ? $styleDonor->afterValue : $this->beforeCloseBrace;
 
         if (
@@ -136,6 +137,7 @@ final class ObjectNode extends AbstractNodeJson
         );
         $objectItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         $objectItemNode->setAttribute(NodeAttributes::START_OFFSET, $this->startOffsetForAppendedItem());
+        LayoutCoordinateHelper::setForNewItem($objectItemNode, $this, $styleDonor);
 
         if ($lastItem instanceof ObjectItemNode) {
             $lastItem->afterValue = $this->separatorAfterValue();
@@ -165,23 +167,17 @@ final class ObjectNode extends AbstractNodeJson
         return $objectItemNode->betweenColonAndValue;
     }
 
-    private function beforeKeyForAppendedItem(): string
+    private function beforeKeyForAppendedItem(?ObjectItemNode $objectItemNode): string
     {
         $itemCount = count($this->items);
 
-        if ($itemCount > 1) {
-            $styleDonor = StartOffsetHelper::findStyleDonor($this->items) ?? $this->items[$itemCount - 1];
-
-            return WhitespaceHelper::separatorAfterOpening($styleDonor->beforeKey, $this->afterOpenBrace);
-        }
-
-        if ($itemCount === 1) {
-            $firstItemBeforeKey = WhitespaceHelper::separatorAfterOpening(
-                $this->items[0]->beforeKey,
+        if ($objectItemNode instanceof ObjectItemNode) {
+            $beforeKey = WhitespaceHelper::separatorAfterOpening(
+                $objectItemNode->beforeKey,
                 $this->afterOpenBrace,
             );
 
-            return $firstItemBeforeKey !== '' ? $firstItemBeforeKey : ' ';
+            return $itemCount === 1 && $beforeKey === '' ? ' ' : $beforeKey;
         }
 
         if (str_contains($this->afterOpenBrace, "\n") || str_contains($this->afterOpenBrace, "\r")) {

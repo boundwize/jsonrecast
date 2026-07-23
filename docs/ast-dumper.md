@@ -89,25 +89,26 @@ echo JsonRecast::dumpAst($document, includeAttributes: true);
 JsonDocument
 ├── attributes
 │   ├── startOffset: 0
-│   ├── endOffset: 30
+│   ├── endOffset: 29
 │   ├── depth: 0
 │   ├── indent: "    "
-│   ├── originalText: |
-│   │   {
-│   │       "name" : "jsonrecast"
-│   │   }
-│   ├── source: |
-│   │   {
-│   │       "name" : "jsonrecast"
-│   │   }
 │   ├── newline: "\n"
-│   └── trailingNewline: true
+│   ├── originalText: |-
+│   │   {
+│   │       "name" : "jsonrecast"
+│   │   }
+│   ├── source: |-
+│   │   {
+│   │       "name" : "jsonrecast"
+│   │   }
+│   └── trailingNewline: false
 └── value: ObjectNode
     ├── attributes
     │   ├── startOffset: 0
     │   ├── endOffset: 29
     │   ├── depth: 0
     │   ├── indent: "    "
+    │   ├── newline: "\n"
     │   └── originalText: |-
     │       {
     │           "name" : "jsonrecast"
@@ -119,6 +120,7 @@ JsonDocument
             │   ├── endOffset: 28
             │   ├── depth: 1
             │   ├── indent: "    "
+            │   ├── newline: "\n"
             │   └── originalText: |
             │
             │           "name" : "jsonrecast"
@@ -128,6 +130,7 @@ JsonDocument
             │       ├── endOffset: 12
             │       ├── depth: 1
             │       ├── indent: "    "
+            │       ├── newline: "\n"
             │       └── originalText: "name"
             └── value: StringNode(value: "jsonrecast")
                 └── attributes
@@ -135,6 +138,7 @@ JsonDocument
                     ├── endOffset: 27
                     ├── depth: 1
                     ├── indent: "    "
+                    ├── newline: "\n"
                     └── originalText: "jsonrecast"
 ```
 

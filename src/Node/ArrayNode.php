@@ -171,16 +171,11 @@ final class ArrayNode extends AbstractNodeJson
     }
 
     /**
-     * @return array{string, ?ArrayItemNode}
+     * @return array{string, ArrayItemNode}
      */
     private function layoutForAppendedItem(): array
     {
-        $itemCount = count($this->items);
-
-        if ($itemCount === 0) {
-            return [$this->afterOpenBracket, null];
-        }
-
+        $itemCount   = count($this->items);
         $styleDonor  = StartOffsetHelper::findStyleDonor($this->items) ?? $this->items[$itemCount - 1];
         $beforeValue = WhitespaceHelper::separatorAfterOpening($styleDonor->beforeValue, $this->afterOpenBracket);
 

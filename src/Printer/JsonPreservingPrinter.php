@@ -50,6 +50,12 @@ use const JSON_UNESCAPED_UNICODE;
 final class JsonPreservingPrinter implements JsonPrinter
 {
     /**
+     * Splits after every "\n" and after any "\r" not followed by "\n", keeping
+     * each line ending attached to its line and every "\r\n" pair intact.
+     */
+    private const LINE_ENDING_SPLIT_PATTERN = '/(?<=\n)|(?<=\r)(?!\n)/';
+
+    /**
      * Widest space residual carried onto a tab-indented lead for a source line
      * that sits off its space-unit indent grid. The reader's tab rendering
      * width is unknowable, so a wider run glued onto tabs (e.g. the 7-space
@@ -946,7 +952,7 @@ final class JsonPreservingPrinter implements JsonPrinter
         }
 
         /** @var non-empty-list<string> $lines */
-        $lines = preg_split('/(?<=\n)|(?<=\r)(?!\n)/', $originalText);
+        $lines = preg_split(self::LINE_ENDING_SPLIT_PATTERN, $originalText);
 
         $output = $lines[0];
         $count  = count($lines);

@@ -117,7 +117,7 @@ final class ObjectNode extends AbstractNodeJson
         $itemCount  = count($this->items);
         $lastItem   = $itemCount > 0 ? $this->items[$itemCount - 1] : null;
         $styleDonor = StartOffsetHelper::findStyleDonor($this->items) ?? $lastItem;
-        $beforeKey  = $this->beforeKeyForAppendedItem();
+        $beforeKey  = $this->beforeKeyForAppendedItem($styleDonor);
         $afterValue = $styleDonor !== null ? $styleDonor->afterValue : $this->beforeCloseBrace;
 
         if (
@@ -167,23 +167,17 @@ final class ObjectNode extends AbstractNodeJson
         return $objectItemNode->betweenColonAndValue;
     }
 
-    private function beforeKeyForAppendedItem(): string
+    private function beforeKeyForAppendedItem(?ObjectItemNode $styleDonor): string
     {
         $itemCount = count($this->items);
 
-        if ($itemCount > 1) {
-            $styleDonor = StartOffsetHelper::findStyleDonor($this->items) ?? $this->items[$itemCount - 1];
-
-            return WhitespaceHelper::separatorAfterOpening($styleDonor->beforeKey, $this->afterOpenBrace);
-        }
-
-        if ($itemCount === 1) {
-            $firstItemBeforeKey = WhitespaceHelper::separatorAfterOpening(
-                $this->items[0]->beforeKey,
+        if ($styleDonor instanceof ObjectItemNode) {
+            $beforeKey = WhitespaceHelper::separatorAfterOpening(
+                $styleDonor->beforeKey,
                 $this->afterOpenBrace,
             );
 
-            return $firstItemBeforeKey !== '' ? $firstItemBeforeKey : ' ';
+            return $itemCount === 1 && $beforeKey === '' ? ' ' : $beforeKey;
         }
 
         if (str_contains($this->afterOpenBrace, "\n") || str_contains($this->afterOpenBrace, "\r")) {

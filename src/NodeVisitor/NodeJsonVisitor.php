@@ -8,11 +8,17 @@ use Boundwize\JsonRecast\Node\NodeJson;
 use Boundwize\JsonRecast\NodePath\NodeJsonPath;
 
 /**
- * @phpstan-type NodeJsonVisitorResult null|NodeJson|self::REMOVE_NODE
+ * @phpstan-type NodeJsonVisitorResult null|NodeJson|self::REMOVE_NODE|self::STOP_TRAVERSAL
  */
 interface NodeJsonVisitor
 {
     public const REMOVE_NODE = 1;
+
+    /**
+     * Only valid from enterNode() and leaveNode(): stop visiting further nodes,
+     * skip the remaining visitors, keep the current root, still call afterTraverse().
+     */
+    public const STOP_TRAVERSAL = 2;
 
     /**
      * @return NodeJsonVisitorResult

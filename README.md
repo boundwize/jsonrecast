@@ -154,6 +154,33 @@ That will output:
 }
 ```
 
+## Finding Nodes
+
+When you only need to inspect or locate nodes, `NodeJsonFinder` removes the visitor boilerplate:
+
+```php
+use Boundwize\JsonRecast\Node\NodeJson;
+use Boundwize\JsonRecast\Node\ObjectNode;
+use Boundwize\JsonRecast\Node\StringNode;
+use Boundwize\JsonRecast\NodeJsonFinder;
+use Boundwize\JsonRecast\NodePath\NodeJsonPath;
+
+$finder = new NodeJsonFinder();
+
+// first node matching a filter; the path comes free with the callback
+$autoload = $finder->findFirst(
+    $document,
+    static fn (NodeJson $node, NodeJsonPath $path): bool =>
+        $node instanceof ObjectNode
+        && $path->matches(['autoload', 'psr-4']),
+);
+
+// all nodes of a given class
+$stringNodes = $finder->findInstanceOf($document, StringNode::class);
+```
+
+`findFirst()` stops traversing as soon as the filter matches. The finder is intended for locating and inspecting nodes: find them with `NodeJsonFinder`; for transformations, prefer a `NodeJsonTraverser` visitor, which makes the editing intent explicit and records changes in the `NodeChangeSet`.
+
 ## Documentation
 
 Read the full documentation at <https://boundwize.github.io/jsonrecast/>.

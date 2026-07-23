@@ -54,6 +54,9 @@ JSON;
         $jsonDocument = JsonRecast::parse($json);
 
         $jsonRecastResult = JsonRecast::traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
+            /**
+             * @return null|NodeJson|NodeJsonVisitor::REMOVE_NODE
+             */
             public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): null|NodeJson|int
             {
                 if ($nodeJson instanceof ObjectItemNode && $nodeJsonPath->isRoot()) {

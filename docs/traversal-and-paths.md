@@ -53,8 +53,43 @@ Hook return values mean:
 - `null`: leave the current node unchanged.
 - `NodeJson`: replace the current node or mark the same mutated node as changed.
 - `NodeJsonVisitor::REMOVE_NODE`: remove the current object item or array item.
+- `NodeJsonVisitor::STOP_TRAVERSAL`: stop the traversal, keeping the tree as it is.
 
 The root node, document value, object keys, and scalar values cannot be removed directly. Remove their containing `ObjectItemNode` or `ArrayItemNode` instead.
+
+## Stopping Traversal
+
+Return `NodeJsonVisitor::STOP_TRAVERSAL` from `enterNode()` or `leaveNode()` when the traversal has done its job — for example, once a target node has been found or edited:
+
+```php
+public function enterNode(NodeJson $node, NodeJsonPath $path): null|NodeJson|int
+{
+    if ($node instanceof ObjectNode && $path->matches(['autoload', 'psr-4'])) {
+        $node->set('Boundwize\\JsonRecast\\', new StringNode('src/'));
+
+        return $node;
+    }
+
+    return null;
+}
+
+public function leaveNode(NodeJson $node, NodeJsonPath $path): null|NodeJson|int
+{
+    if ($node instanceof ObjectNode && $path->matches(['autoload', 'psr-4'])) {
+        return NodeJsonVisitor::STOP_TRAVERSAL;
+    }
+
+    return null;
+}
+```
+
+After a visitor returns `STOP_TRAVERSAL`:
+
+- No further nodes are entered or left, and the remaining visitors are skipped for the current node.
+- The current root is kept unchanged, and no change is recorded for the stop itself.
+- `afterTraverse()` still runs on every visitor so state can be cleaned up.
+
+`STOP_TRAVERSAL` is only valid from `enterNode()` and `leaveNode()`; returning it from `beforeTraverse()` or `afterTraverse()` throws a `LogicException`. This is the mechanism behind `NodeJsonFinder::findFirst()` — see [Finding Nodes](node-finder.html).
 
 ## Replacement Nodes Are Traversed
 

@@ -22,12 +22,8 @@
 ## Edit JSON content without noisy diffs
 
 - Update JSON content programmatically and keep the original indentation, spacing, and key order intact.
-- Transform documents with path-aware visitors, inspired by [nikic/PHP-Parser](https://github.com/nikic/PHP-Parser).
-- Diffs contain only the changes you made; the rest of the file is not reformatted.
-
-<p align="center">
-  <img src="docs/assets/jsonrecast-demo-adaptive.svg" alt="Demo of JsonRecast bumping a dependency, adding a new one, and removing an entry in composer.json while preserving the original formatting, including non-standard alignment" width="732">
-</p>
+- Transform documents with visitors, inspired by [nikic/PHP-Parser](https://github.com/nikic/PHP-Parser), with path awareness built in.
+- The printed output differs from the input only where you made changes; nothing else is reformatted.
 
 ## Installation
 
@@ -36,6 +32,10 @@ composer require boundwize/jsonrecast
 ```
 
 ## Quick start
+
+<p align="center">
+  <img src="docs/assets/jsonrecast-demo-adaptive.svg" alt="Demo of JsonRecast bumping a dependency, adding a new one, and removing an entry in composer.json while preserving the original formatting, including non-standard alignment" width="732">
+</p>
 
 The demo above is a single visitor that bumps a dependency, adds a new one, and removes an entry:
 

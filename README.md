@@ -87,4 +87,7 @@ Anything the visitor didn't touch keeps its original indentation, key order, and
 
 ## Documentation
 
-Read the full documentation at <https://boundwize.github.io/jsonrecast/> for the complete visitor API, `leaveNode()` hooks, and `NodeJsonFinder` for locating nodes without writing a visitor.
+Documentation is available online, with source files kept in this repository:
+
+- Documentation site: <https://boundwize.github.io/jsonrecast/>
+- Documentation source: [docs/](docs/index.md) for local edits and GitHub Pages publishing.

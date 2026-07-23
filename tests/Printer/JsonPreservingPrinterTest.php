@@ -19,12 +19,15 @@ use Boundwize\JsonRecast\Parser\JsonParser;
 use Boundwize\JsonRecast\Printer\JsonPreservingPrinter;
 use Boundwize\JsonRecast\Value\JsonValue;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use ReflectionClassConstant;
 use ReflectionMethod;
 use RuntimeException;
 
 use function array_reverse;
 use function intdiv;
+use function preg_split;
 use function sprintf;
 use function str_repeat;
 use function str_split;
@@ -2734,6 +2737,59 @@ JSON,
             "[\n\t3\n]",
             (new JsonPreservingPrinter())->print($jsonDocument),
         );
+    }
+
+    /**
+     * @return iterable<string, array{string, list<string>}>
+     */
+    public static function lineSplittingProvider(): iterable
+    {
+        yield 'crlf pair stays on one line' => [
+            "{\r\n  \"a\": 1\r\n}",
+            ["{\r\n", "  \"a\": 1\r\n", '}'],
+        ];
+        yield 'lone carriage return' => [
+            "{\r  \"a\": 1\r}",
+            ["{\r", "  \"a\": 1\r", '}'],
+        ];
+        yield 'lone line feed' => [
+            "{\n  \"a\": 1\n}",
+            ["{\n", "  \"a\": 1\n", '}'],
+        ];
+        yield 'lone cr directly before crlf' => [
+            "a\r\r\nb",
+            ["a\r", "\r\n", 'b'],
+        ];
+        yield 'lf directly before crlf' => [
+            "a\n\r\nb",
+            ["a\n", "\r\n", 'b'],
+        ];
+        yield 'no line ending' => [
+            'no newline',
+            ['no newline'],
+        ];
+        yield 'trailing crlf yields empty final line' => [
+            "ends with crlf\r\n",
+            ["ends with crlf\r\n", ''],
+        ];
+    }
+
+    /**
+     * @param list<string> $expectedLines
+     */
+    #[DataProvider('lineSplittingProvider')]
+    public function testItSplitsLinesKeepingCrLfPairsIntact(string $text, array $expectedLines): void
+    {
+        $splitPattern = (new ReflectionClassConstant(
+            JsonPreservingPrinter::class,
+            'LINE_ENDING_SPLIT_PATTERN',
+        ))->getValue();
+        $this->assertIsString($splitPattern);
+
+        /** @var non-empty-list<string> $actualLines */
+        $actualLines = preg_split($splitPattern, $text);
+
+        $this->assertSame($expectedLines, $actualLines);
     }
 
     /**

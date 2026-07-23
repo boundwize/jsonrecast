@@ -19,9 +19,9 @@
 ![macOS](https://img.shields.io/badge/macOS-supported-C084FC?logo=apple&logoColor=white&labelColor=555555)
 ![Linux](https://img.shields.io/badge/Linux-supported-FCC624?logo=linux&logoColor=black&labelColor=555555)
 
-## Edit JSON files without noisy diffs
+## Edit JSON content without noisy diffs
 
-- Update JSON programmatically and keep the original indentation, spacing, and key order intact.
+- Update JSON content programmatically and keep the original indentation, spacing, and key order intact.
 - Transform documents with path-aware visitors, inspired by [nikic/PHP-Parser](https://github.com/nikic/PHP-Parser).
 - Diffs contain only the changes you made; the rest of the file is not reformatted.
 
@@ -79,7 +79,8 @@ $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstr
     }
 });
 
-echo JsonRecast::print($result); // original formatting preserved
+// update the file with original formatting preserved
+file_put_contents('composer.json', JsonRecast::print($result));
 ```
 
 Anything the visitor didn't touch keeps its original indentation, key order, and alignment.

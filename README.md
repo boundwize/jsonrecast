@@ -31,13 +31,13 @@
 composer require boundwize/jsonrecast
 ```
 
-## Quick start
+## Example
+
+Say we want to bump a dependency, add a new one, and remove an entry in `composer.json`. With JsonRecast, a single visitor does all three:
 
 <p align="center">
   <img src="docs/assets/jsonrecast-demo-adaptive.svg" alt="Demo of JsonRecast bumping a dependency, adding a new one, and removing an entry in composer.json while preserving the original formatting, including non-standard alignment" width="732">
 </p>
-
-The demo above is a single visitor that bumps a dependency, adds a new one, and removes an entry:
 
 ```php
 <?php

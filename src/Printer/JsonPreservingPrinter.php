@@ -945,7 +945,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             return $originalText;
         }
 
-        /** @var list<string> $lines */
+        /** @var non-empty-list<string> $lines */
         $lines = preg_split('/(?<=\n)|(?<=\r)(?!\n)/', $originalText);
 
         $output = $lines[0];

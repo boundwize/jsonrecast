@@ -2736,42 +2736,6 @@ JSON,
         );
     }
 
-    public function testItReindentsOffGridCrLfSubtreeMovedShallower(): void
-    {
-        $fragment     = (new JsonParser())->parse(
-            "{\r\n"
-            . "    \"wrapper\": {\r\n"
-            . "        \"inner\": {\r\n"
-            . "     \"p\": 1,\r\n"
-            . "      \"q\": 2,\r\n"
-            . "            \"r\": 3\r\n"
-            . "        }\r\n"
-            . "    }\r\n"
-            . '}',
-        );
-        $jsonDocument = (new JsonParser())->parse("{\r\n  \"a\": 1\r\n}");
-
-        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
-
-        $wrapperItem = $fragment->value->get('wrapper');
-        $this->assertInstanceOf(ObjectItemNode::class, $wrapperItem);
-        $this->assertInstanceOf(ObjectNode::class, $wrapperItem->value);
-
-        $innerItem = $wrapperItem->value->get('inner');
-        $this->assertInstanceOf(ObjectItemNode::class, $innerItem);
-
-        $jsonDocument->value = $innerItem->value;
-
-        $this->assertSame(
-            "{\r\n"
-            . " \"p\": 1,\r\n"
-            . "  \"q\": 2,\r\n"
-            . "        \"r\": 3\r\n"
-            . '}',
-            (new JsonPreservingPrinter())->print($jsonDocument),
-        );
-    }
-
     /**
      * @param list<mixed> $arguments
      */

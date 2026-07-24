@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast\Node\Helper;
 
 use function preg_match;
+use function preg_replace;
 use function str_contains;
 use function strlen;
 use function substr;
@@ -21,6 +22,11 @@ final readonly class WhitespaceHelper
         }
 
         return $whitespace;
+    }
+
+    public static function withoutBlankLineIndentation(string $whitespace): string
+    {
+        return preg_replace('/[ \t]+(?=\r\n|\r|\n)/', '', $whitespace) ?? $whitespace;
     }
 
     /**

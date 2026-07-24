@@ -11,6 +11,8 @@ use function strlen;
  * Scans the RFC 8259 number grammar, shared between the lexer (which finds
  * where a number token ends inside a larger source) and the printers (which
  * must not emit a NumberNode whose raw value is not a valid JSON number).
+ *
+ * @internal
  */
 final class NumberLexemeScanner
 {

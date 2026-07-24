@@ -2668,6 +2668,49 @@ JSON,
         );
     }
 
+    public function testItPrintsNewContainerInlineWhenAppendedToRootArray(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('[1, 2]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->append(JsonValue::from(['k' => 1]));
+
+        $this->assertSame(
+            '[1, 2, {"k": 1}]',
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItPrintsNewContainerInlineWhenReplacingExistingArrayItem(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a": [1, 2], "b": 3}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $aItem = $jsonDocument->value->get('a');
+        $this->assertInstanceOf(ObjectItemNode::class, $aItem);
+        $this->assertInstanceOf(ArrayNode::class, $aItem->value);
+
+        $this->assertTrue($aItem->value->setAt(1, JsonValue::from(['k' => 1])));
+
+        $this->assertSame(
+            '{"a": [1, {"k": 1}], "b": 3}',
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItPrintsNewContainerInlineWhenReplacingExistingObjectValue(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a": 1, "b": 2}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('a', JsonValue::from(['k' => 1]));
+
+        $this->assertSame(
+            '{"a": {"k": 1}, "b": 2}',
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPrintsEveryNewContainerValueTypeInlineWithoutReflowingInlineAncestors(): void
     {
         $jsonDocument = (new JsonParser())->parse('{"a": [0], "b": 1}');

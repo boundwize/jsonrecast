@@ -80,6 +80,8 @@ final class JsonPreservingPrinter implements JsonPrinter
      */
     private SplObjectStorage $memoizedChangeResults;
 
+    private bool $printingDocument = false;
+
     public function __construct(
         private readonly ?NodeChangeSet $nodeChangeSet = null,
         private readonly ?string $indent = null,
@@ -99,6 +101,8 @@ final class JsonPreservingPrinter implements JsonPrinter
         $indent      = $this->indent
             ?? (is_string($nodeIndent) ? $nodeIndent : '    ');
 
+        $this->printingDocument = $nodeJson instanceof JsonDocument;
+
         try {
             return $this->printNode($nodeJson, new PrintContext($indent, $newline), depth: 0);
         } finally {
@@ -106,6 +110,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             // (the tree or change set may be mutated in between), and dropping
             // them also releases the node references they hold.
             $this->memoizedChangeResults = new SplObjectStorage();
+            $this->printingDocument      = false;
         }
     }
 
@@ -647,7 +652,7 @@ final class JsonPreservingPrinter implements JsonPrinter
                 continue;
             }
 
-            $printedValue      = $this->shouldPrintSyntheticValueInline($containerNode, $item, $depth)
+            $printedValue      = $this->shouldPrintSyntheticValueInline($containerNode, $item->value, $depth)
                 ? $this->printSyntheticNodeInline($item->value)
                 : $this->printNode(
                     $item->value,
@@ -671,17 +676,16 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     private function shouldPrintSyntheticValueInline(
         ArrayNode|ObjectNode $containerNode,
-        ArrayItemNode|ObjectItemNode $item,
+        NodeJson $value,
         int $depth,
     ): bool {
         // A directly printed changed container keeps the established best-effort
-        // multiline layout. Nested inline containers compact wholly new values
-        // so their expansion does not force otherwise untouched ancestors to reflow.
-        return $depth > 0
+        // multiline layout. Whole documents and nested inline containers compact
+        // wholly new values so their expansion does not force untouched content to reflow.
+        return ($this->printingDocument || $depth > 0)
             && ! $this->hasContainerMultilineEdgeWhitespace($containerNode)
-            && $this->isSyntheticItem($item)
-            && ($item->value instanceof ArrayNode || $item->value instanceof ObjectNode)
-            && $this->isEntirelySynthetic($item->value);
+            && ($value instanceof ArrayNode || $value instanceof ObjectNode)
+            && $this->isEntirelySynthetic($value);
     }
 
     private function isEntirelySynthetic(NodeJson $nodeJson): bool

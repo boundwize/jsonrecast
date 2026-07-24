@@ -54,6 +54,24 @@ final class JsonPrettyPrinterTest extends TestCase
         (new JsonPrettyPrinter())->print(new StringNode("\xB1"));
     }
 
+    public function testItRejectsInvalidNumberLexeme(): void
+    {
+        $numberNode           = new NumberNode('1');
+        $numberNode->rawValue = '01';
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Unable to encode JSON number.');
+
+        (new JsonPrettyPrinter())->print($numberNode);
+    }
+
+    public function testItPrintsValidNumberLexemesVerbatim(): void
+    {
+        foreach (['0', '-0', '1e0', '1.00', '-0.5E+10', '123', '9e-2'] as $rawValue) {
+            $this->assertSame($rawValue, (new JsonPrettyPrinter())->print(new NumberNode($rawValue)));
+        }
+    }
+
     public function testItRejectsNodeThatExceedsMaximumNestingDepth(): void
     {
         // mirrors json_encode([[[0]]], depth: 2), which fails, while

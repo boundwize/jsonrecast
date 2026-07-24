@@ -17,6 +17,7 @@ use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeTraverser\NodeChangeSet;
+use Boundwize\JsonRecast\Parser\NumberLexemeScanner;
 use RuntimeException;
 use SplObjectStorage;
 
@@ -167,7 +168,7 @@ final class JsonPreservingPrinter implements JsonPrinter
                 depth: $depth,
             ),
             $nodeJson instanceof StringNode => $this->encodeString($nodeJson->value),
-            $nodeJson instanceof NumberNode => $nodeJson->rawValue,
+            $nodeJson instanceof NumberNode => $this->encodeNumber($nodeJson->rawValue),
             $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
             $nodeJson instanceof NullNode => 'null',
             default => throw new RuntimeException('Unsupported JSON node.'),
@@ -733,7 +734,7 @@ final class JsonPreservingPrinter implements JsonPrinter
                 . $this->printSyntheticNodeInline($nodeJson->value),
             $nodeJson instanceof ArrayItemNode => $this->printSyntheticNodeInline($nodeJson->value),
             $nodeJson instanceof StringNode => $this->encodeString($nodeJson->value),
-            $nodeJson instanceof NumberNode => $nodeJson->rawValue,
+            $nodeJson instanceof NumberNode => $this->encodeNumber($nodeJson->rawValue),
             $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
             $nodeJson instanceof NullNode => 'null',
             default => throw new RuntimeException('Unsupported JSON node.'),
@@ -1540,5 +1541,14 @@ final class JsonPreservingPrinter implements JsonPrinter
         }
 
         return $encoded;
+    }
+
+    private function encodeNumber(string $rawValue): string
+    {
+        if (! NumberLexemeScanner::isValidLexeme($rawValue)) {
+            throw new RuntimeException('Unable to encode JSON number.');
+        }
+
+        return $rawValue;
     }
 }

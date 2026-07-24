@@ -68,8 +68,9 @@ Remove an item node when you want to delete a key/value pair or an array entry.
 ```php
 $number = new NumberNode('1e0');
 
-echo $number->rawValue;      // 1e0
-echo $number->toIntOrFloat(); // 1.0
+echo $number->rawValue;             // 1e0
+echo $number->toIntOrFloat();       // 1
+var_dump($number->toIntOrFloat());  // float(1)
 ```
 
 ## Convert PHP Values

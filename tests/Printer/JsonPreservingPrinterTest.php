@@ -30,6 +30,7 @@ use function intdiv;
 use function preg_split;
 use function sprintf;
 use function str_repeat;
+use function str_replace;
 use function str_split;
 use function strlen;
 
@@ -204,6 +205,38 @@ JSON,
     "b": 2
 }
 JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItPreservesBracketHuggingArrayWhenNestedScalarIsReplaced(): void
+    {
+        $source = <<<'JSON'
+{
+    "servers": [{
+        "host": "db1.example.com",
+        "port": 5432
+    }, {
+        "host": "db2.example.com",
+        "port": 5433
+    }],
+    "timeout": 30
+}
+JSON;
+
+        $jsonDocument = (new JsonParser())->parse($source);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $serversItem = $jsonDocument->value->get('servers');
+        $this->assertInstanceOf(ObjectItemNode::class, $serversItem);
+        $this->assertInstanceOf(ArrayNode::class, $serversItem->value);
+
+        $firstServer = $serversItem->value->items[0]->value;
+        $this->assertInstanceOf(ObjectNode::class, $firstServer);
+        $firstServer->set('port', new NumberNode('6543'));
+
+        $this->assertSame(
+            str_replace('5432', '6543', $source),
             (new JsonPreservingPrinter())->print($jsonDocument),
         );
     }

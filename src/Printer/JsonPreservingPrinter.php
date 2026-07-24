@@ -656,11 +656,23 @@ final class JsonPreservingPrinter implements JsonPrinter
             $printedValues[$i] = $printedValue;
 
             if (str_contains($printedValue, "\n") || str_contains($printedValue, "\r")) {
+                if ($this->itemWasOriginallyMultiline($item)) {
+                    continue;
+                }
+
                 return [! $this->hasContainerMultilineEdgeWhitespace($containerNode), $printedValues];
             }
         }
 
         return [false, $printedValues];
+    }
+
+    private function itemWasOriginallyMultiline(ArrayItemNode|ObjectItemNode $item): bool
+    {
+        $originalText = $item->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+
+        return is_string($originalText)
+            && (str_contains($originalText, "\n") || str_contains($originalText, "\r"));
     }
 
     private function hasContainerMultilineEdgeWhitespace(ArrayNode|ObjectNode $containerNode): bool

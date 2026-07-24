@@ -2965,60 +2965,14 @@ JSON,
         $this->assertSame("{\n\n    \"a\": 1\n}", (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
-    public function testItTrimsIndentedBlankLinesAndKeepsClosingDelimitersUnindented(): void
+    public function testItKeepsClosingDelimiterUnindentedAfterIndentedBlankLine(): void
     {
-        $objectDocument = (new JsonParser())->parse("{\n    \n}");
-        $this->assertInstanceOf(ObjectNode::class, $objectDocument->value);
-
-        $objectDocument->value->set('a', new NumberNode('1'));
-
-        $this->assertSame(
-            <<<'JSON'
-{
-    "a": 1
-}
-JSON,
-            (new JsonPreservingPrinter())->print($objectDocument),
-        );
-
-        $arrayDocument = (new JsonParser())->parse("[\n    \n]");
-        $this->assertInstanceOf(ArrayNode::class, $arrayDocument->value);
-
-        $arrayDocument->value->append(new NumberNode('1'));
-
-        $this->assertSame(
-            <<<'JSON'
-[
-    1
-]
-JSON,
-            (new JsonPreservingPrinter())->print($arrayDocument),
-        );
-    }
-
-    public function testItTrimsIndentedBlankLineInNestedContainer(): void
-    {
-        $jsonDocument = (new JsonParser())->parse("{\n    \"nested\": {\n        \n    }\n}");
+        $jsonDocument = (new JsonParser())->parse("{\n    \n}");
         $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
 
-        $nestedItem = $jsonDocument->value->get('nested');
-        $this->assertInstanceOf(ObjectItemNode::class, $nestedItem);
-        $this->assertInstanceOf(ObjectNode::class, $nestedItem->value);
+        $jsonDocument->value->set('a', new NumberNode('1'));
 
-        $nestedItem->value->set('a', new NumberNode('1'));
-
-        $expected = <<<'JSON'
-{
-    "nested": {
-        "a": 1
-    }
-}
-JSON;
-
-        $this->assertSame(
-            $expected,
-            (new JsonPreservingPrinter())->print($jsonDocument),
-        );
+        $this->assertSame("{\n    \n    \"a\": 1\n}", (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
     public function testItPreservesSeparatorWhenInsertingIntoSingleItemArray(): void

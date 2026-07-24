@@ -126,12 +126,7 @@ final class ArrayNode extends AbstractNodeJson
                 $this->items === []
                 && (str_contains($this->afterOpenBracket, "\n") || str_contains($this->afterOpenBracket, "\r"))
             ) {
-                $indent = $this->indentForNewItem();
-
-                return [
-                    WhitespaceHelper::withoutIndentedBlankLines($this->afterOpenBracket) . $indent,
-                    null,
-                ];
+                return [$this->afterOpenBracket . $this->indentForNewItem(), null];
             }
 
             return [$this->afterOpenBracket, null];

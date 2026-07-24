@@ -2651,6 +2651,91 @@ JSON,
         $this->assertSame('[1, "x"]', (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItPrintsNewContainerInlineWithoutReflowingInlineAncestors(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a": [1, 2], "b": 3}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $aItem = $jsonDocument->value->get('a');
+        $this->assertInstanceOf(ObjectItemNode::class, $aItem);
+        $this->assertInstanceOf(ArrayNode::class, $aItem->value);
+
+        $aItem->value->append(JsonValue::from([9]));
+
+        $this->assertSame(
+            '{"a": [1, 2, [9]], "b": 3}',
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItPrintsEveryNewContainerValueTypeInlineWithoutReflowingInlineAncestors(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a": [0], "b": 1}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $aItem = $jsonDocument->value->get('a');
+        $this->assertInstanceOf(ObjectItemNode::class, $aItem);
+        $this->assertInstanceOf(ArrayNode::class, $aItem->value);
+
+        $aItem->value->append(JsonValue::from([
+            'string'  => 'x',
+            'boolean' => true,
+            'null'    => null,
+            'array'   => [1, 2],
+        ]));
+
+        $this->assertSame(
+            '{"a": [0, {"string": "x", "boolean": true, "null": null, "array": [1, 2]}], "b": 1}',
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItDoesNotCompactNewContainerThatContainsParsedMultilineContent(): void
+    {
+        $fragment     = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "x": 1
+}
+JSON,
+        );
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "a": [0],
+    "b": 1
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $aItem = $jsonDocument->value->get('a');
+        $this->assertInstanceOf(ObjectItemNode::class, $aItem);
+        $this->assertInstanceOf(ArrayNode::class, $aItem->value);
+
+        $aItem->value->append(new ArrayNode([
+            new ArrayItemNode($fragment->value),
+        ]));
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "a": [
+        0,
+        [
+            {
+                "x": 1
+            }
+        ]
+    ],
+    "b": 1
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItDoesNotDuplicateMultilineWhitespaceWhenAppendingToEmptyArray(): void
     {
         $jsonDocument = (new JsonParser())->parse("[\n\n]");

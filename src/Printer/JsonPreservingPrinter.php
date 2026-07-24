@@ -647,12 +647,14 @@ final class JsonPreservingPrinter implements JsonPrinter
                 continue;
             }
 
-            $printedValue      = $this->printNode(
-                $item->value,
-                $childPrintContext,
-                $detectScalarMutation,
-                $depth + 1,
-            );
+            $printedValue      = $this->shouldPrintSyntheticValueInline($containerNode, $item, $depth)
+                ? $this->printSyntheticNodeInline($item->value)
+                : $this->printNode(
+                    $item->value,
+                    $childPrintContext,
+                    $detectScalarMutation,
+                    $depth + 1,
+                );
             $printedValues[$i] = $printedValue;
 
             if (str_contains($printedValue, "\n") || str_contains($printedValue, "\r")) {
@@ -665,6 +667,99 @@ final class JsonPreservingPrinter implements JsonPrinter
         }
 
         return [false, $printedValues];
+    }
+
+    private function shouldPrintSyntheticValueInline(
+        ArrayNode|ObjectNode $containerNode,
+        ArrayItemNode|ObjectItemNode $item,
+        int $depth,
+    ): bool {
+        // A directly printed changed container keeps the established best-effort
+        // multiline layout. Nested inline containers compact wholly new values
+        // so their expansion does not force otherwise untouched ancestors to reflow.
+        return $depth > 0
+            && ! $this->hasContainerMultilineEdgeWhitespace($containerNode)
+            && $this->isSyntheticItem($item)
+            && ($item->value instanceof ArrayNode || $item->value instanceof ObjectNode)
+            && $this->isEntirelySynthetic($item->value);
+    }
+
+    private function isEntirelySynthetic(NodeJson $nodeJson): bool
+    {
+        if ($nodeJson->hasAttribute(NodeAttributes::ORIGINAL_TEXT)) {
+            return false;
+        }
+
+        return match (true) {
+            $nodeJson instanceof ObjectNode, $nodeJson instanceof ArrayNode => $this->areEntirelySynthetic(
+                $nodeJson->items,
+            ),
+            $nodeJson instanceof ObjectItemNode => $this->isEntirelySynthetic($nodeJson->key)
+                && $this->isEntirelySynthetic($nodeJson->value),
+            $nodeJson instanceof ArrayItemNode => $this->isEntirelySynthetic($nodeJson->value),
+            default => true,
+        };
+    }
+
+    /**
+     * @param list<NodeJson> $nodes
+     */
+    private function areEntirelySynthetic(array $nodes): bool
+    {
+        foreach ($nodes as $node) {
+            if (! $this->isEntirelySynthetic($node)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function printSyntheticNodeInline(NodeJson $nodeJson): string
+    {
+        return match (true) {
+            $nodeJson instanceof ObjectNode => $this->printSyntheticObjectInline($nodeJson),
+            $nodeJson instanceof ArrayNode => $this->printSyntheticArrayInline($nodeJson),
+            $nodeJson instanceof ObjectItemNode => $this->printSyntheticNodeInline($nodeJson->key)
+                . ': '
+                . $this->printSyntheticNodeInline($nodeJson->value),
+            $nodeJson instanceof ArrayItemNode => $this->printSyntheticNodeInline($nodeJson->value),
+            $nodeJson instanceof StringNode => $this->encodeString($nodeJson->value),
+            $nodeJson instanceof NumberNode => $nodeJson->rawValue,
+            $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
+            $nodeJson instanceof NullNode => 'null',
+            default => throw new RuntimeException('Unsupported JSON node.'),
+        };
+    }
+
+    private function printSyntheticObjectInline(ObjectNode $objectNode): string
+    {
+        $output = '{';
+
+        foreach ($objectNode->items as $i => $item) {
+            if ($i > 0) {
+                $output .= ', ';
+            }
+
+            $output .= $this->printSyntheticNodeInline($item);
+        }
+
+        return $output . '}';
+    }
+
+    private function printSyntheticArrayInline(ArrayNode $arrayNode): string
+    {
+        $output = '[';
+
+        foreach ($arrayNode->items as $i => $item) {
+            if ($i > 0) {
+                $output .= ', ';
+            }
+
+            $output .= $this->printSyntheticNodeInline($item);
+        }
+
+        return $output . ']';
     }
 
     private function itemWasOriginallyMultiline(ArrayItemNode|ObjectItemNode $item): bool

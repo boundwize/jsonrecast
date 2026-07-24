@@ -181,8 +181,9 @@ final class ObjectNode extends AbstractNodeJson
         }
 
         if (str_contains($this->afterOpenBrace, "\n") || str_contains($this->afterOpenBrace, "\r")) {
-            return WhitespaceHelper::withoutBlankLineIndentation($this->afterOpenBrace)
-                . $this->indentForNewItem();
+            $indent = $this->indentForNewItem();
+
+            return WhitespaceHelper::withoutIndentedBlankLines($this->afterOpenBrace) . $indent;
         }
 
         return $this->afterOpenBrace;

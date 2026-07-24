@@ -24,9 +24,13 @@ final readonly class WhitespaceHelper
         return $whitespace;
     }
 
-    public static function withoutBlankLineIndentation(string $whitespace): string
+    public static function withoutIndentedBlankLines(string $whitespace): string
     {
-        return preg_replace('/[ \t]+(?=\r\n|\r|\n)/', '', $whitespace) ?? $whitespace;
+        return preg_replace(
+            '/(?:\r\n|\r|\n)[ \t]+(?=\r\n|\r|\n)/',
+            '',
+            $whitespace,
+        ) ?? $whitespace;
     }
 
     /**

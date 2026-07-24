@@ -2965,7 +2965,7 @@ JSON,
         $this->assertSame("{\n\n    \"a\": 1\n}", (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
-    public function testItTrimsBlankLineIndentationAndKeepsClosingDelimitersUnindented(): void
+    public function testItTrimsIndentedBlankLinesAndKeepsClosingDelimitersUnindented(): void
     {
         $objectDocument = (new JsonParser())->parse("{\n    \n}");
         $this->assertInstanceOf(ObjectNode::class, $objectDocument->value);
@@ -2975,7 +2975,6 @@ JSON,
         $this->assertSame(
             <<<'JSON'
 {
-
     "a": 1
 }
 JSON,
@@ -2990,11 +2989,35 @@ JSON,
         $this->assertSame(
             <<<'JSON'
 [
-
     1
 ]
 JSON,
             (new JsonPreservingPrinter())->print($arrayDocument),
+        );
+    }
+
+    public function testItTrimsIndentedBlankLineInNestedContainer(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("{\n    \"nested\": {\n        \n    }\n}");
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $nestedItem = $jsonDocument->value->get('nested');
+        $this->assertInstanceOf(ObjectItemNode::class, $nestedItem);
+        $this->assertInstanceOf(ObjectNode::class, $nestedItem->value);
+
+        $nestedItem->value->set('a', new NumberNode('1'));
+
+        $expected = <<<'JSON'
+{
+    "nested": {
+        "a": 1
+    }
+}
+JSON;
+
+        $this->assertSame(
+            $expected,
+            (new JsonPreservingPrinter())->print($jsonDocument),
         );
     }
 

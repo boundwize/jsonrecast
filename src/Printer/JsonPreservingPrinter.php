@@ -80,6 +80,8 @@ final class JsonPreservingPrinter implements JsonPrinter
      */
     private SplObjectStorage $memoizedChangeResults;
 
+    private bool $printingDocument = false;
+
     public function __construct(
         private readonly ?NodeChangeSet $nodeChangeSet = null,
         private readonly ?string $indent = null,
@@ -99,6 +101,8 @@ final class JsonPreservingPrinter implements JsonPrinter
         $indent      = $this->indent
             ?? (is_string($nodeIndent) ? $nodeIndent : '    ');
 
+        $this->printingDocument = $nodeJson instanceof JsonDocument;
+
         try {
             return $this->printNode($nodeJson, new PrintContext($indent, $newline), depth: 0);
         } finally {
@@ -106,6 +110,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             // (the tree or change set may be mutated in between), and dropping
             // them also releases the node references they hold.
             $this->memoizedChangeResults = new SplObjectStorage();
+            $this->printingDocument      = false;
         }
     }
 
@@ -647,12 +652,14 @@ final class JsonPreservingPrinter implements JsonPrinter
                 continue;
             }
 
-            $printedValue      = $this->printNode(
-                $item->value,
-                $childPrintContext,
-                $detectScalarMutation,
-                $depth + 1,
-            );
+            $printedValue      = $this->shouldPrintSyntheticValueInline($containerNode, $item->value, $depth)
+                ? $this->printSyntheticNodeInline($item->value)
+                : $this->printNode(
+                    $item->value,
+                    $childPrintContext,
+                    $detectScalarMutation,
+                    $depth + 1,
+                );
             $printedValues[$i] = $printedValue;
 
             if (str_contains($printedValue, "\n") || str_contains($printedValue, "\r")) {
@@ -665,6 +672,98 @@ final class JsonPreservingPrinter implements JsonPrinter
         }
 
         return [false, $printedValues];
+    }
+
+    private function shouldPrintSyntheticValueInline(
+        ArrayNode|ObjectNode $containerNode,
+        NodeJson $nodeJson,
+        int $depth,
+    ): bool {
+        // A directly printed changed container keeps the established best-effort
+        // multiline layout. Whole documents and nested inline containers compact
+        // wholly new values so their expansion does not force untouched content to reflow.
+        return ($this->printingDocument || $depth > 0)
+            && ! $this->hasContainerMultilineEdgeWhitespace($containerNode)
+            && ($nodeJson instanceof ArrayNode || $nodeJson instanceof ObjectNode)
+            && $this->isEntirelySynthetic($nodeJson);
+    }
+
+    private function isEntirelySynthetic(NodeJson $nodeJson): bool
+    {
+        if ($nodeJson->hasAttribute(NodeAttributes::ORIGINAL_TEXT)) {
+            return false;
+        }
+
+        return match (true) {
+            $nodeJson instanceof ObjectNode, $nodeJson instanceof ArrayNode => $this->areEntirelySynthetic(
+                $nodeJson->items,
+            ),
+            $nodeJson instanceof ObjectItemNode => $this->isEntirelySynthetic($nodeJson->key)
+                && $this->isEntirelySynthetic($nodeJson->value),
+            $nodeJson instanceof ArrayItemNode => $this->isEntirelySynthetic($nodeJson->value),
+            default => true,
+        };
+    }
+
+    /**
+     * @param list<NodeJson> $nodes
+     */
+    private function areEntirelySynthetic(array $nodes): bool
+    {
+        foreach ($nodes as $node) {
+            if (! $this->isEntirelySynthetic($node)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function printSyntheticNodeInline(NodeJson $nodeJson): string
+    {
+        return match (true) {
+            $nodeJson instanceof ObjectNode => $this->printSyntheticObjectInline($nodeJson),
+            $nodeJson instanceof ArrayNode => $this->printSyntheticArrayInline($nodeJson),
+            $nodeJson instanceof ObjectItemNode => $this->printSyntheticNodeInline($nodeJson->key)
+                . ': '
+                . $this->printSyntheticNodeInline($nodeJson->value),
+            $nodeJson instanceof ArrayItemNode => $this->printSyntheticNodeInline($nodeJson->value),
+            $nodeJson instanceof StringNode => $this->encodeString($nodeJson->value),
+            $nodeJson instanceof NumberNode => $nodeJson->rawValue,
+            $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
+            $nodeJson instanceof NullNode => 'null',
+            default => throw new RuntimeException('Unsupported JSON node.'),
+        };
+    }
+
+    private function printSyntheticObjectInline(ObjectNode $objectNode): string
+    {
+        $output = '{';
+
+        foreach ($objectNode->items as $i => $item) {
+            if ($i > 0) {
+                $output .= ', ';
+            }
+
+            $output .= $this->printSyntheticNodeInline($item);
+        }
+
+        return $output . '}';
+    }
+
+    private function printSyntheticArrayInline(ArrayNode $arrayNode): string
+    {
+        $output = '[';
+
+        foreach ($arrayNode->items as $i => $item) {
+            if ($i > 0) {
+                $output .= ', ';
+            }
+
+            $output .= $this->printSyntheticNodeInline($item);
+        }
+
+        return $output . ']';
     }
 
     private function itemWasOriginallyMultiline(ArrayItemNode|ObjectItemNode $item): bool

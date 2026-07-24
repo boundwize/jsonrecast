@@ -128,12 +128,5 @@ echo JsonRecast::print($result);
 ```
 
 ```json
-{
-    "name":"boundwize/jsonrecast",
-    "keywords":[
-        "json",
-        "ast",
-        "formatting"
-    ]
-}
+{"name":"boundwize/jsonrecast", "keywords":["json", "ast", "formatting"]}
 ```

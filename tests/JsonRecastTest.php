@@ -188,6 +188,28 @@ JSON, JsonRecast::print($jsonRecastResult));
         $this->assertSame(" \n{\"name\": \"new\"}\n ", JsonRecast::print($jsonRecastResult));
     }
 
+    public function testVisitorContainerReplacementPreservesInlineDocumentFormatting(): void
+    {
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse('{"a": [1, 2], "b": 3}'),
+            new class extends NodeJsonVisitorAbstract {
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if ($nodeJson instanceof NumberNode && $nodeJsonPath->matches(['a', 1])) {
+                        return JsonValue::from(['two' => true]);
+                    }
+
+                    return null;
+                }
+            },
+        );
+
+        $this->assertSame(
+            '{"a": [1, {"two": true}], "b": 3}',
+            JsonRecast::print($jsonRecastResult),
+        );
+    }
+
     public function testScalarEditPreservesUntouchedSiblingIndentStyle(): void
     {
         $source = "{\n\t\"t\": 1,\n  \"nest\": {\n    \"x\": 1\n  }\n}";

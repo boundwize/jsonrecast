@@ -9,6 +9,7 @@ use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
 use Boundwize\JsonRecast\Node\JsonDocument;
+use Boundwize\JsonRecast\Node\NodeJson;
 use Boundwize\JsonRecast\Node\NullNode;
 use Boundwize\JsonRecast\Node\NumberNode;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
@@ -26,17 +27,24 @@ use ReflectionMethod;
 use RuntimeException;
 
 use function array_reverse;
+use function count;
+use function hash;
+use function implode;
 use function intdiv;
+use function ord;
 use function preg_split;
 use function sprintf;
 use function str_repeat;
 use function str_split;
 use function strlen;
+use function substr;
 
 use const PHP_FLOAT_EPSILON;
 
 final class JsonPreservingPrinterTest extends TestCase
 {
+    private const SPLICE_INVARIANT_CASE_COUNT = 256;
+
     public function testItPrintsNewScalarNodes(): void
     {
         $jsonPreservingPrinter = new JsonPreservingPrinter();
@@ -206,6 +214,89 @@ JSON,
 JSON,
             (new JsonPreservingPrinter())->print($jsonDocument),
         );
+    }
+
+    public function testItPreservesBracketHuggingArrayWhenNestedScalarIsReplaced(): void
+    {
+        $source = <<<'JSON'
+{
+    "servers": [{
+        "host": "db1.example.com",
+        "port": 5432
+    }, {
+        "host": "db2.example.com",
+        "port": 5433
+    }],
+    "timeout": 30
+}
+JSON;
+
+        $jsonDocument = (new JsonParser())->parse($source);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $serversItem = $jsonDocument->value->get('servers');
+        $this->assertInstanceOf(ObjectItemNode::class, $serversItem);
+        $this->assertInstanceOf(ArrayNode::class, $serversItem->value);
+
+        $firstServer = $serversItem->value->items[0]->value;
+        $this->assertInstanceOf(ObjectNode::class, $firstServer);
+        $firstServer->set('port', new NumberNode('6543'));
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "servers": [{
+        "host": "db1.example.com",
+        "port": 6543
+    }, {
+        "host": "db2.example.com",
+        "port": 5433
+    }],
+    "timeout": 30
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testReplacingOneScalarOnlyChangesItsOriginalByteSpan(): void
+    {
+        for ($seed = 0; $seed < self::SPLICE_INVARIANT_CASE_COUNT; $seed++) {
+            $source       = $this->spliceInvariantSourceForSeed($seed);
+            $jsonDocument = (new JsonParser())->parse($source);
+            $numberSlots  = [];
+
+            $this->collectSpliceInvariantNumberSlots($jsonDocument->value, $numberSlots);
+
+            $slot        = $numberSlots[$seed % count($numberSlots)];
+            $startOffset = $slot['node']->getAttribute(NodeAttributes::START_OFFSET);
+            $endOffset   = $slot['node']->getAttribute(NodeAttributes::END_OFFSET);
+
+            $this->assertIsInt($startOffset, sprintf('Missing start offset for seed %d.', $seed));
+            $this->assertIsInt($endOffset, sprintf('Missing end offset for seed %d.', $seed));
+
+            $replacementText = (string) (900000 + $seed);
+            $replacement     = new NumberNode($replacementText);
+
+            if ($slot['parent'] instanceof ObjectNode) {
+                $slot['parent']->set((string) $slot['key'], $replacement);
+            } else {
+                $this->assertTrue(
+                    $slot['parent']->setAt((int) $slot['key'], $replacement),
+                    sprintf('Unable to replace array item for seed %d.', $seed),
+                );
+            }
+
+            $expected = substr($source, 0, $startOffset)
+                . $replacementText
+                . substr($source, $endOffset);
+
+            $this->assertSame(
+                $expected,
+                (new JsonPreservingPrinter())->print($jsonDocument),
+                sprintf("Minimal-diff splice invariant failed for seed %d:\n%s", $seed, $source),
+            );
+        }
     }
 
     public function testItPreservesParsedMultilineEmptyObjectNode(): void
@@ -3270,5 +3361,200 @@ JSON,
         $jsonDocument->value->set('b', JsonValue::from('w'));
 
         $this->assertSame('{"a": "z", "b": "w"}', $jsonPreservingPrinter->print($jsonDocument));
+    }
+
+    /** @param list<array{parent: ArrayNode|ObjectNode, key: int|string, node: NumberNode}> $numberSlots */
+    private function collectSpliceInvariantNumberSlots(NodeJson $nodeJson, array &$numberSlots): void
+    {
+        if ($nodeJson instanceof ObjectNode) {
+            foreach ($nodeJson->items as $item) {
+                if ($item->value instanceof NumberNode) {
+                    $numberSlots[] = [
+                        'parent' => $nodeJson,
+                        'key'    => $item->key->value,
+                        'node'   => $item->value,
+                    ];
+
+                    continue;
+                }
+
+                $this->collectSpliceInvariantNumberSlots($item->value, $numberSlots);
+            }
+
+            return;
+        }
+
+        if (! $nodeJson instanceof ArrayNode) {
+            return;
+        }
+
+        foreach ($nodeJson->items as $index => $item) {
+            if ($item->value instanceof NumberNode) {
+                $numberSlots[] = [
+                    'parent' => $nodeJson,
+                    'key'    => $index,
+                    'node'   => $item->value,
+                ];
+
+                continue;
+            }
+
+            $this->collectSpliceInvariantNumberSlots($item->value, $numberSlots);
+        }
+    }
+
+    private function spliceInvariantSourceForSeed(int $seed): string
+    {
+        $newline = ["\n", "\r\n", "\r"][$this->spliceInvariantChoice($seed, 100, 3)];
+        $indent  = ['  ', '    ', "\t"][$this->spliceInvariantChoice($seed, 101, 3)];
+        $number  = static fn (int $index): string => (string) ($seed * 10 + $index);
+
+        $firstObject  = $this->renderSpliceInvariantObject(
+            ['k0' => $number(0), 'k1' => $number(1)],
+            depth: 2,
+            style: $this->spliceInvariantStyle($seed, 2),
+            colonStyle: $this->spliceInvariantStyle($seed, 9),
+            newline: $newline,
+            indent: $indent,
+        );
+        $secondObject = $this->renderSpliceInvariantObject(
+            ['k2' => $number(2)],
+            depth: 2,
+            style: $this->spliceInvariantStyle($seed, 3),
+            colonStyle: $this->spliceInvariantStyle($seed, 10),
+            newline: $newline,
+            indent: $indent,
+        );
+        $leftArray    = $this->renderSpliceInvariantArray(
+            [$firstObject, $secondObject],
+            depth: 1,
+            style: $this->spliceInvariantStyle($seed, 1),
+            newline: $newline,
+            indent: $indent,
+        );
+        $innerObject  = $this->renderSpliceInvariantObject(
+            ['k5' => $number(5)],
+            depth: 3,
+            style: $this->spliceInvariantStyle($seed, 6),
+            colonStyle: $this->spliceInvariantStyle($seed, 11),
+            newline: $newline,
+            indent: $indent,
+        );
+        $innerArray   = $this->renderSpliceInvariantArray(
+            [$number(4), $innerObject],
+            depth: 2,
+            style: $this->spliceInvariantStyle($seed, 5),
+            newline: $newline,
+            indent: $indent,
+        );
+        $rightObject  = $this->renderSpliceInvariantObject(
+            ['nested' => $innerArray, 'k6' => $number(6)],
+            depth: 1,
+            style: $this->spliceInvariantStyle($seed, 4),
+            colonStyle: $this->spliceInvariantStyle($seed, 12),
+            newline: $newline,
+            indent: $indent,
+        );
+
+        return $this->renderSpliceInvariantObject(
+            ['left' => $leftArray, 'right' => $rightObject],
+            depth: 0,
+            style: $this->spliceInvariantStyle($seed, 0),
+            colonStyle: $this->spliceInvariantStyle($seed, 8),
+            newline: $newline,
+            indent: $indent,
+        );
+    }
+
+    /**
+     * @param array<string, string> $items
+     */
+    private function renderSpliceInvariantObject(
+        array $items,
+        int $depth,
+        int $style,
+        int $colonStyle,
+        string $newline,
+        string $indent,
+    ): string {
+        $colon  = [':', ': ', ' : ', ':  '][$colonStyle];
+        $values = [];
+
+        foreach ($items as $key => $value) {
+            $values[] = sprintf('"%s"%s%s', $key, $colon, $value);
+        }
+
+        return $this->renderSpliceInvariantContainer(
+            '{',
+            '}',
+            $values,
+            $depth,
+            $style,
+            $newline,
+            $indent,
+        );
+    }
+
+    /**
+     * @param list<string> $items
+     */
+    private function renderSpliceInvariantArray(
+        array $items,
+        int $depth,
+        int $style,
+        string $newline,
+        string $indent,
+    ): string {
+        return $this->renderSpliceInvariantContainer(
+            '[',
+            ']',
+            $items,
+            $depth,
+            $style,
+            $newline,
+            $indent,
+        );
+    }
+
+    /**
+     * @param list<string> $items
+     */
+    private function renderSpliceInvariantContainer(
+        string $opening,
+        string $closing,
+        array $items,
+        int $depth,
+        int $style,
+        string $newline,
+        string $indent,
+    ): string {
+        return match ($style) {
+            0 => $opening . implode(',', $items) . $closing,
+            1 => $opening . '  ' . implode(', ', $items) . '  ' . $closing,
+            2 => $opening
+                . $newline
+                . str_repeat($indent, $depth + 1)
+                . implode(',' . $newline . str_repeat($indent, $depth + 1), $items)
+                . $newline
+                . str_repeat($indent, $depth)
+                . $closing,
+            default => $opening
+                . '  '
+                . implode($newline . str_repeat($indent, $depth + 1) . ',  ', $items)
+                . '  '
+                . $closing,
+        };
+    }
+
+    private function spliceInvariantStyle(int $seed, int $salt): int
+    {
+        return $this->spliceInvariantChoice($seed, $salt, 4);
+    }
+
+    private function spliceInvariantChoice(int $seed, int $salt, int $limit): int
+    {
+        $hash = hash('sha256', sprintf('%d:%d', $seed, $salt), true);
+
+        return ord($hash[0]) % $limit;
     }
 }

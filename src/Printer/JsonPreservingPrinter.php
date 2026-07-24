@@ -676,7 +676,7 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     private function shouldPrintSyntheticValueInline(
         ArrayNode|ObjectNode $containerNode,
-        NodeJson $value,
+        NodeJson $nodeJson,
         int $depth,
     ): bool {
         // A directly printed changed container keeps the established best-effort
@@ -684,8 +684,8 @@ final class JsonPreservingPrinter implements JsonPrinter
         // wholly new values so their expansion does not force untouched content to reflow.
         return ($this->printingDocument || $depth > 0)
             && ! $this->hasContainerMultilineEdgeWhitespace($containerNode)
-            && ($value instanceof ArrayNode || $value instanceof ObjectNode)
-            && $this->isEntirelySynthetic($value);
+            && ($nodeJson instanceof ArrayNode || $nodeJson instanceof ObjectNode)
+            && $this->isEntirelySynthetic($nodeJson);
     }
 
     private function isEntirelySynthetic(NodeJson $nodeJson): bool

@@ -30,7 +30,6 @@ use function intdiv;
 use function preg_split;
 use function sprintf;
 use function str_repeat;
-use function str_replace;
 use function str_split;
 use function strlen;
 
@@ -236,7 +235,18 @@ JSON;
         $firstServer->set('port', new NumberNode('6543'));
 
         $this->assertSame(
-            str_replace('5432', '6543', $source),
+            <<<'JSON'
+{
+    "servers": [{
+        "host": "db1.example.com",
+        "port": 6543
+    }, {
+        "host": "db2.example.com",
+        "port": 5433
+    }],
+    "timeout": 30
+}
+JSON,
             (new JsonPreservingPrinter())->print($jsonDocument),
         );
     }

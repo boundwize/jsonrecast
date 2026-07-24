@@ -2223,6 +2223,23 @@ JSON,
         );
     }
 
+    public function testItUsesEmptySeparatorWhenNoMultilineSyntheticFallbackExists(): void
+    {
+        $synthetic = new ArrayItemNode(new NumberNode('1'), '', "\n");
+        $synthetic->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+
+        $parsed = new ArrayItemNode(new NumberNode('2'), "\n    ", "\n");
+        $parsed->setAttribute(NodeAttributes::ORIGINAL_TEXT, "\n    2\n");
+
+        $this->assertSame(
+            '',
+            $this->invokeJsonPreservingPrinterMethod(
+                'normalizeSyntheticAfterValue',
+                [[$synthetic, $parsed], 0, "\n", $synthetic, "\n"],
+            ),
+        );
+    }
+
     public function testItComputesSyntheticStartOffsetsForNeighborFallbacks(): void
     {
         $previous = new ArrayItemNode(new NumberNode('1'));
@@ -2983,6 +3000,23 @@ JSON,
 JSON,
             (new JsonPreservingPrinter())->print($jsonDocument),
         );
+    }
+
+    public function testItUsesNearestPreCommaWhitespaceWhenInsertingIntoArray(): void
+    {
+        foreach (
+            [
+                1 => '[1,"x",2 ,3]',
+                0 => '["x",1,2 ,3]',
+            ] as $index => $expected
+        ) {
+            $jsonDocument = (new JsonParser())->parse('[1,2 ,3]');
+            $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+            $jsonDocument->value->insert($index, new StringNode('x'));
+
+            $this->assertSame($expected, (new JsonPreservingPrinter())->print($jsonDocument));
+        }
     }
 
     public function testItRejectsInvalidUtf8String(): void

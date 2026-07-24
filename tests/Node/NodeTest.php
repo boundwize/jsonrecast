@@ -11,6 +11,7 @@ use Boundwize\JsonRecast\Node\NumberNode;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
 use function json_encode;
@@ -141,14 +142,26 @@ final class NodeTest extends TestCase
         $this->assertFalse($arrayNode->setAt(1, new StringNode('missing')));
     }
 
-    public function testArrayNodeInsertBeforeFirstItemNormalizesNegativeIndexAndInvalidatesShiftedItem(): void
+    public function testArrayNodeInsertRejectsNegativeIndex(): void
+    {
+        $arrayNode = new ArrayNode([
+            new ArrayItemNode(new StringNode('existing')),
+        ]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Array insertion index must be greater than or equal to 0.');
+
+        $arrayNode->insert(-1, new StringNode('new'));
+    }
+
+    public function testArrayNodeInsertBeforeFirstItemInvalidatesShiftedItem(): void
     {
         $arrayItemNode = new ArrayItemNode(new StringNode('existing'), beforeValue: "\n    ");
         $arrayItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, "\n    \"existing\"");
 
         $arrayNode = new ArrayNode([$arrayItemNode], afterOpenBracket: "\n    ", beforeCloseBracket: "\n");
 
-        $arrayNode->insert(-10, new StringNode('new'));
+        $arrayNode->insert(0, new StringNode('new'));
 
         $this->assertCount(2, $arrayNode->items);
         $this->assertInstanceOf(StringNode::class, $arrayNode->items[0]->value);
@@ -157,6 +170,21 @@ final class NodeTest extends TestCase
         $this->assertSame('', $arrayNode->items[0]->afterValue);
         $this->assertSame("\n    ", $arrayItemNode->beforeValue);
         $this->assertNull($arrayItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT));
+    }
+
+    public function testArrayNodeInsertUsesAfterValueFromNearestInterItemBoundary(): void
+    {
+        foreach ([1, 0] as $index) {
+            $arrayNode = new ArrayNode([
+                new ArrayItemNode(new NumberNode('1'), afterValue: ''),
+                new ArrayItemNode(new NumberNode('2'), afterValue: ' '),
+                new ArrayItemNode(new NumberNode('3')),
+            ]);
+
+            $arrayNode->insert($index, new StringNode('x'));
+
+            $this->assertSame('', $arrayNode->items[$index]->afterValue);
+        }
     }
 
     public function testArrayNodeInsertIntoEmptyArrayClampsOutOfRangeIndex(): void

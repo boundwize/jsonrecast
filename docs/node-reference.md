@@ -45,6 +45,10 @@ $array->insert(0, JsonValue::from('first'));
 $array->removeAt(1);
 ```
 
+Array indexes must be non-negative. `insert()` throws `InvalidArgumentException`
+for a negative index, while `setAt()` and `removeAt()` return `false` when an
+index does not exist. An insertion index past the end appends the value.
+
 ## Items
 
 | Node | Purpose |

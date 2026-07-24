@@ -2965,6 +2965,16 @@ JSON,
         $this->assertSame("{\n\n    \"a\": 1\n}", (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItKeepsClosingDelimiterUnindentedAfterIndentedBlankLine(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("{\n    \n}");
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('a', new NumberNode('1'));
+
+        $this->assertSame("{\n    \n    \"a\": 1\n}", (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
     public function testItPreservesSeparatorWhenInsertingIntoSingleItemArray(): void
     {
         $jsonDocument = (new JsonParser())->parse('[1]');

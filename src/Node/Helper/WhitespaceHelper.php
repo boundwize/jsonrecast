@@ -16,7 +16,7 @@ final readonly class WhitespaceHelper
 {
     public static function closingLine(string $whitespace): string
     {
-        if (preg_match('/(?:\r\n|\r|\n)[^\r\n]*$/', $whitespace, $matches) === 1) {
+        if (preg_match('/(?:\r\n|\r|\n)[^\r\n]*\z/', $whitespace, $matches) === 1) {
             return $matches[0];
         }
 

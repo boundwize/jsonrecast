@@ -47,7 +47,7 @@ final class ArrayNode extends AbstractNodeJson
         LayoutCoordinateHelper::setForNewItem($arrayItemNode, $this, $styleDonor);
 
         if ($index === 0 && $this->items !== []) {
-            [$this->items[0]->beforeValue] = $this->layoutForAppendedItem();
+            $this->items[0]->beforeValue = $this->separatorBeforeDisplacedFirstItem();
             $this->items[0]->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         }
 
@@ -168,6 +168,22 @@ final class ArrayNode extends AbstractNodeJson
         }
 
         return '';
+    }
+
+    /**
+     * The first item displaced by a prepend becomes the second item, so it
+     * inherits the nearest inter-item whitespace: the separator before the
+     * original second item, not the style of the physically last item.
+     */
+    private function separatorBeforeDisplacedFirstItem(): string
+    {
+        if (count($this->items) > 1) {
+            return $this->items[1]->beforeValue;
+        }
+
+        [$beforeValue] = $this->layoutForAppendedItem();
+
+        return $beforeValue;
     }
 
     /**

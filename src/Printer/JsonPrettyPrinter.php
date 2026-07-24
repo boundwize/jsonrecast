@@ -15,6 +15,7 @@ use Boundwize\JsonRecast\Node\NumberNode;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
+use Boundwize\JsonRecast\Parser\NumberLexemeScanner;
 use RuntimeException;
 
 use function count;
@@ -59,7 +60,7 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
             $nodeJson instanceof ObjectItemNode => $this->printObjectItem($nodeJson, $printContext, $depth),
             $nodeJson instanceof ArrayItemNode => $this->printNode($nodeJson->value, $printContext, $depth),
             $nodeJson instanceof StringNode => $this->encodeString($nodeJson->value),
-            $nodeJson instanceof NumberNode => $nodeJson->rawValue,
+            $nodeJson instanceof NumberNode => $this->encodeNumber($nodeJson->rawValue),
             $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
             $nodeJson instanceof NullNode => 'null',
             default => throw new RuntimeException('Unsupported JSON node.'),
@@ -122,5 +123,14 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
         }
 
         return $encoded;
+    }
+
+    private function encodeNumber(string $rawValue): string
+    {
+        if (! NumberLexemeScanner::isValidLexeme($rawValue)) {
+            throw new RuntimeException('Unable to encode JSON number.');
+        }
+
+        return $rawValue;
     }
 }

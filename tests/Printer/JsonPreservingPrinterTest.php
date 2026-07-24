@@ -3027,6 +3027,67 @@ JSON,
         (new JsonPreservingPrinter())->print(new StringNode("\xB1"));
     }
 
+    public function testItRejectsInvalidNumberLexeme(): void
+    {
+        $numberNode           = new NumberNode('1');
+        $numberNode->rawValue = '01';
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Unable to encode JSON number.');
+
+        (new JsonPreservingPrinter())->print($numberNode);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function invalidNumberLexemeProvider(): iterable
+    {
+        yield 'leading zero' => ['01'];
+        yield 'negative leading zero' => ['-01'];
+        yield 'bare fraction dot' => ['1.'];
+        yield 'empty exponent' => ['1e'];
+        yield 'exponent with bare sign' => ['1e+'];
+        yield 'leading plus sign' => ['+1'];
+        yield 'not a number' => ['NaN'];
+        yield 'infinity' => ['Infinity'];
+        yield 'empty lexeme' => [''];
+        yield 'lone minus' => ['-'];
+        yield 'trailing garbage' => ['1 '];
+        yield 'hexadecimal' => ['0x1'];
+    }
+
+    #[DataProvider('invalidNumberLexemeProvider')]
+    public function testItRejectsMalformedNumberLexemes(string $rawValue): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Unable to encode JSON number.');
+
+        (new JsonPreservingPrinter())->print(new NumberNode($rawValue));
+    }
+
+    public function testItPrintsValidNumberLexemesVerbatim(): void
+    {
+        foreach (['0', '-0', '1e0', '1.00', '-0.5E+10', '123', '9e-2'] as $rawValue) {
+            $this->assertSame($rawValue, (new JsonPreservingPrinter())->print(new NumberNode($rawValue)));
+        }
+    }
+
+    public function testItRejectsInvalidNumberLexemeInSyntheticInlineContainer(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a": 1}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('b', new ArrayNode([
+            new ArrayItemNode(new NumberNode('01')),
+        ]));
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Unable to encode JSON number.');
+
+        (new JsonPreservingPrinter())->print($jsonDocument);
+    }
+
     public function testItPreservesBeforeCloseBraceWhenLastKeyIsRemoved(): void
     {
         $jsonDocument = (new JsonParser())->parse("{\n    \"a\": 1\n}");

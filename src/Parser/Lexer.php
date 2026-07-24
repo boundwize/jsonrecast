@@ -25,10 +25,6 @@ final class Lexer
         't'  => true,
     ];
 
-    private const EXPONENT_CHARS = ['e' => true, 'E' => true];
-
-    private const SIGN_CHARS = ['+' => true, '-' => true];
-
     private const KEYWORD_TOKENS = [
         'true'  => TokenType::TRUE,
         'false' => TokenType::FALSE,
@@ -208,56 +204,16 @@ final class Lexer
 
     private function numberToken(int $startOffset, int $line, int $column): Token
     {
-        if ($this->currentChar() === '-') {
-            $this->advance();
+        $numberLexemeScanResult = NumberLexemeScanner::scan($this->source, $this->offset);
 
-            if ($this->isAtEnd() || ! ctype_digit($this->currentChar())) {
-                throw $this->error('Invalid JSON number.');
-            }
+        // advance() keeps line, column and carriage-return state in sync, so
+        // the error position below and later tokens stay accurate
+        while ($this->offset < $numberLexemeScanResult->endOffset) {
+            $this->advance();
         }
 
-        if ($this->currentChar() === '0') {
-            $this->advance();
-
-            if (! $this->isAtEnd() && ctype_digit($this->currentChar())) {
-                throw $this->error('Leading zero is not allowed in JSON number.');
-            }
-        } else {
-            if (! ctype_digit($this->currentChar())) {
-                throw $this->error('Invalid JSON number.');
-            }
-
-            while (! $this->isAtEnd() && ctype_digit($this->currentChar())) {
-                $this->advance();
-            }
-        }
-
-        if (! $this->isAtEnd() && $this->currentChar() === '.') {
-            $this->advance();
-
-            if ($this->isAtEnd() || ! ctype_digit($this->currentChar())) {
-                throw $this->error('Invalid JSON number fraction.');
-            }
-
-            while (! $this->isAtEnd() && ctype_digit($this->currentChar())) {
-                $this->advance();
-            }
-        }
-
-        if (! $this->isAtEnd() && isset(self::EXPONENT_CHARS[$this->currentChar()])) {
-            $this->advance();
-
-            if (! $this->isAtEnd() && isset(self::SIGN_CHARS[$this->currentChar()])) {
-                $this->advance();
-            }
-
-            if ($this->isAtEnd() || ! ctype_digit($this->currentChar())) {
-                throw $this->error('Invalid JSON number exponent.');
-            }
-
-            while (! $this->isAtEnd() && ctype_digit($this->currentChar())) {
-                $this->advance();
-            }
+        if ($numberLexemeScanResult->errorMessage !== null) {
+            throw $this->error($numberLexemeScanResult->errorMessage);
         }
 
         return new Token(

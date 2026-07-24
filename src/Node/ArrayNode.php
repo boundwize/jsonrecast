@@ -156,7 +156,11 @@ final class ArrayNode extends AbstractNodeJson
             return $this->items[$itemCount - 1]->afterValue;
         }
 
-        return $this->separatorAfterValue();
+        if ($itemCount > 1) {
+            return $this->items[max($index - 1, 0)]->afterValue;
+        }
+
+        return '';
     }
 
     private function separatorAfterValue(): string

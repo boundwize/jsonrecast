@@ -569,6 +569,10 @@ final class JsonPreservingPrinter implements JsonPrinter
         ArrayItemNode|ObjectItemNode $itemNode,
         string $containerBeforeClose,
     ): string {
+        if ($containerBeforeClose === '') {
+            return $afterValue;
+        }
+
         if (
             $afterValue === $containerBeforeClose
             && isset($items[$index + 1])

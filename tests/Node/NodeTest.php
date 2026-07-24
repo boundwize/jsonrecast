@@ -159,6 +159,21 @@ final class NodeTest extends TestCase
         $this->assertNull($arrayItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT));
     }
 
+    public function testArrayNodeInsertUsesAfterValueFromNearestInterItemBoundary(): void
+    {
+        foreach ([1, 0] as $index) {
+            $arrayNode = new ArrayNode([
+                new ArrayItemNode(new NumberNode('1'), afterValue: ''),
+                new ArrayItemNode(new NumberNode('2'), afterValue: ' '),
+                new ArrayItemNode(new NumberNode('3')),
+            ]);
+
+            $arrayNode->insert($index, new StringNode('x'));
+
+            $this->assertSame('', $arrayNode->items[$index]->afterValue);
+        }
+    }
+
     public function testArrayNodeInsertIntoEmptyArrayClampsOutOfRangeIndex(): void
     {
         $arrayNode = new ArrayNode([], afterOpenBracket: ' ', beforeCloseBracket: ' ');

@@ -8,6 +8,7 @@ use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use Boundwize\JsonRecast\Node\Helper\LayoutCoordinateHelper;
 use Boundwize\JsonRecast\Node\Helper\StartOffsetHelper;
 use Boundwize\JsonRecast\Node\Helper\WhitespaceHelper;
+use InvalidArgumentException;
 
 use function array_key_exists;
 use function array_splice;
@@ -105,7 +106,7 @@ final class ArrayNode extends AbstractNodeJson
         $itemCount = count($this->items);
 
         if ($index < 0) {
-            return max($itemCount + $index, 0);
+            throw new InvalidArgumentException('Array insertion index must be greater than or equal to 0.');
         }
 
         if ($index > $itemCount) {

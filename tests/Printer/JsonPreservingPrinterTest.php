@@ -2833,6 +2833,30 @@ JSON,
         );
     }
 
+    public function testItUsesNearestInterItemWhitespaceWhenInsertingAtBeginning(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+["a",
+  "b",
+    "c"]
+JSON,
+        );
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->insert(0, new StringNode('x'));
+
+        $this->assertSame(
+            <<<'JSON'
+["x",
+  "a",
+  "b",
+    "c"]
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItRejectsInvalidUtf8String(): void
     {
         $this->expectException(RuntimeException::class);

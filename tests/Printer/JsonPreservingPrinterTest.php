@@ -2975,6 +2975,23 @@ JSON,
         $this->assertSame("{\n    \n    \"a\": 1\n}", (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItKeepsNestedClosingDelimiterAtParentIndentAfterIndentedBlankLine(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("{\n    \"nested\": {\n        \n    }\n}");
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $nestedItem = $jsonDocument->value->get('nested');
+        $this->assertInstanceOf(ObjectItemNode::class, $nestedItem);
+        $this->assertInstanceOf(ObjectNode::class, $nestedItem->value);
+
+        $nestedItem->value->set('a', new NumberNode('1'));
+
+        $this->assertSame(
+            "{\n    \"nested\": {\n        \n        \"a\": 1\n    }\n}",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesSeparatorWhenInsertingIntoSingleItemArray(): void
     {
         $jsonDocument = (new JsonParser())->parse('[1]');

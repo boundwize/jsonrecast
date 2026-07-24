@@ -223,7 +223,7 @@ final class Lexer
                 throw $this->error('Leading zero is not allowed in JSON number.');
             }
         } else {
-            if (! ctype_digit($this->currentChar()) || $this->currentChar() === '0') {
+            if (! ctype_digit($this->currentChar())) {
                 throw $this->error('Invalid JSON number.');
             }
 

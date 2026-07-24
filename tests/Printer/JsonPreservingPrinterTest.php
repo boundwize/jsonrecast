@@ -2975,21 +2975,14 @@ JSON,
         $this->assertSame("{\n    \n    \"a\": 1\n}", (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
-    public function testItKeepsNestedClosingDelimiterAtParentIndentAfterIndentedBlankLine(): void
+    public function testItKeepsArrayClosingDelimiterUnindentedAfterIndentedBlankLine(): void
     {
-        $jsonDocument = (new JsonParser())->parse("{\n    \"nested\": {\n        \n    }\n}");
-        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+        $jsonDocument = (new JsonParser())->parse("[\n    \n]");
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
 
-        $nestedItem = $jsonDocument->value->get('nested');
-        $this->assertInstanceOf(ObjectItemNode::class, $nestedItem);
-        $this->assertInstanceOf(ObjectNode::class, $nestedItem->value);
+        $jsonDocument->value->append(new NumberNode('1'));
 
-        $nestedItem->value->set('a', new NumberNode('1'));
-
-        $this->assertSame(
-            "{\n    \"nested\": {\n        \n        \"a\": 1\n    }\n}",
-            (new JsonPreservingPrinter())->print($jsonDocument),
-        );
+        $this->assertSame("[\n    \n    1\n]", (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
     public function testItPreservesSeparatorWhenInsertingIntoSingleItemArray(): void

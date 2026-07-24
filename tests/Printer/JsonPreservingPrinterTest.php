@@ -2965,14 +2965,21 @@ JSON,
         $this->assertSame("{\n\n    \"a\": 1\n}", (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
-    public function testItKeepsClosingDelimiterUnindentedAfterIndentedBlankLine(): void
+    public function testItKeepsClosingDelimitersUnindentedAfterIndentedBlankLine(): void
     {
-        $jsonDocument = (new JsonParser())->parse("{\n    \n}");
-        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+        $objectDocument = (new JsonParser())->parse("{\n    \n}");
+        $this->assertInstanceOf(ObjectNode::class, $objectDocument->value);
 
-        $jsonDocument->value->set('a', new NumberNode('1'));
+        $objectDocument->value->set('a', new NumberNode('1'));
 
-        $this->assertSame("{\n    \n    \"a\": 1\n}", (new JsonPreservingPrinter())->print($jsonDocument));
+        $this->assertSame("{\n    \n    \"a\": 1\n}", (new JsonPreservingPrinter())->print($objectDocument));
+
+        $arrayDocument = (new JsonParser())->parse("[\n    \n]");
+        $this->assertInstanceOf(ArrayNode::class, $arrayDocument->value);
+
+        $arrayDocument->value->append(new NumberNode('1'));
+
+        $this->assertSame("[\n    \n    1\n]", (new JsonPreservingPrinter())->print($arrayDocument));
     }
 
     public function testItPreservesSeparatorWhenInsertingIntoSingleItemArray(): void

@@ -27,6 +27,7 @@ use RuntimeException;
 use function array_reverse;
 use function count;
 use function json_decode;
+use function str_repeat;
 
 use const JSON_THROW_ON_ERROR;
 
@@ -167,6 +168,28 @@ JSON, JsonRecast::print($jsonRecastResult));
         $this->expectExceptionMessage('Maximum stack depth exceeded.');
 
         JsonRecast::print($jsonDocument, maximumDepth: 2);
+    }
+
+    public function testDumpAstAcceptsCustomMaximumDepth(): void
+    {
+        $depth        = 513;
+        $source       = str_repeat('[', $depth) . '0' . str_repeat(']', $depth);
+        $jsonDocument = JsonRecast::parse($source, maximumDepth: 514);
+
+        $this->assertStringContainsString(
+            'NumberNode(rawValue: "0")',
+            JsonRecast::dumpAst($jsonDocument, maximumDepth: 514),
+        );
+    }
+
+    public function testDumpAstRejectsDepthBeyondCustomMaximumDepth(): void
+    {
+        $jsonDocument = JsonRecast::parse('[[[1]]]', maximumDepth: 4);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
+        JsonRecast::dumpAst($jsonDocument, maximumDepth: 2);
     }
 
     public function testChangedDocumentPreservesRootWhitespace(): void

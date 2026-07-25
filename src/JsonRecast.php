@@ -50,9 +50,11 @@ final class JsonRecast
     public static function dumpAst(
         NodeJson|JsonRecastResult $input,
         bool $includeAttributes = false,
+        int $maximumDepth = JsonParser::DEFAULT_MAXIMUM_DEPTH,
     ): string {
         return (new AstDumper(
             includeAttributes: $includeAttributes,
+            maximumDepth: $maximumDepth,
         ))->dump($input);
     }
 }

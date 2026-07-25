@@ -172,14 +172,30 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     private function guardNodeTreeMaximumDepth(NodeJson $nodeJson): void
     {
-        /** @var list<array{NodeJson, int}> $stack */
-        $stack = [[$nodeJson, 0]];
+        /** @var list<array{NodeJson, int, bool}> $stack */
+        $stack = [[$nodeJson, 0, false]];
+
+        // Wrapper nodes (documents and items) re-enter their value at the same
+        // depth, so a cycle through them never trips the depth guard. Tracking
+        // only the active path — entered here, released by the leave frame —
+        // rejects cycles while still allowing a node shared between siblings.
+        /** @var SplObjectStorage<NodeJson, null> $activePathNodes */
+        $activePathNodes = new SplObjectStorage();
 
         while ($stack !== []) {
-            /** @var array{NodeJson, int} $entry */
+            /** @var array{NodeJson, int, bool} $entry */
             $entry = array_pop($stack);
 
-            [$currentNode, $depth] = $entry;
+            [$currentNode, $depth, $leaving] = $entry;
+
+            if ($leaving) {
+                $activePathNodes->detach($currentNode);
+                continue;
+            }
+
+            if ($activePathNodes->contains($currentNode)) {
+                throw new RuntimeException('Cyclic JSON AST detected.');
+            }
 
             // json_encode() only consumes a nesting level when entering a container,
             // so scalar leaves at the final allowed depth are printable
@@ -188,26 +204,35 @@ final class JsonPreservingPrinter implements JsonPrinter
             }
 
             if ($currentNode instanceof JsonDocument) {
-                $stack[] = [$currentNode->value, $depth];
+                $activePathNodes->attach($currentNode);
+                $stack[] = [$currentNode, $depth, true];
+                $stack[] = [$currentNode->value, $depth, false];
                 continue;
             }
 
             if ($currentNode instanceof ObjectItemNode) {
-                $stack[] = [$currentNode->key, $depth];
-                $stack[] = [$currentNode->value, $depth];
+                $activePathNodes->attach($currentNode);
+                $stack[] = [$currentNode, $depth, true];
+                $stack[] = [$currentNode->key, $depth, false];
+                $stack[] = [$currentNode->value, $depth, false];
                 continue;
             }
 
             if ($currentNode instanceof ObjectNode || $currentNode instanceof ArrayNode) {
+                $activePathNodes->attach($currentNode);
+                $stack[] = [$currentNode, $depth, true];
+
                 foreach ($currentNode->items as $item) {
-                    $stack[] = [$item, $depth + 1];
+                    $stack[] = [$item, $depth + 1, false];
                 }
 
                 continue;
             }
 
             if ($currentNode instanceof ArrayItemNode) {
-                $stack[] = [$currentNode->value, $depth];
+                $activePathNodes->attach($currentNode);
+                $stack[] = [$currentNode, $depth, true];
+                $stack[] = [$currentNode->value, $depth, false];
             }
         }
     }

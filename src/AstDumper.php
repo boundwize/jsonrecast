@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast;
 
 use Boundwize\JsonRecast\Guard\MaximumDepthGuard;
+use Boundwize\JsonRecast\Guard\NodeTreeGuard;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
@@ -57,6 +58,8 @@ final readonly class AstDumper
     {
         $nodeJson = $input instanceof JsonRecastResult ? $input->document : $input;
 
+        NodeTreeGuard::guard($nodeJson, $this->maximumDepth);
+
         return implode("\n", $this->dumpNode($nodeJson, '', true, null, true));
     }
 
@@ -71,10 +74,6 @@ final readonly class AstDumper
         bool $isRoot = false,
         int $depth = 0,
     ): array {
-        if ($nodeJson instanceof ObjectNode || $nodeJson instanceof ArrayNode) {
-            MaximumDepthGuard::guardMaximumDepth($this->maximumDepth, $depth);
-        }
-
         $lines    = [
             $this->line($prefix, $isLast, $this->describe($nodeJson), $label, $isRoot),
         ];

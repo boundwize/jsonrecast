@@ -6,6 +6,7 @@ namespace Boundwize\JsonRecast\Printer;
 
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use Boundwize\JsonRecast\Guard\MaximumDepthGuard;
+use Boundwize\JsonRecast\Guard\NodeTreeGuard;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
@@ -22,7 +23,6 @@ use RuntimeException;
 use SplObjectStorage;
 
 use function abs;
-use function array_pop;
 use function array_splice;
 use function count;
 use function intdiv;
@@ -95,7 +95,7 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     public function print(NodeJson $nodeJson): string
     {
-        $this->guardNodeTreeMaximumDepth($nodeJson);
+        NodeTreeGuard::guard($nodeJson, $this->maximumDepth);
 
         $nodeNewline = $nodeJson->getAttribute(NodeAttributes::NEWLINE);
         $newline     = is_string($nodeNewline) ? $nodeNewline : "\n";
@@ -168,48 +168,6 @@ final class JsonPreservingPrinter implements JsonPrinter
             $nodeJson instanceof NullNode => 'null',
             default => throw new RuntimeException('Unsupported JSON node.'),
         };
-    }
-
-    private function guardNodeTreeMaximumDepth(NodeJson $nodeJson): void
-    {
-        /** @var list<array{NodeJson, int}> $stack */
-        $stack = [[$nodeJson, 0]];
-
-        while ($stack !== []) {
-            /** @var array{NodeJson, int} $entry */
-            $entry = array_pop($stack);
-
-            [$currentNode, $depth] = $entry;
-
-            // json_encode() only consumes a nesting level when entering a container,
-            // so scalar leaves at the final allowed depth are printable
-            if ($currentNode instanceof ObjectNode || $currentNode instanceof ArrayNode) {
-                MaximumDepthGuard::guardMaximumDepth($this->maximumDepth, $depth);
-            }
-
-            if ($currentNode instanceof JsonDocument) {
-                $stack[] = [$currentNode->value, $depth];
-                continue;
-            }
-
-            if ($currentNode instanceof ObjectItemNode) {
-                $stack[] = [$currentNode->key, $depth];
-                $stack[] = [$currentNode->value, $depth];
-                continue;
-            }
-
-            if ($currentNode instanceof ObjectNode || $currentNode instanceof ArrayNode) {
-                foreach ($currentNode->items as $item) {
-                    $stack[] = [$item, $depth + 1];
-                }
-
-                continue;
-            }
-
-            if ($currentNode instanceof ArrayItemNode) {
-                $stack[] = [$currentNode->value, $depth];
-            }
-        }
     }
 
     private function printDocument(

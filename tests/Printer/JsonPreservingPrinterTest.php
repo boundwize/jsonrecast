@@ -89,6 +89,59 @@ final class JsonPreservingPrinterTest extends TestCase
         }
     }
 
+    public function testItKeepsSyntheticContainersInlineAfterMutatingThem(): void
+    {
+        $mutations = [
+            [
+                ['a' => 1],
+                static function (ObjectNode|ArrayNode $payload): void {
+                    self::assertInstanceOf(ObjectNode::class, $payload);
+                    $payload->set('b', new NumberNode('2'));
+                },
+                '{"payload":{"a": 1, "b": 2}}',
+            ],
+            [
+                [1, 2],
+                static function (ObjectNode|ArrayNode $payload): void {
+                    self::assertInstanceOf(ArrayNode::class, $payload);
+                    $payload->append(new NumberNode('3'));
+                },
+                '{"payload":[1, 2, 3]}',
+            ],
+            [
+                [1, 3],
+                static function (ObjectNode|ArrayNode $payload): void {
+                    self::assertInstanceOf(ArrayNode::class, $payload);
+                    $payload->insert(1, new NumberNode('2'));
+                },
+                '{"payload":[1, 2, 3]}',
+            ],
+            [
+                ['a' => 1, 'b' => 2],
+                static function (ObjectNode|ArrayNode $payload): void {
+                    self::assertInstanceOf(ObjectNode::class, $payload);
+                    $payload->remove('b');
+                },
+                '{"payload":{"a": 1}}',
+            ],
+        ];
+
+        foreach ($mutations as [$value, $mutate, $expected]) {
+            $jsonDocument = (new JsonParser())->parse('{"payload":null}');
+            $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+            $payload = JsonValue::from($value);
+            $this->assertTrue($payload instanceof ObjectNode || $payload instanceof ArrayNode);
+            // Mutating a synthetic container marks nodes with a null original
+            // text attribute; the value must still print inline.
+            $mutate($payload);
+
+            $jsonDocument->value->set('payload', $payload);
+
+            $this->assertSame($expected, (new JsonPreservingPrinter())->print($jsonDocument));
+        }
+    }
+
     private const SPLICE_INVARIANT_CASE_COUNT = 256;
 
     public function testItPrintsNewScalarNodes(): void

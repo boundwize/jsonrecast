@@ -643,7 +643,9 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     private function isEntirelySynthetic(NodeJson $nodeJson): bool
     {
-        if ($nodeJson->hasAttribute(NodeAttributes::ORIGINAL_TEXT)) {
+        // Mutations mark synthetic nodes with a null original text attribute;
+        // only parsed source metadata makes a node non-synthetic.
+        if (! $this->isSyntheticItem($nodeJson)) {
             return false;
         }
 

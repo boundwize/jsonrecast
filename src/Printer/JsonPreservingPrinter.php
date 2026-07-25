@@ -6,6 +6,7 @@ namespace Boundwize\JsonRecast\Printer;
 
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use Boundwize\JsonRecast\Guard\MaximumDepthGuard;
+use Boundwize\JsonRecast\Guard\NodeTreeGuard;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
@@ -22,7 +23,6 @@ use RuntimeException;
 use SplObjectStorage;
 
 use function abs;
-use function array_pop;
 use function array_splice;
 use function count;
 use function intdiv;
@@ -95,7 +95,7 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     public function print(NodeJson $nodeJson): string
     {
-        $this->guardNodeTreeMaximumDepth($nodeJson);
+        NodeTreeGuard::guard($nodeJson, $this->maximumDepth);
 
         $nodeNewline = $nodeJson->getAttribute(NodeAttributes::NEWLINE);
         $newline     = is_string($nodeNewline) ? $nodeNewline : "\n";
@@ -168,73 +168,6 @@ final class JsonPreservingPrinter implements JsonPrinter
             $nodeJson instanceof NullNode => 'null',
             default => throw new RuntimeException('Unsupported JSON node.'),
         };
-    }
-
-    private function guardNodeTreeMaximumDepth(NodeJson $nodeJson): void
-    {
-        /** @var list<array{NodeJson, int, bool}> $stack */
-        $stack = [[$nodeJson, 0, false]];
-
-        // Wrapper nodes (documents and items) re-enter their value at the same
-        // depth, so a cycle through them never trips the depth guard. Tracking
-        // only the active path — entered here, released by the leave frame —
-        // rejects cycles while still allowing a node shared between siblings.
-        /** @var SplObjectStorage<NodeJson, null> $activePathNodes */
-        $activePathNodes = new SplObjectStorage();
-
-        while ($stack !== []) {
-            /** @var array{NodeJson, int, bool} $entry */
-            $entry = array_pop($stack);
-
-            [$currentNode, $depth, $leaving] = $entry;
-
-            if ($leaving) {
-                $activePathNodes->detach($currentNode);
-                continue;
-            }
-
-            if ($activePathNodes->contains($currentNode)) {
-                throw new RuntimeException('Cyclic JSON AST detected.');
-            }
-
-            // json_encode() only consumes a nesting level when entering a container,
-            // so scalar leaves at the final allowed depth are printable
-            if ($currentNode instanceof ObjectNode || $currentNode instanceof ArrayNode) {
-                MaximumDepthGuard::guardMaximumDepth($this->maximumDepth, $depth);
-            }
-
-            if ($currentNode instanceof JsonDocument) {
-                $activePathNodes->attach($currentNode);
-                $stack[] = [$currentNode, $depth, true];
-                $stack[] = [$currentNode->value, $depth, false];
-                continue;
-            }
-
-            if ($currentNode instanceof ObjectItemNode) {
-                $activePathNodes->attach($currentNode);
-                $stack[] = [$currentNode, $depth, true];
-                $stack[] = [$currentNode->key, $depth, false];
-                $stack[] = [$currentNode->value, $depth, false];
-                continue;
-            }
-
-            if ($currentNode instanceof ObjectNode || $currentNode instanceof ArrayNode) {
-                $activePathNodes->attach($currentNode);
-                $stack[] = [$currentNode, $depth, true];
-
-                foreach ($currentNode->items as $item) {
-                    $stack[] = [$item, $depth + 1, false];
-                }
-
-                continue;
-            }
-
-            if ($currentNode instanceof ArrayItemNode) {
-                $activePathNodes->attach($currentNode);
-                $stack[] = [$currentNode, $depth, true];
-                $stack[] = [$currentNode->value, $depth, false];
-            }
-        }
     }
 
     private function printDocument(

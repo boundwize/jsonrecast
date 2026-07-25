@@ -8,6 +8,8 @@ use Boundwize\JsonRecast\AstDumper;
 use Boundwize\JsonRecast\Node\AbstractNodeJson;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
+use Boundwize\JsonRecast\Node\JsonDocument;
+use Boundwize\JsonRecast\Node\NullNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use InvalidArgumentException;
@@ -184,6 +186,19 @@ TXT,
         $this->expectExceptionMessage('Maximum stack depth exceeded.');
 
         (new AstDumper(maximumDepth: 2))->dump($arrayNode);
+    }
+
+    public function testItRejectsCyclicNodeTree(): void
+    {
+        // a cyclic document would recurse at the same nesting depth forever,
+        // so it must be rejected before dumping starts
+        $jsonDocument        = new JsonDocument(new NullNode());
+        $jsonDocument->value = $jsonDocument;
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Cyclic JSON AST detected.');
+
+        (new AstDumper())->dump($jsonDocument);
     }
 
     public function testItDumpsScalarAtMaximumNestingDepth(): void

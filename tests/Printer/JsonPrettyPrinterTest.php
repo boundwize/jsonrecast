@@ -7,6 +7,7 @@ namespace Boundwize\JsonRecast\Tests\Printer;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
+use Boundwize\JsonRecast\Node\JsonDocument;
 use Boundwize\JsonRecast\Node\NullNode;
 use Boundwize\JsonRecast\Node\NumberNode;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
@@ -98,6 +99,19 @@ final class JsonPrettyPrinterTest extends TestCase
         $this->expectExceptionMessage('Maximum stack depth exceeded.');
 
         (new JsonPrettyPrinter(maximumDepth: 2))->print($nodeJson);
+    }
+
+    public function testItRejectsCyclicNodeTree(): void
+    {
+        // a cyclic document would recurse at the same nesting depth forever,
+        // so it must be rejected before printing starts
+        $jsonDocument        = new JsonDocument(new NullNode());
+        $jsonDocument->value = $jsonDocument;
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Cyclic JSON AST detected.');
+
+        (new JsonPrettyPrinter())->print($jsonDocument);
     }
 
     public function testItPrintsScalarAtMaximumNestingDepth(): void

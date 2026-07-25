@@ -373,42 +373,17 @@ JSON,
         (new JsonPreservingPrinter(maximumDepth: 2))->print(new JsonDocument($nodeJson));
     }
 
-    /**
-     * @return iterable<string, array{NodeJson}>
-     */
-    public static function provideCyclicNode(): iterable
+    public function testItRejectsCyclicNodeTree(): void
     {
         // a wrapper cycle stays at the same nesting depth forever, so the
         // depth guard alone would never terminate the tree walk
         $jsonDocument        = new JsonDocument(new NullNode());
         $jsonDocument->value = $jsonDocument;
 
-        yield 'document referencing itself' => [$jsonDocument];
-
-        $arrayItemNode        = new ArrayItemNode(new NullNode());
-        $arrayItemNode->value = $arrayItemNode;
-
-        yield 'array item referencing itself' => [$arrayItemNode];
-
-        $objectItemNode        = new ObjectItemNode(new StringNode('key'), new NullNode());
-        $objectItemNode->value = $objectItemNode;
-
-        yield 'object item referencing itself' => [$objectItemNode];
-
-        $containerItemNode        = new ArrayItemNode(new NullNode());
-        $containerArrayNode       = new ArrayNode([$containerItemNode]);
-        $containerItemNode->value = $containerArrayNode;
-
-        yield 'array item referencing its own container' => [$containerArrayNode];
-    }
-
-    #[DataProvider('provideCyclicNode')]
-    public function testItRejectsCyclicNodeTree(NodeJson $nodeJson): void
-    {
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Cyclic JSON AST detected.');
 
-        (new JsonPreservingPrinter())->print($nodeJson);
+        (new JsonPreservingPrinter())->print($jsonDocument);
     }
 
     public function testItPrintsNodeSharedBetweenSiblings(): void

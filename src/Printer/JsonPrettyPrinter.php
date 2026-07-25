@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast\Printer;
 
 use Boundwize\JsonRecast\Guard\MaximumDepthGuard;
+use Boundwize\JsonRecast\Guard\NodeTreeGuard;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
@@ -40,26 +41,21 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
 
     public function print(NodeJson $nodeJson): string
     {
-        return $this->printNode($nodeJson, new PrintContext($this->indent), 0);
+        NodeTreeGuard::guard($nodeJson, $this->maximumDepth);
+
+        return $this->printNode($nodeJson, new PrintContext($this->indent));
     }
 
-    private function printNode(NodeJson $nodeJson, PrintContext $printContext, int $depth): string
+    private function printNode(NodeJson $nodeJson, PrintContext $printContext): string
     {
-        // json_encode() only consumes a nesting level when entering a container,
-        // so scalar leaves at the final allowed depth are printable
-        if ($nodeJson instanceof ObjectNode || $nodeJson instanceof ArrayNode) {
-            MaximumDepthGuard::guardMaximumDepth($this->maximumDepth, $depth);
-        }
-
         return match (true) {
-            $nodeJson instanceof JsonDocument => $this->printNode($nodeJson->value, $printContext, $depth),
+            $nodeJson instanceof JsonDocument => $this->printNode($nodeJson->value, $printContext),
             $nodeJson instanceof ObjectNode, $nodeJson instanceof ArrayNode => $this->printCollection(
                 $nodeJson,
                 $printContext,
-                $depth,
             ),
-            $nodeJson instanceof ObjectItemNode => $this->printObjectItem($nodeJson, $printContext, $depth),
-            $nodeJson instanceof ArrayItemNode => $this->printNode($nodeJson->value, $printContext, $depth),
+            $nodeJson instanceof ObjectItemNode => $this->printObjectItem($nodeJson, $printContext),
+            $nodeJson instanceof ArrayItemNode => $this->printNode($nodeJson->value, $printContext),
             $nodeJson instanceof StringNode => $this->encodeString($nodeJson->value),
             $nodeJson instanceof NumberNode => $this->encodeNumber($nodeJson->rawValue),
             $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
@@ -68,14 +64,14 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
         };
     }
 
-    private function printObjectItem(ObjectItemNode $objectItemNode, PrintContext $printContext, int $depth): string
+    private function printObjectItem(ObjectItemNode $objectItemNode, PrintContext $printContext): string
     {
         return $this->encodeString($objectItemNode->key->value)
             . ': '
-            . $this->printNode($objectItemNode->value, $printContext, $depth);
+            . $this->printNode($objectItemNode->value, $printContext);
     }
 
-    private function printCollection(ObjectNode|ArrayNode $node, PrintContext $printContext, int $depth): string
+    private function printCollection(ObjectNode|ArrayNode $node, PrintContext $printContext): string
     {
         array_splice($node->items, 0, 0);
 
@@ -92,7 +88,7 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
         foreach ($node->items as $i => $item) {
             $output .= $printContext->newline
                 . $printContext->childIndentation()
-                . $this->printCollectionItem($item, $printContext->next(), $depth + 1);
+                . $this->printCollectionItem($item, $printContext->next());
 
             if ($i < count($node->items) - 1) {
                 $output .= ',';
@@ -105,11 +101,10 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
     private function printCollectionItem(
         ObjectItemNode|ArrayItemNode $item,
         PrintContext $printContext,
-        int $depth,
     ): string {
         return match (true) {
-            $item instanceof ObjectItemNode => $this->printObjectItem($item, $printContext, $depth),
-            $item instanceof ArrayItemNode => $this->printNode($item->value, $printContext, $depth),
+            $item instanceof ObjectItemNode => $this->printObjectItem($item, $printContext),
+            $item instanceof ArrayItemNode => $this->printNode($item->value, $printContext),
         };
     }
 

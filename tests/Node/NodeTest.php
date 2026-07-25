@@ -76,15 +76,15 @@ final class NodeTest extends TestCase
             $objectNode->items[1]->key->value,
         ]);
 
-        $objectNode  = $this->objectNodeWithNonSequentialItemKeys(duplicateLastKey: true);
-        $replacement = new StringNode('changed');
-        $objectNode->set('c', $replacement);
+        $objectNode = $this->objectNodeWithNonSequentialItemKeys(duplicateLastKey: true);
+        $stringNode = new StringNode('changed');
+        $objectNode->set('c', $stringNode);
         $this->assertCount(2, $objectNode->items);
         $this->assertSame(['b', 'c'], [
             $objectNode->items[0]->key->value,
             $objectNode->items[1]->key->value,
         ]);
-        $this->assertSame($replacement, $objectNode->items[1]->value);
+        $this->assertSame($stringNode, $objectNode->items[1]->value);
     }
 
     public function testObjectNodeSetUpdatesLastDuplicateKeyAndRemovesEarlierDuplicates(): void

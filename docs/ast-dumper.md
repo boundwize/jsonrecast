@@ -146,7 +146,13 @@ JsonDocument
 
 AST dumping limits JSON nesting depth to `512` by default, matching parsing and printing. This protects the recursive tree traversal from manually constructed or transformed trees that are deeper than the normal parser limit.
 
-To change the limit, instantiate `AstDumper` directly:
+To change the limit, pass `maximumDepth`:
+
+```php
+echo JsonRecast::dumpAst($document, maximumDepth: 1024);
+```
+
+The same option is available when instantiating `AstDumper` directly:
 
 ```php
 use Boundwize\JsonRecast\AstDumper;

@@ -16,11 +16,27 @@ use Boundwize\JsonRecast\Printer\JsonPrettyPrinter;
 use Boundwize\JsonRecast\Value\JsonValue;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
+use ReflectionProperty;
 use RuntimeException;
 use stdClass;
 
 final class JsonPrettyPrinterTest extends TestCase
 {
+    public function testItPrintsValidJsonWhenCollectionItemKeysAreNonSequential(): void
+    {
+        $nodeJson = JsonValue::from([1, 2, 3]);
+        $this->assertInstanceOf(ArrayNode::class, $nodeJson);
+        $items = $nodeJson->items;
+        unset($items[0]);
+        // Reproduce a runtime contract violation without making this test fail static analysis.
+        (new ReflectionProperty($nodeJson, 'items'))->setValue($nodeJson, $items);
+
+        $this->assertSame(
+            "[\n    2,\n    3\n]",
+            (new JsonPrettyPrinter())->print($nodeJson),
+        );
+    }
+
     public function testItPrintsScalarNodes(): void
     {
         $jsonPrettyPrinter = new JsonPrettyPrinter();

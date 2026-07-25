@@ -35,6 +35,8 @@ final class ArrayNode extends AbstractNodeJson
 
     public function insert(int $index, NodeJson $nodeJson): void
     {
+        array_splice($this->items, 0, 0);
+
         $index                      = $this->normalizeInsertionIndex($index);
         $itemCount                  = count($this->items);
         [$beforeValue, $styleDonor] = $this->layoutForInsertedItem($index);
@@ -69,6 +71,8 @@ final class ArrayNode extends AbstractNodeJson
 
     public function setAt(int $index, NodeJson $nodeJson): bool
     {
+        array_splice($this->items, 0, 0);
+
         if (! array_key_exists($index, $this->items)) {
             return false;
         }
@@ -81,6 +85,8 @@ final class ArrayNode extends AbstractNodeJson
 
     public function removeAt(int $index): bool
     {
+        array_splice($this->items, 0, 0);
+
         if (! array_key_exists($index, $this->items)) {
             return false;
         }

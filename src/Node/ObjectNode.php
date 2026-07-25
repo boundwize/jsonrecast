@@ -30,6 +30,8 @@ final class ObjectNode extends AbstractNodeJson
 
     public function get(string $key): ?ObjectItemNode
     {
+        array_splice($this->items, 0, 0);
+
         for ($i = count($this->items) - 1; $i >= 0; $i--) {
             if ($this->items[$i]->key->value === $key) {
                 return $this->items[$i];
@@ -46,6 +48,8 @@ final class ObjectNode extends AbstractNodeJson
 
     public function set(string $key, NodeJson $nodeJson): void
     {
+        array_splice($this->items, 0, 0);
+
         $matchingIndexes = [];
 
         foreach ($this->items as $i => $item) {
@@ -84,6 +88,8 @@ final class ObjectNode extends AbstractNodeJson
 
     public function remove(string $key): bool
     {
+        array_splice($this->items, 0, 0);
+
         $removed            = false;
         $firstItemIsRemoved = isset($this->items[0]) && $this->items[0]->key->value === $key;
 

@@ -24,6 +24,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use ReflectionClassConstant;
 use ReflectionMethod;
+use ReflectionProperty;
 use RuntimeException;
 
 use function array_reverse;
@@ -43,6 +44,27 @@ use const PHP_FLOAT_EPSILON;
 
 final class JsonPreservingPrinterTest extends TestCase
 {
+    public function testItPrintsValidJsonWhenContainerItemKeysAreNonSequential(): void
+    {
+        foreach (
+            [
+                ['{"a":1,"b":2,"c":3}', '{"b":2,"c":3}'],
+                ['[1,2,3]', '[2,3]'],
+            ] as [$source, $expected]
+        ) {
+            $jsonDocument = (new JsonParser())->parse($source);
+            $this->assertTrue(
+                $jsonDocument->value instanceof ObjectNode || $jsonDocument->value instanceof ArrayNode,
+            );
+            $items = $jsonDocument->value->items;
+            unset($items[0]);
+            // Reproduce a runtime contract violation without making this test fail static analysis.
+            (new ReflectionProperty($jsonDocument->value, 'items'))->setValue($jsonDocument->value, $items);
+
+            $this->assertSame($expected, (new JsonPreservingPrinter())->print($jsonDocument));
+        }
+    }
+
     private const SPLICE_INVARIANT_CASE_COUNT = 256;
 
     public function testItPrintsNewScalarNodes(): void

@@ -27,12 +27,31 @@ use Closure;
 use LogicException;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
+use ReflectionProperty;
 use stdClass;
 
 use function is_int;
 
 final class NodeJsonTraverserTest extends TestCase
 {
+    public function testItTraversesContainerWithNonSequentialItemKeys(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a":1,"b":2,"c":3}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+        $items = $jsonDocument->value->items;
+        unset($items[0]);
+        // Reproduce a runtime contract violation without making this test fail static analysis.
+        (new ReflectionProperty($jsonDocument->value, 'items'))->setValue($jsonDocument->value, $items);
+
+        $nodeJsonTraversalResult = $this->traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
+        });
+
+        $this->assertSame(
+            "{\n    \"b\": 2,\n    \"c\": 3\n}",
+            (new JsonPrettyPrinter())->print($nodeJsonTraversalResult->node),
+        );
+    }
+
     public function testNullReturnRecordsNoChange(): void
     {
         $jsonDocument = (new JsonParser())->parse('{"name":"old"}');

@@ -23,6 +23,7 @@ use SplObjectStorage;
 
 use function abs;
 use function array_pop;
+use function array_splice;
 use function count;
 use function intdiv;
 use function is_float;
@@ -244,6 +245,8 @@ final class JsonPreservingPrinter implements JsonPrinter
         bool $detectScalarMutation,
         int $depth,
     ): string {
+        array_splice($containerNode->items, 0, 0);
+
         $childDetectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($containerNode);
         $printedChangedItemValues  = [];
         $shouldPrintBestEffort     = $this->shouldPrintContainerBestEffort($containerNode, $containerNode->items)

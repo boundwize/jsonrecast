@@ -18,6 +18,7 @@ use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\Parser\NumberLexemeScanner;
 use RuntimeException;
 
+use function array_splice;
 use function count;
 use function is_string;
 use function json_encode;
@@ -76,6 +77,8 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
 
     private function printCollection(ObjectNode|ArrayNode $node, PrintContext $printContext, int $depth): string
     {
+        array_splice($node->items, 0, 0);
+
         $isObject       = $node instanceof ObjectNode;
         $openDelimiter  = $isObject ? '{' : '[';
         $closeDelimiter = $isObject ? '}' : ']';

@@ -176,6 +176,8 @@ final class NodeJsonTraverser
 
     private function traverseContainer(ObjectNode|ArrayNode $containerNode, NodeJsonPath $nodeJsonPath): void
     {
+        array_splice($containerNode->items, 0, 0);
+
         $i = 0;
 
         while ($i < count($containerNode->items)) {

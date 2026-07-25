@@ -395,7 +395,12 @@ JSON,
         ]);
 
         $this->assertSame(
-            "[\n    [],\n    []\n]",
+            <<<'JSON'
+[
+    [],
+    []
+]
+JSON,
             (new JsonPreservingPrinter())->print(new JsonDocument($arrayNode)),
         );
     }

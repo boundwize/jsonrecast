@@ -733,6 +733,8 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     private function printSyntheticObjectInline(ObjectNode $objectNode): string
     {
+        array_splice($objectNode->items, 0, 0);
+
         $output = '{';
 
         foreach ($objectNode->items as $i => $item) {
@@ -748,6 +750,8 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     private function printSyntheticArrayInline(ArrayNode $arrayNode): string
     {
+        array_splice($arrayNode->items, 0, 0);
+
         $output = '[';
 
         foreach ($arrayNode->items as $i => $item) {

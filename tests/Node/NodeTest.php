@@ -13,6 +13,7 @@ use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
+use ReflectionProperty;
 
 use function json_encode;
 
@@ -60,6 +61,30 @@ final class NodeTest extends TestCase
 
         $this->assertSame($lastNameItem, $objectNode->get('name'));
         $this->assertTrue($objectNode->has('name'));
+    }
+
+    public function testObjectNodeHelpersNormalizeNonSequentialItemKeys(): void
+    {
+        $objectNode = $this->objectNodeWithNonSequentialItemKeys();
+        $this->assertSame('d', $objectNode->get('d')?->key->value);
+        $this->assertTrue($objectNode->has('d'));
+
+        $objectNode = $this->objectNodeWithNonSequentialItemKeys();
+        $this->assertTrue($objectNode->remove('c'));
+        $this->assertSame(['b', 'd'], [
+            $objectNode->items[0]->key->value,
+            $objectNode->items[1]->key->value,
+        ]);
+
+        $objectNode  = $this->objectNodeWithNonSequentialItemKeys(duplicateLastKey: true);
+        $replacement = new StringNode('changed');
+        $objectNode->set('c', $replacement);
+        $this->assertCount(2, $objectNode->items);
+        $this->assertSame(['b', 'c'], [
+            $objectNode->items[0]->key->value,
+            $objectNode->items[1]->key->value,
+        ]);
+        $this->assertSame($replacement, $objectNode->items[1]->value);
     }
 
     public function testObjectNodeSetUpdatesLastDuplicateKeyAndRemovesEarlierDuplicates(): void
@@ -140,6 +165,29 @@ final class NodeTest extends TestCase
         $this->assertTrue($arrayNode->items[0]->hasAttribute(NodeAttributes::ORIGINAL_TEXT));
         $this->assertNull($arrayNode->items[0]->getAttribute(NodeAttributes::ORIGINAL_TEXT));
         $this->assertFalse($arrayNode->setAt(1, new StringNode('missing')));
+    }
+
+    public function testArrayNodeHelpersNormalizeNonSequentialItemKeys(): void
+    {
+        $arrayNode   = $this->arrayNodeWithNonSequentialItemKeys();
+        $replacement = new NumberNode('99');
+        $this->assertTrue($arrayNode->setAt(0, $replacement));
+        $this->assertSame($replacement, $arrayNode->items[0]->value);
+
+        $arrayNode = $this->arrayNodeWithNonSequentialItemKeys();
+        $firstItem = $arrayNode->items[1];
+        $lastItem  = $arrayNode->items[3];
+        $this->assertTrue($arrayNode->removeAt(1));
+        $this->assertSame([$firstItem, $lastItem], $arrayNode->items);
+
+        $arrayNode = $this->arrayNodeWithNonSequentialItemKeys();
+        $firstItem = $arrayNode->items[1];
+        $lastItems = [$arrayNode->items[2], $arrayNode->items[3]];
+        $inserted  = new NumberNode('99');
+        $arrayNode->insert(1, $inserted);
+        $this->assertSame($firstItem, $arrayNode->items[0]);
+        $this->assertSame($inserted, $arrayNode->items[1]->value);
+        $this->assertSame($lastItems, [$arrayNode->items[2], $arrayNode->items[3]]);
     }
 
     public function testArrayNodeInsertRejectsNegativeIndex(): void
@@ -351,5 +399,35 @@ final class NodeTest extends TestCase
         $this->assertSame("\n    ", $arrayNode->afterOpenBracket);
         $this->assertSame("\n    ", $arrayNode->items[0]->beforeValue);
         $this->assertSame("\n", $arrayNode->items[0]->afterValue);
+    }
+
+    private function objectNodeWithNonSequentialItemKeys(bool $duplicateLastKey = false): ObjectNode
+    {
+        $objectNode = new ObjectNode([
+            new ObjectItemNode(new StringNode('a'), new NumberNode('1')),
+            new ObjectItemNode(new StringNode('b'), new NumberNode('2')),
+            new ObjectItemNode(new StringNode('c'), new NumberNode('3')),
+            new ObjectItemNode(new StringNode($duplicateLastKey ? 'c' : 'd'), new NumberNode('4')),
+        ]);
+        $items      = $objectNode->items;
+        unset($items[0]);
+        (new ReflectionProperty($objectNode, 'items'))->setValue($objectNode, $items);
+
+        return $objectNode;
+    }
+
+    private function arrayNodeWithNonSequentialItemKeys(): ArrayNode
+    {
+        $arrayNode = new ArrayNode([
+            new ArrayItemNode(new NumberNode('1')),
+            new ArrayItemNode(new NumberNode('2')),
+            new ArrayItemNode(new NumberNode('3')),
+            new ArrayItemNode(new NumberNode('4')),
+        ]);
+        $items     = $arrayNode->items;
+        unset($items[0]);
+        (new ReflectionProperty($arrayNode, 'items'))->setValue($arrayNode, $items);
+
+        return $arrayNode;
     }
 }

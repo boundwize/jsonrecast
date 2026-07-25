@@ -65,6 +65,30 @@ final class JsonPreservingPrinterTest extends TestCase
         }
     }
 
+    public function testItPrintsValidJsonWhenInlineSyntheticContainerItemKeysAreNonSequential(): void
+    {
+        foreach (
+            [
+                [['a' => 1, 'b' => 2], '{"payload":{"b": 2}}'],
+                [[1, 2], '{"payload":[2]}'],
+            ] as [$value, $expected]
+        ) {
+            $jsonDocument = (new JsonParser())->parse('{"payload":null}');
+            $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+            $payload = JsonValue::from($value);
+            $this->assertTrue($payload instanceof ObjectNode || $payload instanceof ArrayNode);
+            $items = $payload->items;
+            unset($items[0]);
+            // Reproduce a runtime contract violation without making this test fail static analysis.
+            (new ReflectionProperty($payload, 'items'))->setValue($payload, $items);
+
+            $jsonDocument->value->set('payload', $payload);
+
+            $this->assertSame($expected, (new JsonPreservingPrinter())->print($jsonDocument));
+        }
+    }
+
     private const SPLICE_INVARIANT_CASE_COUNT = 256;
 
     public function testItPrintsNewScalarNodes(): void

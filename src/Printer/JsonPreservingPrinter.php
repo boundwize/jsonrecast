@@ -505,7 +505,6 @@ final class JsonPreservingPrinter implements JsonPrinter
                 $items,
                 $index,
                 $afterValue,
-                $layoutDonor,
                 $containerBeforeClose,
             );
         }
@@ -520,7 +519,6 @@ final class JsonPreservingPrinter implements JsonPrinter
         array $items,
         int $index,
         string $afterValue,
-        ArrayItemNode|ObjectItemNode $itemNode,
         string $containerBeforeClose,
     ): string {
         if ($containerBeforeClose === '') {
@@ -535,7 +533,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             return $this->findSeparatorBeforeIndex($items, $index, $containerBeforeClose);
         }
 
-        if (! $this->isSyntheticItem($itemNode) || $afterValue !== $containerBeforeClose) {
+        if ($afterValue !== $containerBeforeClose) {
             return $afterValue;
         }
 

@@ -1102,6 +1102,36 @@ JSON,
         );
     }
 
+    public function testItDoesNotReuseClosingWhitespaceAfterReorderedArrayItemAndAppend(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+[
+    1,
+    2,
+    3
+]
+JSON,
+        );
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $items                      = $jsonDocument->value->items;
+        $jsonDocument->value->items = [$items[0], $items[2], $items[1]];
+        $jsonDocument->value->append(new NumberNode('4'));
+
+        $this->assertSame(
+            <<<'JSON'
+[
+    1,
+    3,
+    2,
+    4
+]
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesMultilineWhitespaceWhenArrayItemsAreInsertedBeforeParsedItems(): void
     {
         $jsonDocument = (new JsonParser())->parse(
@@ -2373,7 +2403,7 @@ JSON,
             ' ',
             $this->invokeJsonPreservingPrinterMethod(
                 'normalizeSyntheticAfterValue',
-                [[$synthetic, $parsed], 0, "\n", $synthetic, "\n"],
+                [[$synthetic, $parsed], 0, "\n", "\n"],
             ),
         );
     }
@@ -2390,7 +2420,7 @@ JSON,
             ' ',
             $this->invokeJsonPreservingPrinterMethod(
                 'normalizeSyntheticAfterValue',
-                [[$synthetic, $parsed], 0, "\n", $synthetic, "\n"],
+                [[$synthetic, $parsed], 0, "\n", "\n"],
             ),
         );
     }
@@ -2407,7 +2437,7 @@ JSON,
             '',
             $this->invokeJsonPreservingPrinterMethod(
                 'normalizeSyntheticAfterValue',
-                [[$synthetic, $parsed], 0, "\n", $synthetic, "\n"],
+                [[$synthetic, $parsed], 0, "\n", "\n"],
             ),
         );
     }

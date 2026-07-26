@@ -103,6 +103,20 @@ JSON,
         $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
     }
 
+    public function testItAccountsForLeadingClosingDelimiterWhenMeasuringLineDepth(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{"a":{"x":1
+    }, "b": [[
+            1
+        ]]}
+JSON,
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
     public function testItDetectsIndentFromIndentedLinesWhenNestingNeverDeepensAcrossLines(): void
     {
         $jsonDocument = (new JsonParser())->parse(

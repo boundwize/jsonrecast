@@ -63,6 +63,125 @@ JSON,
         $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
     }
 
+    public function testItDetectsIndentUnitWhenMultipleContainersOpenOnOneLine(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{"outer":{
+        "inner": {
+            "value": 1}}}
+JSON,
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
+    public function testItPrefersConsistentIndentUnitOverMisalignedNestedLine(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "a": {
+      "b": 1
+    }
+}
+JSON,
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
+    public function testItDividesIndentGainAcrossMultipleContainerOpeningsOnOneLine(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{"a":{"b":{
+            "c": 1}}}
+JSON,
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
+    public function testItKeepsWholeLineIndentWhenItDoesNotShareRootIndentPrefix(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            "\t{\n"
+            . "    \"a\": 1\n"
+            . "\t}",
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
+    public function testItFallsBackToLineIndentWhenIndentGainIsNotDivisibleByDepthIncrease(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{"a":{"b":{
+    "c": 1}}}
+JSON,
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
+    public function testItKeepsLineIndentWhenLeadingClosingDelimitersAreSeparatedBySpaces(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{"a":[[1
+    ] ], "b": [[
+            2
+        ]]}
+JSON,
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
+    public function testItAccountsForRunOfLeadingClosingDelimitersWhenMeasuringLineDepth(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{"a":[[1
+    ]], "b": [[
+            2
+        ]]}
+JSON,
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
+    public function testItAccountsForLeadingClosingDelimiterWhenMeasuringLineDepth(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{"a":{"x":1
+    }, "b": [[
+            1
+        ]]}
+JSON,
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
+    public function testItDetectsIndentFromIndentedLinesWhenNestingNeverDeepensAcrossLines(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+"a": 1,
+    "b": 2
+}
+JSON,
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
     public function testItParsesUtf8WithByteBasedSourceOffsets(): void
     {
         $city         = "M\xC3\xBCnchen";

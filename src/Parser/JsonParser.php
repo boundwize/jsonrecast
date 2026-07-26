@@ -18,16 +18,12 @@ use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use JsonException;
 
-use function array_keys;
 use function count;
 use function implode;
 use function is_string;
 use function json_decode;
-use function preg_match;
-use function preg_match_all;
 use function str_contains;
 use function str_ends_with;
-use function str_starts_with;
 use function strlen;
 use function substr;
 
@@ -61,7 +57,7 @@ final class JsonParser
         $this->source   = $source;
         $this->tokens   = (new Lexer())->tokenize($source);
         $this->position = 0;
-        $this->indent   = $this->detectIndent($source);
+        $this->indent   = IndentDetector::detect($this->tokens);
         $this->newline  = $this->detectNewline($source);
 
         $beforeValue = $this->readWhitespace();
@@ -344,55 +340,6 @@ final class JsonParser
         }
 
         return "\n";
-    }
-
-    private function detectIndent(string $source): string
-    {
-        preg_match_all('/(?:\r\n|\r|\n)([ \t]+)(?=\S)/', $source, $matches);
-
-        $rootIndent = $this->rootIndent($source);
-
-        /** @var array<string, true> $lineIndents */
-        $lineIndents = [];
-
-        foreach ($matches[1] as $lineIndent) {
-            // the root value's own indentation is the document base, not an indent unit;
-            // only the extra whitespace beyond it reveals the per-level indentation
-            if (str_starts_with($lineIndent, $rootIndent)) {
-                $lineIndent = substr($lineIndent, strlen($rootIndent));
-            }
-
-            if ($lineIndent === '') {
-                continue;
-            }
-
-            $lineIndents[$lineIndent] = true;
-        }
-
-        return $this->shortestIndent(array_keys($lineIndents)) ?? '    ';
-    }
-
-    private function rootIndent(string $source): string
-    {
-        preg_match('/^(?:[ \t]*\R)*([ \t]*)/', $source, $matches);
-
-        return $matches[1] ?? '';
-    }
-
-    /**
-     * @param list<string> $lineIndents
-     */
-    private function shortestIndent(array $lineIndents): ?string
-    {
-        $indent = null;
-
-        foreach ($lineIndents as $lineIndent) {
-            if ($indent === null || strlen($lineIndent) < strlen($indent)) {
-                $indent = $lineIndent;
-            }
-        }
-
-        return $indent;
     }
 
     private function hasTrailingNewline(string $source): bool

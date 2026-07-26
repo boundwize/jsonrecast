@@ -6,6 +6,7 @@ namespace Boundwize\JsonRecast\Node\Helper;
 
 use function preg_match;
 use function str_contains;
+use function str_replace;
 use function strlen;
 use function substr;
 
@@ -14,6 +15,11 @@ use function substr;
  */
 final readonly class WhitespaceHelper
 {
+    public static function normalizeNewlines(string $text): string
+    {
+        return str_replace(["\r\n", "\r"], "\n", $text);
+    }
+
     public static function closingLine(string $whitespace): string
     {
         if (preg_match('/(?:\r\n|\r|\n)[^\r\n]*\z/', $whitespace, $matches) === 1) {

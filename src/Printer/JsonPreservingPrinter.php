@@ -10,6 +10,7 @@ use Boundwize\JsonRecast\Guard\NodeTreeGuard;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
+use Boundwize\JsonRecast\Node\Helper\WhitespaceHelper;
 use Boundwize\JsonRecast\Node\JsonDocument;
 use Boundwize\JsonRecast\Node\NodeJson;
 use Boundwize\JsonRecast\Node\NullNode;
@@ -798,7 +799,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             return $text;
         }
 
-        $normalized = str_replace(["\r\n", "\r"], "\n", $text);
+        $normalized = WhitespaceHelper::normalizeNewlines($text);
 
         return $printContext->newline === "\n"
             ? $normalized

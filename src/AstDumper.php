@@ -9,6 +9,7 @@ use Boundwize\JsonRecast\Guard\NodeTreeGuard;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
+use Boundwize\JsonRecast\Node\Helper\WhitespaceHelper;
 use Boundwize\JsonRecast\Node\JsonDocument;
 use Boundwize\JsonRecast\Node\NodeJson;
 use Boundwize\JsonRecast\Node\NullNode;
@@ -35,7 +36,6 @@ use function rtrim;
 use function str_contains;
 use function str_ends_with;
 use function str_repeat;
-use function str_replace;
 use function strlen;
 
 use const JSON_UNESCAPED_SLASHES;
@@ -298,7 +298,7 @@ final readonly class AstDumper
         string $prefix,
         bool $isLast,
     ): void {
-        $normalizedValue = str_replace(["\r\n", "\r"], "\n", $value);
+        $normalizedValue = WhitespaceHelper::normalizeNewlines($value);
         $endsWithNewline = str_ends_with($normalizedValue, "\n");
         $blockLines      = explode("\n", $normalizedValue);
 

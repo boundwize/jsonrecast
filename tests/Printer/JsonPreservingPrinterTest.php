@@ -27,7 +27,9 @@ use ReflectionMethod;
 use ReflectionProperty;
 use RuntimeException;
 
+use function array_filter;
 use function array_reverse;
+use function array_values;
 use function count;
 use function hash;
 use function implode;
@@ -3516,6 +3518,75 @@ JSON,
         );
     }
 
+    public function testItDoesNotDoubleIndentDeepObjectAfterAllKeysAreRemovedAndNewKeyIsSet(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "outer": [
+        {
+            "a": 1,
+            "b": 2
+        }
+    ]
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $outerItem = $jsonDocument->value->get('outer');
+        $this->assertInstanceOf(ObjectItemNode::class, $outerItem);
+        $this->assertInstanceOf(ArrayNode::class, $outerItem->value);
+
+        $objectItem = $outerItem->value->items[0];
+        $this->assertInstanceOf(ObjectNode::class, $objectItem->value);
+
+        $objectItem->value->remove('a');
+        $objectItem->value->remove('b');
+        $objectItem->value->set('c', new NumberNode('3'));
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "outer": [
+        {
+            "c": 3
+        }
+    ]
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItDoesNotDoubleIndentObjectItemAppendedAfterItemsAreFilteredOut(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "a": null,
+    "b": null
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->items = array_values(array_filter(
+            $jsonDocument->value->items,
+            static fn (ObjectItemNode $objectItemNode): bool => ! $objectItemNode->value instanceof NullNode,
+        ));
+        $jsonDocument->value->set('c', new NumberNode('1'));
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "c": 1
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesTabIndentWhenObjectItemAppendedAfterAllKeysAreRemoved(): void
     {
         $jsonDocument = (new JsonParser())->parse("{\n\t\"a\": 1,\n\t\"b\": 2\n}");
@@ -3561,6 +3632,76 @@ JSON,
             <<<'JSON'
 [
     3
+]
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItDoesNotDoubleIndentDeepArrayAfterAllItemsAreRemovedAndNewItemIsInserted(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "outer": {
+        "items": [
+            1,
+            2
+        ]
+    }
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $outerItem = $jsonDocument->value->get('outer');
+        $this->assertInstanceOf(ObjectItemNode::class, $outerItem);
+        $this->assertInstanceOf(ObjectNode::class, $outerItem->value);
+
+        $itemsItem = $outerItem->value->get('items');
+        $this->assertInstanceOf(ObjectItemNode::class, $itemsItem);
+        $this->assertInstanceOf(ArrayNode::class, $itemsItem->value);
+
+        $itemsItem->value->removeAt(0);
+        $itemsItem->value->removeAt(0);
+        $itemsItem->value->insert(0, new NumberNode('3'));
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "outer": {
+        "items": [
+            3
+        ]
+    }
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItDoesNotDoubleIndentArrayItemAppendedAfterItemsAreFilteredOut(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+[
+    null,
+    null
+]
+JSON,
+        );
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->items = array_values(array_filter(
+            $jsonDocument->value->items,
+            static fn (ArrayItemNode $arrayItemNode): bool => ! $arrayItemNode->value instanceof NullNode,
+        ));
+        $jsonDocument->value->append(new NumberNode('1'));
+
+        $this->assertSame(
+            <<<'JSON'
+[
+    1
 ]
 JSON,
             (new JsonPreservingPrinter())->print($jsonDocument),

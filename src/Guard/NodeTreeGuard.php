@@ -57,12 +57,6 @@ final class NodeTreeGuard
                 throw new RuntimeException(self::CYCLIC_MESSAGE);
             }
 
-            // json_encode() only consumes a nesting level when entering a container,
-            // so scalar leaves at the final allowed depth are printable
-            if ($currentNode instanceof ObjectNode || $currentNode instanceof ArrayNode) {
-                MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth);
-            }
-
             if ($currentNode instanceof JsonDocument) {
                 $activePathNodes->attach($currentNode);
                 $stack[] = [$currentNode, $depth, true];
@@ -79,6 +73,10 @@ final class NodeTreeGuard
             }
 
             if ($currentNode instanceof ObjectNode || $currentNode instanceof ArrayNode) {
+                // json_encode() only consumes a nesting level when entering a container,
+                // so scalar leaves at the final allowed depth are printable
+                MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth);
+
                 $activePathNodes->attach($currentNode);
                 $stack[] = [$currentNode, $depth, true];
 

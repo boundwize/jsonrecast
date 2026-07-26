@@ -76,6 +76,33 @@ JSON,
         $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
     }
 
+    public function testItPrefersConsistentIndentUnitOverMisalignedNestedLine(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "a": {
+      "b": 1
+    }
+}
+JSON,
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
+    public function testItDividesIndentGainAcrossMultipleContainerOpeningsOnOneLine(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{"a":{"b":{
+            "c": 1}}}
+JSON,
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
     public function testItParsesUtf8WithByteBasedSourceOffsets(): void
     {
         $city         = "M\xC3\xBCnchen";

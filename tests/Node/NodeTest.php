@@ -7,6 +7,7 @@ namespace Boundwize\JsonRecast\Tests\Node;
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
+use Boundwize\JsonRecast\Node\Helper\WhitespaceHelper;
 use Boundwize\JsonRecast\Node\NumberNode;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
@@ -22,6 +23,15 @@ use const PHP_FLOAT_EPSILON;
 
 final class NodeTest extends TestCase
 {
+    public function testAppendWhitespaceNormalizationAcceptsNoItems(): void
+    {
+        $items = [];
+
+        WhitespaceHelper::normalizeAfterValuesForAppend($items);
+
+        $this->assertSame([], $items);
+    }
+
     public function testNodeAttributesCanBeListedAndRemoved(): void
     {
         $stringNode = new StringNode('value');

@@ -2596,6 +2596,22 @@ JSON,
         );
     }
 
+    public function testItFindsPreviousWhitespaceThatDiffersFromContainerClose(): void
+    {
+        $items = [
+            new ArrayItemNode(new NumberNode('1'), '', ' '),
+            new ArrayItemNode(new NumberNode('2'), "\n    ", "\n"),
+        ];
+
+        $this->assertSame(
+            ' ',
+            $this->invokeJsonPreservingPrinterMethod(
+                'findSeparatorBeforeIndex',
+                [$items, 2, "\n"],
+            ),
+        );
+    }
+
     public function testItComputesSyntheticStartOffsetsForNeighborFallbacks(): void
     {
         $previous = new ArrayItemNode(new NumberNode('1'));

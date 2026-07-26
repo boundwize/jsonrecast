@@ -1132,6 +1132,33 @@ JSON,
         );
     }
 
+    public function testItNormalizesOwnLineCommaWhitespaceWhenArrayItemIsAppended(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+[
+    1
+,
+    2
+]
+JSON,
+        );
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->append(new NumberNode('3'));
+
+        $this->assertSame(
+            <<<'JSON'
+[
+    1,
+    2,
+    3
+]
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesMultilineWhitespaceWhenArrayItemsAreInsertedBeforeParsedItems(): void
     {
         $jsonDocument = (new JsonParser())->parse(
@@ -1333,6 +1360,36 @@ JSON,
     "c": 3,
     "b": 2,
     "a": 1,
+    "d": 4
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItDoesNotReuseClosingWhitespaceAfterReorderedObjectItemAndAppend(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "a": 1,
+    "b": 2,
+    "c": 3
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $items                      = $jsonDocument->value->items;
+        $jsonDocument->value->items = [$items[0], $items[2], $items[1]];
+        $jsonDocument->value->set('d', new NumberNode('4'));
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "a": 1,
+    "c": 3,
+    "b": 2,
     "d": 4
 }
 JSON,

@@ -103,6 +103,18 @@ JSON,
         $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
     }
 
+    public function testItFallsBackToLineIndentWhenIndentGainIsNotDivisibleByDepthIncrease(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{"a":{"b":{
+    "c": 1}}}
+JSON,
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
     public function testItAccountsForLeadingClosingDelimiterWhenMeasuringLineDepth(): void
     {
         $jsonDocument = (new JsonParser())->parse(

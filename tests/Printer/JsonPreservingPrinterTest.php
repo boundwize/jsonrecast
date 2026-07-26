@@ -630,6 +630,39 @@ JSON,
         );
     }
 
+    public function testItUsesIndentUnitFromNestingDeltaWhenMultipleContainersOpenOnOneLine(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{"outer":{
+        "inner": {
+            "value": 1}}}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $outerItem = $jsonDocument->value->get('outer');
+        $this->assertInstanceOf(ObjectItemNode::class, $outerItem);
+        $this->assertInstanceOf(ObjectNode::class, $outerItem->value);
+
+        $innerItem = $outerItem->value->get('inner');
+        $this->assertInstanceOf(ObjectItemNode::class, $innerItem);
+        $this->assertInstanceOf(ObjectNode::class, $innerItem->value);
+
+        $innerItem->value->set('value', JsonValue::from(['x' => 1]));
+
+        $this->assertSame(
+            <<<'JSON'
+{"outer":{
+        "inner": {
+            "value": {
+                "x": 1
+            }}}}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesDocumentFramingWhitespaceAfterRootValueReplacement(): void
     {
         $jsonDocument        = (new JsonParser())->parse("\n1\t");

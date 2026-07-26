@@ -63,6 +63,19 @@ JSON,
         $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
     }
 
+    public function testItDetectsIndentUnitWhenMultipleContainersOpenOnOneLine(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{"outer":{
+        "inner": {
+            "value": 1}}}
+JSON,
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
     public function testItParsesUtf8WithByteBasedSourceOffsets(): void
     {
         $city         = "M\xC3\xBCnchen";

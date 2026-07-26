@@ -25,11 +25,14 @@ use function is_string;
 use function json_decode;
 use function preg_match;
 use function preg_match_all;
+use function preg_split;
 use function str_contains;
 use function str_ends_with;
 use function str_starts_with;
 use function strlen;
+use function strspn;
 use function substr;
+use function trim;
 
 use const JSON_THROW_ON_ERROR;
 
@@ -348,6 +351,64 @@ final class JsonParser
 
     private function detectIndent(string $source): string
     {
+        return $this->shortestIndent($this->nestingIndentDeltas($source))
+            ?? $this->shortestIndent($this->lineIndentsBeyondRoot($source))
+            ?? '    ';
+    }
+
+    /**
+     * A line's absolute indentation may span several nesting levels when
+     * multiple containers open on one line, so the per-level unit is the
+     * indentation gained across a single container opening.
+     *
+     * @return list<string>
+     */
+    private function nestingIndentDeltas(string $source): array
+    {
+        $lines = preg_split('/\r\n|\r|\n/', $source);
+        if ($lines === false) {
+            return [];
+        }
+
+        /** @var array<string, true> $deltas */
+        $deltas = [];
+
+        $previousIndent         = '';
+        $previousOpensContainer = false;
+
+        foreach ($lines as $line) {
+            $content = trim($line, " \t");
+            if ($content === '') {
+                continue;
+            }
+
+            $indent = substr($line, 0, strspn($line, " \t"));
+
+            if (
+                $previousOpensContainer
+                && strlen($indent) > strlen($previousIndent)
+                && str_starts_with($indent, $previousIndent)
+            ) {
+                $deltas[substr($indent, strlen($previousIndent))] = true;
+            }
+
+            $previousIndent = $indent;
+            // JSON strings cannot contain raw newlines, so a line-final "{" or
+            // "[" is always a structural token: the next line sits one level
+            // deeper. Deltas between other lines are skipped because sibling
+            // lines may be misaligned without implying a nesting step.
+            $lastCharacter          = substr($content, -1);
+            $previousOpensContainer = $lastCharacter === '{' || $lastCharacter === '[';
+        }
+
+        return array_keys($deltas);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function lineIndentsBeyondRoot(string $source): array
+    {
         preg_match_all('/(?:\r\n|\r|\n)([ \t]+)(?=\S)/', $source, $matches);
 
         $rootIndent = $this->rootIndent($source);
@@ -369,7 +430,7 @@ final class JsonParser
             $lineIndents[$lineIndent] = true;
         }
 
-        return $this->shortestIndent(array_keys($lineIndents)) ?? '    ';
+        return array_keys($lineIndents);
     }
 
     private function rootIndent(string $source): string

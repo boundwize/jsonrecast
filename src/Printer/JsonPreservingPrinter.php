@@ -133,10 +133,9 @@ final class JsonPreservingPrinter implements JsonPrinter
         if (! $this->isChanged($nodeJson)) {
             $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
-            if (
-                is_string($originalText)
-                && (! $detectScalarMutation || ! $this->hasScalarValueChanged($nodeJson))
-            ) {
+            // isChanged() already covers hasScalarValueChanged(), so an
+            // unchanged node can never carry a mutated scalar value here.
+            if (is_string($originalText)) {
                 return $nodeJson instanceof JsonDocument
                     ? $originalText
                     : $this->reindentOriginalText($nodeJson, $originalText, $printContext);

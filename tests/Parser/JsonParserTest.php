@@ -103,6 +103,20 @@ JSON,
         $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
     }
 
+    public function testItDetectsIndentFromIndentedLinesWhenNestingNeverDeepensAcrossLines(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+"a": 1,
+    "b": 2
+}
+JSON,
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
     public function testItParsesUtf8WithByteBasedSourceOffsets(): void
     {
         $city         = "M\xC3\xBCnchen";

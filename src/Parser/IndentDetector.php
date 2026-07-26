@@ -42,7 +42,6 @@ final class IndentDetector
 
     /**
      * @param list<Token> $tokens
-     *
      * @return list<string>
      */
     private static function nestingIndentUnits(array $tokens): array

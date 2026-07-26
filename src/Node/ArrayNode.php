@@ -59,8 +59,19 @@ final class ArrayNode extends AbstractNodeJson
         $previousDonor     = StartOffsetHelper::findStyleDonorBefore($this->items, $startOffset);
 
         if ($closingStyleDonor instanceof NodeJson && $previousDonor === $closingStyleDonor) {
-            $closingStyleDonor->afterValue = WhitespaceHelper::separatorAfterValue($this->items);
-            $closingStyleDonor->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+            $separatorAfterValue = WhitespaceHelper::separatorAfterValue($this->items);
+
+            if ($index === $itemCount) {
+                $lastIndex = $itemCount - 1;
+
+                $this->items[$lastIndex]->afterValue = $separatorAfterValue;
+                $this->items[$lastIndex]->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+            }
+
+            if ($closingStyleDonor->afterValue !== $separatorAfterValue) {
+                $closingStyleDonor->afterValue = $separatorAfterValue;
+                $closingStyleDonor->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+            }
         } elseif (! $closingStyleDonor instanceof NodeJson && $index === $itemCount && $this->items !== []) {
             $lastIndex = $itemCount - 1;
 
@@ -166,6 +177,10 @@ final class ArrayNode extends AbstractNodeJson
             return $this->beforeCloseBracket;
         }
 
+        if ($index === $itemCount) {
+            return $this->items[$itemCount - 1]->afterValue;
+        }
+
         $previousStyleDonor = StartOffsetHelper::findStyleDonorBefore($this->items, $startOffset);
 
         if ($previousStyleDonor instanceof ArrayItemNode) {
@@ -182,10 +197,6 @@ final class ArrayNode extends AbstractNodeJson
             }
 
             return '';
-        }
-
-        if ($index === $itemCount) {
-            return $this->items[$itemCount - 1]->afterValue;
         }
 
         if ($itemCount > 1) {

@@ -1189,6 +1189,45 @@ JSON,
         );
     }
 
+    public function testItKeepsReorderedOuterArrayInlineAfterNestedArrayReorderAndAppend(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+["s6", {
+    "k0": [
+        false,
+        null
+    ],
+    "k1":74
+}]
+JSON,
+        );
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $objectItem = $jsonDocument->value->items[1];
+        $this->assertInstanceOf(ObjectNode::class, $objectItem->value);
+
+        $arrayItem = $objectItem->value->items[0];
+        $this->assertInstanceOf(ArrayNode::class, $arrayItem->value);
+
+        $arrayItem->value->items    = array_reverse($arrayItem->value->items);
+        $jsonDocument->value->items = array_reverse($jsonDocument->value->items);
+        $jsonDocument->value->append(new NullNode());
+
+        $this->assertSame(
+            <<<'JSON'
+[{
+    "k0": [
+        null,
+        false
+    ],
+    "k1":74
+}, "s6", null]
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesMultilineWhitespaceWhenArrayItemsAreInsertedBeforeParsedItems(): void
     {
         $jsonDocument = (new JsonParser())->parse(

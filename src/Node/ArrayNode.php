@@ -58,10 +58,10 @@ final class ArrayNode extends AbstractNodeJson
         $closingStyleDonor = StartOffsetHelper::findStyleDonor($this->items);
         $previousDonor     = StartOffsetHelper::findStyleDonorBefore($this->items, $startOffset);
 
-        if ($closingStyleDonor !== null && $previousDonor === $closingStyleDonor) {
+        if ($closingStyleDonor instanceof NodeJson && $previousDonor === $closingStyleDonor) {
             $closingStyleDonor->afterValue = WhitespaceHelper::separatorAfterValue($this->items);
             $closingStyleDonor->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
-        } elseif ($closingStyleDonor === null && $index === $itemCount && $this->items !== []) {
+        } elseif (! $closingStyleDonor instanceof NodeJson && $index === $itemCount && $this->items !== []) {
             $lastIndex = $itemCount - 1;
 
             $this->items[$lastIndex]->afterValue = WhitespaceHelper::separatorAfterValue($this->items);

@@ -1132,7 +1132,7 @@ JSON,
         );
     }
 
-    public function testItNormalizesOwnLineCommaWhitespaceWhenArrayItemIsAppended(): void
+    public function testItPreservesOwnLineCommaWhitespaceWhenArrayItemIsAppended(): void
     {
         $jsonDocument = (new JsonParser())->parse(
             <<<'JSON'
@@ -1150,7 +1150,8 @@ JSON,
         $this->assertSame(
             <<<'JSON'
 [
-    1,
+    1
+,
     2,
     3
 ]
@@ -2460,7 +2461,7 @@ JSON,
             ' ',
             $this->invokeJsonPreservingPrinterMethod(
                 'normalizeSyntheticAfterValue',
-                [[$synthetic, $parsed], 0, "\n", "\n"],
+                [[$synthetic, $parsed], 0, "\n", $synthetic, "\n"],
             ),
         );
     }
@@ -2477,7 +2478,7 @@ JSON,
             ' ',
             $this->invokeJsonPreservingPrinterMethod(
                 'normalizeSyntheticAfterValue',
-                [[$synthetic, $parsed], 0, "\n", "\n"],
+                [[$synthetic, $parsed], 0, "\n", $synthetic, "\n"],
             ),
         );
     }
@@ -2494,7 +2495,7 @@ JSON,
             '',
             $this->invokeJsonPreservingPrinterMethod(
                 'normalizeSyntheticAfterValue',
-                [[$synthetic, $parsed], 0, "\n", "\n"],
+                [[$synthetic, $parsed], 0, "\n", $synthetic, "\n"],
             ),
         );
     }

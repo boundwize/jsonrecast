@@ -51,4 +51,41 @@ final readonly class StartOffsetHelper
 
         return $styleDonor;
     }
+
+    /**
+     * @template T of NodeJson
+     * @param list<T> $items
+     * @return T|null
+     */
+    public static function findPreviousStyleDonor(array $items): ?NodeJson
+    {
+        $styleDonor = self::findStyleDonor($items);
+
+        if (! $styleDonor instanceof NodeJson) {
+            return null;
+        }
+
+        $styleDonorStartOffset = self::getNumericStartOffset($styleDonor);
+        $previousStyleDonor    = null;
+        $previousStartOffset   = null;
+
+        foreach ($items as $item) {
+            $startOffset = self::getNumericStartOffset($item);
+
+            if (
+                $startOffset === null
+                || $styleDonorStartOffset === null
+                || $startOffset >= $styleDonorStartOffset
+            ) {
+                continue;
+            }
+
+            if ($previousStartOffset === null || $startOffset > $previousStartOffset) {
+                $previousStartOffset = $startOffset;
+                $previousStyleDonor  = $item;
+            }
+        }
+
+        return $previousStyleDonor;
+    }
 }

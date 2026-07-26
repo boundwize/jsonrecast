@@ -172,6 +172,12 @@ final class ArrayNode extends AbstractNodeJson
 
     private function separatorAfterValue(): string
     {
+        $styleDonor = StartOffsetHelper::findPreviousStyleDonor($this->items);
+
+        if ($styleDonor instanceof ArrayItemNode) {
+            return $styleDonor->afterValue;
+        }
+
         $itemCount = count($this->items);
 
         if ($itemCount > 1) {

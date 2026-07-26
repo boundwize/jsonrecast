@@ -195,6 +195,12 @@ final class ObjectNode extends AbstractNodeJson
 
     private function separatorAfterValue(): string
     {
+        $styleDonor = StartOffsetHelper::findPreviousStyleDonor($this->items);
+
+        if ($styleDonor instanceof ObjectItemNode) {
+            return $styleDonor->afterValue;
+        }
+
         $itemCount = count($this->items);
 
         if ($itemCount > 1) {

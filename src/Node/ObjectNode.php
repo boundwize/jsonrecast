@@ -145,9 +145,9 @@ final class ObjectNode extends AbstractNodeJson
         $objectItemNode->setAttribute(NodeAttributes::START_OFFSET, $this->startOffsetForAppendedItem());
         LayoutCoordinateHelper::setForNewItem($objectItemNode, $this, $styleDonor);
 
-        if ($lastItem instanceof ObjectItemNode) {
-            $lastItem->afterValue = WhitespaceHelper::separatorAfterValue($this->items);
-            $lastItem->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+        if ($styleDonor instanceof ObjectItemNode) {
+            $styleDonor->afterValue = WhitespaceHelper::separatorAfterValue($this->items);
+            $styleDonor->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         } else {
             $this->afterOpenBrace   = $beforeKey;
             $this->beforeCloseBrace = $afterValue;

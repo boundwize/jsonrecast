@@ -66,16 +66,30 @@ final readonly class StartOffsetHelper
         }
 
         $styleDonorStartOffset = self::getNumericStartOffset($styleDonor);
-        $previousStyleDonor    = null;
-        $previousStartOffset   = null;
+
+        if ($styleDonorStartOffset === null) {
+            return null;
+        }
+
+        return self::findStyleDonorBefore($items, $styleDonorStartOffset);
+    }
+
+    /**
+     * @template T of NodeJson
+     * @param list<T> $items
+     * @return T|null
+     */
+    public static function findStyleDonorBefore(array $items, float $beforeStartOffset): ?NodeJson
+    {
+        $previousStyleDonor  = null;
+        $previousStartOffset = null;
 
         foreach ($items as $item) {
             $startOffset = self::getNumericStartOffset($item);
 
             if (
                 $startOffset === null
-                || $styleDonorStartOffset === null
-                || $startOffset >= $styleDonorStartOffset
+                || $startOffset >= $beforeStartOffset
             ) {
                 continue;
             }
@@ -87,5 +101,34 @@ final readonly class StartOffsetHelper
         }
 
         return $previousStyleDonor;
+    }
+
+    /**
+     * @template T of NodeJson
+     * @param list<T> $items
+     * @return T|null
+     */
+    public static function findStyleDonorAfter(array $items, float $afterStartOffset): ?NodeJson
+    {
+        $nextStyleDonor  = null;
+        $nextStartOffset = null;
+
+        foreach ($items as $item) {
+            $startOffset = self::getNumericStartOffset($item);
+
+            if (
+                $startOffset === null
+                || $startOffset <= $afterStartOffset
+            ) {
+                continue;
+            }
+
+            if ($nextStartOffset === null || $startOffset < $nextStartOffset) {
+                $nextStartOffset = $startOffset;
+                $nextStyleDonor  = $item;
+            }
+        }
+
+        return $nextStyleDonor;
     }
 }

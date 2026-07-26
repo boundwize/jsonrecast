@@ -40,13 +40,14 @@ final class ArrayNode extends AbstractNodeJson
         $index                      = $this->normalizeInsertionIndex($index);
         $itemCount                  = count($this->items);
         [$beforeValue, $styleDonor] = $this->layoutForInsertedItem($index);
+        $startOffset                = $this->startOffsetForInsertedItem($index);
         $arrayItemNode              = new ArrayItemNode(
             value: $nodeJson,
             beforeValue: $beforeValue,
-            afterValue: $this->afterValueForInsertedItem($index),
+            afterValue: $this->afterValueForInsertedItem($index, $startOffset),
         );
         $arrayItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
-        $arrayItemNode->setAttribute(NodeAttributes::START_OFFSET, $this->startOffsetForInsertedItem($index));
+        $arrayItemNode->setAttribute(NodeAttributes::START_OFFSET, $startOffset);
         LayoutCoordinateHelper::setForNewItem($arrayItemNode, $this, $styleDonor);
 
         if ($index === 0 && $this->items !== []) {
@@ -54,7 +55,13 @@ final class ArrayNode extends AbstractNodeJson
             $this->items[0]->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         }
 
-        if ($index === $itemCount && $this->items !== []) {
+        $closingStyleDonor = StartOffsetHelper::findStyleDonor($this->items);
+        $previousDonor     = StartOffsetHelper::findStyleDonorBefore($this->items, $startOffset);
+
+        if ($closingStyleDonor !== null && $previousDonor === $closingStyleDonor) {
+            $closingStyleDonor->afterValue = WhitespaceHelper::separatorAfterValue($this->items);
+            $closingStyleDonor->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+        } elseif ($closingStyleDonor === null && $index === $itemCount && $this->items !== []) {
             $lastIndex = $itemCount - 1;
 
             $this->items[$lastIndex]->afterValue = WhitespaceHelper::separatorAfterValue($this->items);
@@ -147,19 +154,37 @@ final class ArrayNode extends AbstractNodeJson
         return $this->layoutForAppendedItem();
     }
 
-    private function afterValueForInsertedItem(int $index): string
+    private function afterValueForInsertedItem(int $index, float $startOffset): string
     {
         $itemCount = count($this->items);
 
-        if ($index === $itemCount) {
-            if ($itemCount === 0) {
-                if ($this->afterOpenBracket === $this->beforeCloseBracket) {
-                    return WhitespaceHelper::closingLine($this->beforeCloseBracket);
-                }
-
-                return $this->beforeCloseBracket;
+        if ($itemCount === 0) {
+            if ($this->afterOpenBracket === $this->beforeCloseBracket) {
+                return WhitespaceHelper::closingLine($this->beforeCloseBracket);
             }
 
+            return $this->beforeCloseBracket;
+        }
+
+        $previousStyleDonor = StartOffsetHelper::findStyleDonorBefore($this->items, $startOffset);
+
+        if ($previousStyleDonor instanceof ArrayItemNode) {
+            return $previousStyleDonor->afterValue;
+        }
+
+        if (StartOffsetHelper::findStyleDonor($this->items) instanceof ArrayItemNode) {
+            if ($itemCount > 1) {
+                $nextStyleDonor = StartOffsetHelper::findStyleDonorAfter($this->items, $startOffset);
+
+                if ($nextStyleDonor instanceof ArrayItemNode) {
+                    return $nextStyleDonor->afterValue;
+                }
+            }
+
+            return '';
+        }
+
+        if ($index === $itemCount) {
             return $this->items[$itemCount - 1]->afterValue;
         }
 

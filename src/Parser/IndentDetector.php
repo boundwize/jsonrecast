@@ -46,7 +46,6 @@ final class IndentDetector
      * never deepens across lines.
      *
      * @param list<Token> $tokens
-     *
      * @return array{list<string>, list<string>}
      */
     private static function scanLines(array $tokens): array

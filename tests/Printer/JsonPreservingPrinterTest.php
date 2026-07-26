@@ -1102,6 +1102,132 @@ JSON,
         );
     }
 
+    public function testItDoesNotReuseClosingWhitespaceAfterReorderedArrayItemAndAppend(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+[
+    1,
+    2,
+    3
+]
+JSON,
+        );
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $items                      = $jsonDocument->value->items;
+        $jsonDocument->value->items = [$items[0], $items[2], $items[1]];
+        $jsonDocument->value->append(new NumberNode('4'));
+
+        $this->assertSame(
+            <<<'JSON'
+[
+    1,
+    3,
+    2,
+    4
+]
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItPreservesOwnLineCommaWhitespaceWhenArrayItemIsAppended(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+[
+    1
+,
+    2
+]
+JSON,
+        );
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->append(new NumberNode('3'));
+
+        $this->assertSame(
+            <<<'JSON'
+[
+    1
+,
+    2,
+    3
+]
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItDoesNotReuseClosingWhitespaceAfterReorderedArrayInsertions(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+[
+    1,
+    2
+]
+JSON,
+        );
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->items = array_reverse($jsonDocument->value->items);
+        $jsonDocument->value->insert(0, new NumberNode('3'));
+        $jsonDocument->value->insert(3, new NumberNode('4'));
+
+        $this->assertSame(
+            <<<'JSON'
+[
+    3,
+    2,
+    1,
+    4
+]
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItKeepsReorderedOuterArrayInlineAfterNestedArrayReorderAndAppend(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+["s6", {
+    "k0": [
+        false,
+        null
+    ],
+    "k1":74
+}]
+JSON,
+        );
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $objectItem = $jsonDocument->value->items[1];
+        $this->assertInstanceOf(ObjectNode::class, $objectItem->value);
+
+        $arrayItem = $objectItem->value->items[0];
+        $this->assertInstanceOf(ArrayNode::class, $arrayItem->value);
+
+        $arrayItem->value->items    = array_reverse($arrayItem->value->items);
+        $jsonDocument->value->items = array_reverse($jsonDocument->value->items);
+        $jsonDocument->value->append(new NullNode());
+
+        $this->assertSame(
+            <<<'JSON'
+[{
+    "k0": [
+        null,
+        false
+    ],
+    "k1":74
+}, "s6", null]
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesMultilineWhitespaceWhenArrayItemsAreInsertedBeforeParsedItems(): void
     {
         $jsonDocument = (new JsonParser())->parse(
@@ -1304,6 +1430,64 @@ JSON,
     "b": 2,
     "a": 1,
     "d": 4
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItDoesNotReuseClosingWhitespaceAfterReorderedObjectItemAndAppend(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "a": 1,
+    "b": 2,
+    "c": 3
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $items                      = $jsonDocument->value->items;
+        $jsonDocument->value->items = [$items[0], $items[2], $items[1]];
+        $jsonDocument->value->set('d', new NumberNode('4'));
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "a": 1,
+    "c": 3,
+    "b": 2,
+    "d": 4
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItDoesNotReuseClosingWhitespaceAfterObjectReorderAppendAndReorder(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "a": 1,
+    "b": 2
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->items = array_reverse($jsonDocument->value->items);
+        $jsonDocument->value->set('c', new NumberNode('3'));
+        $jsonDocument->value->items = array_reverse($jsonDocument->value->items);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "c": 3,
+    "a": 1,
+    "b": 2
 }
 JSON,
             (new JsonPreservingPrinter())->print($jsonDocument),
@@ -2408,6 +2592,22 @@ JSON,
             $this->invokeJsonPreservingPrinterMethod(
                 'normalizeSyntheticAfterValue',
                 [[$synthetic, $parsed], 0, "\n", $synthetic, "\n"],
+            ),
+        );
+    }
+
+    public function testItFindsPreviousWhitespaceThatDiffersFromContainerClose(): void
+    {
+        $items = [
+            new ArrayItemNode(new NumberNode('1'), '', ' '),
+            new ArrayItemNode(new NumberNode('2'), "\n    ", "\n"),
+        ];
+
+        $this->assertSame(
+            ' ',
+            $this->invokeJsonPreservingPrinterMethod(
+                'findSeparatorBeforeIndex',
+                [$items, 2, "\n"],
             ),
         );
     }

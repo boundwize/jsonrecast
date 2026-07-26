@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Node\Helper;
 
+use Boundwize\JsonRecast\Attribute\NodeAttributes;
+use Boundwize\JsonRecast\Node\ArrayItemNode;
+use Boundwize\JsonRecast\Node\ObjectItemNode;
+
+use function count;
 use function preg_match;
 use function str_contains;
 use function str_replace;
@@ -45,6 +50,77 @@ final readonly class WhitespaceHelper
         }
 
         return $donorWhitespace;
+    }
+
+    /**
+     * @param list<ArrayItemNode|ObjectItemNode> $items
+     */
+    public static function normalizeAfterValuesForAppend(array $items): void
+    {
+        $lastIndex = count($items) - 1;
+
+        if ($lastIndex < 0) {
+            return;
+        }
+
+        $lastItem            = $items[$lastIndex];
+        $closingDonor        = StartOffsetHelper::findStyleDonor($items);
+        $separatorAfterValue = self::separatorAfterValue($items, $closingDonor);
+
+        $lastItem->afterValue = $separatorAfterValue;
+        $lastItem->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+
+        if (
+            ($closingDonor instanceof ArrayItemNode || $closingDonor instanceof ObjectItemNode)
+            && $closingDonor !== $lastItem
+            && $closingDonor->afterValue !== $separatorAfterValue
+        ) {
+            $closingDonor->afterValue = $separatorAfterValue;
+            $closingDonor->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+        }
+    }
+
+    /**
+     * @param list<ArrayItemNode|ObjectItemNode> $items
+     */
+    private static function separatorAfterValue(
+        array $items,
+        ArrayItemNode|ObjectItemNode|null $closingDonor,
+    ): string {
+        if ($closingDonor !== null) {
+            $separatorCandidates = [];
+
+            foreach ($items as $item) {
+                if ($item === $closingDonor) {
+                    continue;
+                }
+
+                // A synthetic item may have copied closing whitespace during an earlier insertion.
+                // It is not a reliable source for inter-item separator whitespace.
+                $isSyntheticClosingCopy = StartOffsetHelper::isSyntheticNode($item)
+                    && $item->afterValue === $closingDonor->afterValue;
+
+                if ($isSyntheticClosingCopy) {
+                    continue;
+                }
+
+                $separatorCandidates[] = $item;
+            }
+
+            $separatorDonor = StartOffsetHelper::findStyleDonor($separatorCandidates);
+
+            if ($separatorDonor instanceof ArrayItemNode || $separatorDonor instanceof ObjectItemNode) {
+                return $separatorDonor->afterValue;
+            }
+        }
+
+        $itemCount = count($items);
+
+        if ($itemCount > 1) {
+            return $items[$itemCount - 2]->afterValue;
+        }
+
+        return '';
     }
 
     /**

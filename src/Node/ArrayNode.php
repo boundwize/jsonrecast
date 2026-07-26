@@ -55,10 +55,7 @@ final class ArrayNode extends AbstractNodeJson
         }
 
         if ($index === $itemCount && $this->items !== []) {
-            $lastIndex = $itemCount - 1;
-
-            $this->items[$lastIndex]->afterValue = $this->separatorAfterValue();
-            $this->items[$lastIndex]->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+            WhitespaceHelper::normalizeAfterValuesForAppend($this->items);
         }
 
         if ($itemCount === 0) {
@@ -165,17 +162,6 @@ final class ArrayNode extends AbstractNodeJson
 
         if ($itemCount > 1) {
             return $this->items[max($index - 1, 0)]->afterValue;
-        }
-
-        return '';
-    }
-
-    private function separatorAfterValue(): string
-    {
-        $itemCount = count($this->items);
-
-        if ($itemCount > 1) {
-            return $this->items[$itemCount - 2]->afterValue;
         }
 
         return '';

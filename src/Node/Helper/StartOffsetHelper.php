@@ -9,12 +9,19 @@ use Boundwize\JsonRecast\Node\NodeJson;
 
 use function is_float;
 use function is_int;
+use function is_string;
 
 /**
  * @internal
  */
 final readonly class StartOffsetHelper
 {
+    public static function isSyntheticNode(NodeJson $nodeJson): bool
+    {
+        return ! is_int($nodeJson->getAttribute(NodeAttributes::START_OFFSET))
+            && ! is_string($nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT));
+    }
+
     public static function getNumericStartOffset(NodeJson $nodeJson): ?float
     {
         $startOffset = $nodeJson->getAttribute(NodeAttributes::START_OFFSET);

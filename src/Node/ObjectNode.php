@@ -146,8 +146,7 @@ final class ObjectNode extends AbstractNodeJson
         LayoutCoordinateHelper::setForNewItem($objectItemNode, $this, $styleDonor);
 
         if ($lastItem instanceof ObjectItemNode) {
-            $lastItem->afterValue = $this->separatorAfterValue();
-            $lastItem->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+            WhitespaceHelper::normalizeAfterValuesForAppend($this->items);
         } else {
             $this->afterOpenBrace   = $beforeKey;
             $this->beforeCloseBrace = $afterValue;
@@ -191,17 +190,6 @@ final class ObjectNode extends AbstractNodeJson
         }
 
         return $this->afterOpenBrace;
-    }
-
-    private function separatorAfterValue(): string
-    {
-        $itemCount = count($this->items);
-
-        if ($itemCount > 1) {
-            return $this->items[$itemCount - 2]->afterValue;
-        }
-
-        return '';
     }
 
     private function startOffsetForAppendedItem(): float

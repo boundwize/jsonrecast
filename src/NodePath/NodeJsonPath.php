@@ -86,21 +86,7 @@ final readonly class NodeJsonPath
      */
     public function matchesObjectKeys(array $keys): bool
     {
-        if (count($this->segments) !== count($keys)) {
-            return false;
-        }
-
-        foreach ($this->segments as $i => $segment) {
-            if (! $segment->isObjectKey()) {
-                return false;
-            }
-
-            if ($segment->value !== $keys[$i]) {
-                return false;
-            }
-        }
-
-        return true;
+        return $this->matches($keys);
     }
 
     /**

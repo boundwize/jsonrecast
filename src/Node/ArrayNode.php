@@ -245,7 +245,7 @@ final class ArrayNode extends AbstractNodeJson
         if ($previousOffset !== null) {
             $maxStartOffset = $previousOffset;
 
-            for ($i = 0, $itemCount = count($this->items); $i < $itemCount; $i++) {
+            for ($i = 0; $i < $itemCount; $i++) {
                 $startOffset = StartOffsetHelper::getNumericStartOffset($this->items[$i]);
 
                 if ($startOffset !== null) {

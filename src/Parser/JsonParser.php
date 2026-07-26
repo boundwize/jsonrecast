@@ -85,8 +85,8 @@ final class JsonParser
             TokenType::LEFT_BRACE, TokenType::LEFT_BRACKET => $this->parseCollection($depth),
             TokenType::STRING => $this->parseString($depth),
             TokenType::NUMBER => $this->parseNumber($depth),
-            TokenType::TRUE => $this->parseTrue($depth),
-            TokenType::FALSE => $this->parseFalse($depth),
+            TokenType::TRUE => $this->parseBoolean($depth, true),
+            TokenType::FALSE => $this->parseBoolean($depth, false),
             TokenType::NULL => $this->parseNull($depth),
             default => throw $this->unexpectedToken('JSON value'),
         };
@@ -94,12 +94,10 @@ final class JsonParser
 
     private function parseCollection(int $depth): ObjectNode|ArrayNode
     {
-        $isObject        = $this->currentToken()->type === TokenType::LEFT_BRACE;
-        $openTokenType   = $isObject ? TokenType::LEFT_BRACE : TokenType::LEFT_BRACKET;
-        $closeTokenType  = $isObject ? TokenType::RIGHT_BRACE : TokenType::RIGHT_BRACKET;
-        $expectedItem    = $isObject ? 'object key' : 'array value';
-        $expectedClosing = $isObject ? '"," or "}"' : '"," or "]"';
-        $token           = $this->consume($openTokenType);
+        $isObject       = $this->currentToken()->type === TokenType::LEFT_BRACE;
+        $openTokenType  = $isObject ? TokenType::LEFT_BRACE : TokenType::LEFT_BRACKET;
+        $closeTokenType = $isObject ? TokenType::RIGHT_BRACE : TokenType::RIGHT_BRACKET;
+        $token          = $this->consume($openTokenType);
 
         $beforeItemStart = $this->currentToken()->startOffset;
         $beforeItem      = $this->readWhitespace();
@@ -118,8 +116,10 @@ final class JsonParser
             return $node;
         }
 
-        $objectItems = [];
-        $arrayItems  = [];
+        $expectedItem    = $isObject ? 'object key' : 'array value';
+        $expectedClosing = $isObject ? '"," or "}"' : '"," or "]"';
+        $objectItems     = [];
+        $arrayItems      = [];
 
         while (true) {
             $itemDepth = $depth + 1;
@@ -143,17 +143,12 @@ final class JsonParser
                 $this->setSourceMetadata($item, $beforeItemStart, $itemEnd, $itemDepth);
                 $objectItems[] = $item;
             } else {
-                $value        = $this->parseValue($itemDepth);
-                $afterValue   = $this->readWhitespace();
-                $itemEnd      = $this->currentToken()->startOffset;
-                $arrayItems[] = $this->arrayItem(
-                    $value,
-                    $beforeItem,
-                    $afterValue,
-                    $beforeItemStart,
-                    $itemEnd,
-                    $itemDepth,
-                );
+                $value      = $this->parseValue($itemDepth);
+                $afterValue = $this->readWhitespace();
+                $itemEnd    = $this->currentToken()->startOffset;
+                $item       = new ArrayItemNode($value, $beforeItem, $afterValue);
+                $this->setSourceMetadata($item, $beforeItemStart, $itemEnd, $itemDepth);
+                $arrayItems[] = $item;
             }
 
             if ($this->currentToken()->type === TokenType::COMMA) {
@@ -211,19 +206,10 @@ final class JsonParser
         return $numberNode;
     }
 
-    private function parseTrue(int $depth): BooleanNode
+    private function parseBoolean(int $depth, bool $value): BooleanNode
     {
-        $token       = $this->consume(TokenType::TRUE);
-        $booleanNode = new BooleanNode(true);
-        $this->setSourceMetadata($booleanNode, $token->startOffset, $token->endOffset, $depth);
-
-        return $booleanNode;
-    }
-
-    private function parseFalse(int $depth): BooleanNode
-    {
-        $token       = $this->consume(TokenType::FALSE);
-        $booleanNode = new BooleanNode(false);
+        $token       = $this->consume($value ? TokenType::TRUE : TokenType::FALSE);
+        $booleanNode = new BooleanNode($value);
         $this->setSourceMetadata($booleanNode, $token->startOffset, $token->endOffset, $depth);
 
         return $booleanNode;
@@ -236,20 +222,6 @@ final class JsonParser
         $this->setSourceMetadata($nullNode, $token->startOffset, $token->endOffset, $depth);
 
         return $nullNode;
-    }
-
-    private function arrayItem(
-        NodeJson $nodeJson,
-        string $beforeValue,
-        string $afterValue,
-        int $startOffset,
-        int $endOffset,
-        int $depth,
-    ): ArrayItemNode {
-        $arrayItemNode = new ArrayItemNode($nodeJson, $beforeValue, $afterValue);
-        $this->setSourceMetadata($arrayItemNode, $startOffset, $endOffset, $depth);
-
-        return $arrayItemNode;
     }
 
     private function readWhitespace(): string

@@ -2365,7 +2365,7 @@ JSON,
             ' ',
             $this->invokeJsonPreservingPrinterMethod(
                 'normalizeSyntheticAfterValue',
-                [[$synthetic, $parsed], 0, "\n", $synthetic, "\n"],
+                [[$synthetic, $parsed], 0, $synthetic, "\n"],
             ),
         );
     }
@@ -2382,7 +2382,7 @@ JSON,
             ' ',
             $this->invokeJsonPreservingPrinterMethod(
                 'normalizeSyntheticAfterValue',
-                [[$synthetic, $parsed], 0, "\n", $synthetic, "\n"],
+                [[$synthetic, $parsed], 0, $synthetic, "\n"],
             ),
         );
     }
@@ -2399,7 +2399,7 @@ JSON,
             '',
             $this->invokeJsonPreservingPrinterMethod(
                 'normalizeSyntheticAfterValue',
-                [[$synthetic, $parsed], 0, "\n", $synthetic, "\n"],
+                [[$synthetic, $parsed], 0, $synthetic, "\n"],
             ),
         );
     }

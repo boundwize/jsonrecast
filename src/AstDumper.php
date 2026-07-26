@@ -145,9 +145,9 @@ final readonly class AstDumper
         };
     }
 
-    private function describeCounted(string $name, int $count, string $unit): string
+    private function itemsLabel(int $count): string
     {
-        return $name . ' (' . $count . ' ' . $unit . ($count === 1 ? '' : 's') . ')';
+        return 'items (' . $count . ' item' . ($count === 1 ? '' : 's') . ')';
     }
 
     /**
@@ -182,7 +182,7 @@ final readonly class AstDumper
         if ($nodeJson instanceof ObjectNode || $nodeJson instanceof ArrayNode) {
             $children[] = [
                 'kind'  => 'nodes',
-                'label' => $this->describeCounted('items', count($nodeJson->items), 'item'),
+                'label' => $this->itemsLabel(count($nodeJson->items)),
                 'nodes' => $nodeJson->items,
             ];
 

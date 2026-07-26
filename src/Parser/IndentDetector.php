@@ -180,7 +180,7 @@ final class IndentDetector
 
         foreach ($unitCounts as $unit => $count) {
             if ($count > $mostCommonCount) {
-                $mostCommonUnit  = (string) $unit;
+                $mostCommonUnit  = $unit;
                 $mostCommonCount = $count;
             }
         }

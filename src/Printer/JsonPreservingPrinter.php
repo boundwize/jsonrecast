@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast\Printer;
 
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
+use Boundwize\JsonRecast\Guard\IndentGuard;
 use Boundwize\JsonRecast\Guard\MaximumDepthGuard;
 use Boundwize\JsonRecast\Guard\NodeTreeGuard;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
@@ -71,6 +72,8 @@ final class JsonPreservingPrinter implements JsonPrinter
      */
     private const MAXIMUM_TAB_RESIDUAL_LENGTH = 2;
 
+    private readonly ?string $indent;
+
     /** @var positive-int */
     private readonly int $maximumDepth;
 
@@ -87,9 +90,10 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     public function __construct(
         private readonly ?NodeChangeSet $nodeChangeSet = null,
-        private readonly ?string $indent = null,
+        ?string $indent = null,
         int $maximumDepth = MaximumDepthGuard::DEFAULT_MAXIMUM_DEPTH,
     ) {
+        $this->indent                = $indent === null ? null : IndentGuard::validateIndent($indent);
         $this->maximumDepth          = MaximumDepthGuard::validateMaximumDepth($maximumDepth);
         $this->memoizedChangeResults = new SplObjectStorage();
     }

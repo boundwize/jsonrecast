@@ -512,6 +512,14 @@ JSON,
         new JsonPreservingPrinter(maximumDepth: 0);
     }
 
+    public function testItRejectsNonWhitespaceIndent(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Indent must contain only spaces or tabs.');
+
+        new JsonPreservingPrinter(indent: 'x');
+    }
+
     public function testItPrintsEmptyCollectionAtMaximumNestingDepth(): void
     {
         // printing mirrors json_encode(), which lets an empty container occupy the

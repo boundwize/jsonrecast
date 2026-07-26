@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Printer;
 
+use Boundwize\JsonRecast\Guard\IndentGuard;
 use Boundwize\JsonRecast\Guard\MaximumDepthGuard;
 use Boundwize\JsonRecast\Guard\NodeTreeGuard;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
@@ -29,13 +30,16 @@ use const JSON_UNESCAPED_UNICODE;
 
 final readonly class JsonPrettyPrinter implements JsonPrinter
 {
+    private string $indent;
+
     /** @var positive-int */
     private int $maximumDepth;
 
     public function __construct(
-        private string $indent = '    ',
+        string $indent = '    ',
         int $maximumDepth = MaximumDepthGuard::DEFAULT_MAXIMUM_DEPTH,
     ) {
+        $this->indent       = IndentGuard::validateIndent($indent);
         $this->maximumDepth = MaximumDepthGuard::validateMaximumDepth($maximumDepth);
     }
 

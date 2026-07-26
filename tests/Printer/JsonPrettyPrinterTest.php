@@ -155,6 +155,24 @@ final class JsonPrettyPrinterTest extends TestCase
         new JsonPrettyPrinter(maximumDepth: 0);
     }
 
+    public function testItPrintsWithWhitespaceOnlyCustomIndent(): void
+    {
+        $nodeJson = JsonValue::from(['name' => 'jsonrecast']);
+
+        $this->assertSame(
+            "{\n\t\"name\": \"jsonrecast\"\n}",
+            (new JsonPrettyPrinter(indent: "\t"))->print($nodeJson),
+        );
+    }
+
+    public function testItRejectsNonWhitespaceIndent(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Indent must contain only spaces or tabs.');
+
+        new JsonPrettyPrinter(indent: 'x');
+    }
+
     public function testItPrintsEmptyCollectionAtMaximumNestingDepth(): void
     {
         // printing mirrors json_encode(), which lets an empty container occupy the

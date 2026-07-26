@@ -129,6 +129,8 @@ echo $printer->print($document);
 
 Pretty output uses consistent indentation, one object property or array value per line, and no trailing newline.
 
+A custom `indent` must contain only spaces or tabs; both printers throw an `InvalidArgumentException` for any other character so the output stays valid JSON.
+
 ## Printer Interface
 
 Both printers implement `JsonPrinter`:

@@ -83,29 +83,20 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
             return $openDelimiter . $closeDelimiter;
         }
 
-        $output = $openDelimiter;
+        $output    = $openDelimiter;
+        $lastIndex = count($node->items) - 1;
 
         foreach ($node->items as $i => $item) {
             $output .= $printContext->newline
                 . $printContext->childIndentation()
-                . $this->printCollectionItem($item, $printContext->next());
+                . $this->printNode($item, $printContext->next());
 
-            if ($i < count($node->items) - 1) {
+            if ($i < $lastIndex) {
                 $output .= ',';
             }
         }
 
         return $output . $printContext->newline . $printContext->indentation() . $closeDelimiter;
-    }
-
-    private function printCollectionItem(
-        ObjectItemNode|ArrayItemNode $item,
-        PrintContext $printContext,
-    ): string {
-        return match (true) {
-            $item instanceof ObjectItemNode => $this->printObjectItem($item, $printContext),
-            $item instanceof ArrayItemNode => $this->printNode($item->value, $printContext),
-        };
     }
 
     private function encodeString(string $value): string

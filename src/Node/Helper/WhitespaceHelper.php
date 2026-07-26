@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Node\Helper;
 
+use Boundwize\JsonRecast\Node\ArrayItemNode;
+use Boundwize\JsonRecast\Node\ObjectItemNode;
+
+use function count;
 use function preg_match;
 use function str_contains;
 use function str_replace;
@@ -45,6 +49,26 @@ final readonly class WhitespaceHelper
         }
 
         return $donorWhitespace;
+    }
+
+    /**
+     * @param list<ArrayItemNode|ObjectItemNode> $items
+     */
+    public static function separatorAfterValue(array $items): string
+    {
+        $styleDonor = StartOffsetHelper::findPreviousStyleDonor($items);
+
+        if ($styleDonor instanceof ArrayItemNode || $styleDonor instanceof ObjectItemNode) {
+            return $styleDonor->afterValue;
+        }
+
+        $itemCount = count($items);
+
+        if ($itemCount > 1) {
+            return $items[$itemCount - 2]->afterValue;
+        }
+
+        return '';
     }
 
     /**

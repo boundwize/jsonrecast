@@ -57,7 +57,7 @@ final class ArrayNode extends AbstractNodeJson
         if ($index === $itemCount && $this->items !== []) {
             $lastIndex = $itemCount - 1;
 
-            $this->items[$lastIndex]->afterValue = $this->separatorAfterValue();
+            $this->items[$lastIndex]->afterValue = WhitespaceHelper::separatorAfterValue($this->items);
             $this->items[$lastIndex]->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         }
 
@@ -165,23 +165,6 @@ final class ArrayNode extends AbstractNodeJson
 
         if ($itemCount > 1) {
             return $this->items[max($index - 1, 0)]->afterValue;
-        }
-
-        return '';
-    }
-
-    private function separatorAfterValue(): string
-    {
-        $styleDonor = StartOffsetHelper::findPreviousStyleDonor($this->items);
-
-        if ($styleDonor instanceof ArrayItemNode) {
-            return $styleDonor->afterValue;
-        }
-
-        $itemCount = count($this->items);
-
-        if ($itemCount > 1) {
-            return $this->items[$itemCount - 2]->afterValue;
         }
 
         return '';

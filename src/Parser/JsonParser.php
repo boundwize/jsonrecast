@@ -57,7 +57,7 @@ final class JsonParser
         $this->source   = $source;
         $this->tokens   = (new Lexer())->tokenize($source);
         $this->position = 0;
-        $this->indent   = IndentDetector::detect($this->tokens, $source);
+        $this->indent   = IndentDetector::detect($this->tokens);
         $this->newline  = $this->detectNewline($source);
 
         $beforeValue = $this->readWhitespace();

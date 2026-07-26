@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Parser;
 
-use function array_keys;
 use function intdiv;
 use function max;
-use function preg_match;
-use function preg_match_all;
 use function str_repeat;
 use function str_starts_with;
 use function strlen;
@@ -33,34 +30,46 @@ final class IndentDetector
     /**
      * @param list<Token> $tokens
      */
-    public static function detect(array $tokens, string $source): string
+    public static function detect(array $tokens): string
     {
-        return self::mostCommonUnit(self::nestingIndentUnits($tokens))
-            ?? self::shortestIndent(self::lineIndentsBeyondRoot($source))
+        [$units, $lineIndents] = self::scanLines($tokens);
+
+        return self::mostCommonUnit($units)
+            ?? self::shortestIndent($lineIndents)
             ?? '    ';
     }
 
     /**
+     * Walks the token stream once, collecting a per-level unit candidate from
+     * each depth increase across a line break, and every line's indentation
+     * beyond the root value's own as the fallback for documents whose nesting
+     * never deepens across lines.
+     *
      * @param list<Token> $tokens
-     * @return list<string>
+     *
+     * @return array{list<string>, list<string>}
      */
-    private static function nestingIndentUnits(array $tokens): array
+    private static function scanLines(array $tokens): array
     {
-        $units = [];
+        $units       = [];
+        $lineIndents = [];
+        $rootIndent  = null;
 
-        $depth           = 0;
-        $previousIndent  = null;
-        $previousDepth   = 0;
-        $pendingIndent   = '';
-        $awaitingContent = true;
+        $depth              = 0;
+        $previousIndent     = null;
+        $previousDepth      = 0;
+        $pendingIndent      = '';
+        $awaitingContent    = true;
+        $lineIndentRecorded = false;
 
         foreach ($tokens as $token) {
             if ($token->type === TokenType::WHITESPACE) {
                 $indent = self::indentAfterLastNewline($token->text);
 
                 if ($indent !== null) {
-                    $pendingIndent   = $indent;
-                    $awaitingContent = true;
+                    $pendingIndent      = $indent;
+                    $awaitingContent    = true;
+                    $lineIndentRecorded = false;
                 } elseif ($previousIndent === null) {
                     // whitespace opening the document without a newline is the
                     // first line's indentation; once a line is recorded,
@@ -74,6 +83,25 @@ final class IndentDetector
 
             if ($token->type === TokenType::END_OF_FILE) {
                 break;
+            }
+
+            if (! $lineIndentRecorded) {
+                $lineIndentRecorded = true;
+
+                if ($rootIndent === null) {
+                    // the root value's own indentation is the document base,
+                    // not an indent unit; only the extra whitespace beyond it
+                    // reveals the per-level indentation
+                    $rootIndent = $pendingIndent;
+                } else {
+                    $lineIndent = str_starts_with($pendingIndent, $rootIndent)
+                        ? substr($pendingIndent, strlen($rootIndent))
+                        : $pendingIndent;
+
+                    if ($lineIndent !== '') {
+                        $lineIndents[] = $lineIndent;
+                    }
+                }
             }
 
             if ($awaitingContent) {
@@ -107,7 +135,7 @@ final class IndentDetector
             }
         }
 
-        return $units;
+        return [$units, $lineIndents];
     }
 
     private static function unitFromDelta(string $previousIndent, string $indent, int $depthIncrease): ?string
@@ -176,42 +204,6 @@ final class IndentDetector
         }
 
         return substr($whitespace, $lastNewlinePosition + 1);
-    }
-
-    /**
-     * @return list<string>
-     */
-    private static function lineIndentsBeyondRoot(string $source): array
-    {
-        preg_match_all('/(?:\r\n|\r|\n)([ \t]+)(?=\S)/', $source, $matches);
-
-        $rootIndent = self::rootIndent($source);
-
-        /** @var array<string, true> $lineIndents */
-        $lineIndents = [];
-
-        foreach ($matches[1] as $lineIndent) {
-            // the root value's own indentation is the document base, not an indent unit;
-            // only the extra whitespace beyond it reveals the per-level indentation
-            if (str_starts_with($lineIndent, $rootIndent)) {
-                $lineIndent = substr($lineIndent, strlen($rootIndent));
-            }
-
-            if ($lineIndent === '') {
-                continue;
-            }
-
-            $lineIndents[$lineIndent] = true;
-        }
-
-        return array_keys($lineIndents);
-    }
-
-    private static function rootIndent(string $source): string
-    {
-        preg_match('/^(?:[ \t]*\R)*([ \t]*)/', $source, $matches);
-
-        return $matches[1] ?? '';
     }
 
     /**

@@ -61,9 +61,11 @@ final class IndentDetector
                 if ($indent !== null) {
                     $pendingIndent   = $indent;
                     $awaitingContent = true;
-                } elseif ($awaitingContent) {
+                } elseif ($previousIndent === null) {
                     // whitespace opening the document without a newline is the
-                    // first line's indentation
+                    // first line's indentation; once a line is recorded,
+                    // newline-less whitespace is mid-line spacing, which must
+                    // not clobber the indent saved for a leading closer run
                     $pendingIndent = $token->text;
                 }
 

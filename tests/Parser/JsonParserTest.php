@@ -115,6 +115,20 @@ JSON,
         $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
     }
 
+    public function testItKeepsLineIndentWhenLeadingClosingDelimitersAreSeparatedBySpaces(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{"a":[[1
+    ] ], "b": [[
+            2
+        ]]}
+JSON,
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
     public function testItAccountsForRunOfLeadingClosingDelimitersWhenMeasuringLineDepth(): void
     {
         $jsonDocument = (new JsonParser())->parse(

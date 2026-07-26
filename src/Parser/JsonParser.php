@@ -20,14 +20,15 @@ use JsonException;
 
 use function array_keys;
 use function count;
+use function explode;
 use function implode;
 use function is_string;
 use function json_decode;
 use function preg_match;
 use function preg_match_all;
-use function preg_split;
 use function str_contains;
 use function str_ends_with;
+use function str_replace;
 use function str_starts_with;
 use function strlen;
 use function strspn;
@@ -365,10 +366,7 @@ final class JsonParser
      */
     private function nestingIndentDeltas(string $source): array
     {
-        $lines = preg_split('/\r\n|\r|\n/', $source);
-        if ($lines === false) {
-            return [];
-        }
+        $lines = explode("\n", str_replace(["\r\n", "\r"], "\n", $source));
 
         /** @var array<string, true> $deltas */
         $deltas = [];

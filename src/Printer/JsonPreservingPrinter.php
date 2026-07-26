@@ -11,6 +11,7 @@ use Boundwize\JsonRecast\Guard\NodeTreeGuard;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
+use Boundwize\JsonRecast\Node\Helper\StartOffsetHelper;
 use Boundwize\JsonRecast\Node\Helper\WhitespaceHelper;
 use Boundwize\JsonRecast\Node\JsonDocument;
 use Boundwize\JsonRecast\Node\NodeJson;
@@ -530,12 +531,12 @@ final class JsonPreservingPrinter implements JsonPrinter
         if (
             $afterValue === $containerBeforeClose
             && isset($items[$index + 1])
-            && $this->isSyntheticItem($items[$index + 1])
+            && StartOffsetHelper::isSyntheticNode($items[$index + 1])
         ) {
             return $this->findSeparatorBeforeIndex($items, $index, $containerBeforeClose);
         }
 
-        if (! $this->isSyntheticItem($itemNode) || $afterValue !== $containerBeforeClose) {
+        if (! StartOffsetHelper::isSyntheticNode($itemNode) || $afterValue !== $containerBeforeClose) {
             return $afterValue;
         }
 
@@ -565,12 +566,6 @@ final class JsonPreservingPrinter implements JsonPrinter
         return '';
     }
 
-    private function isSyntheticItem(NodeJson $nodeJson): bool
-    {
-        return ! is_int($nodeJson->getAttribute(NodeAttributes::START_OFFSET))
-            && ! is_string($nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT));
-    }
-
     private function shouldPrintInsertedMultilineItemsBestEffort(ArrayNode|ObjectNode $containerNode): bool
     {
         if ($this->hasContainerMultilineEdgeWhitespace($containerNode)) {
@@ -578,7 +573,7 @@ final class JsonPreservingPrinter implements JsonPrinter
         }
 
         foreach ($containerNode->items as $item) {
-            if (! $this->isSyntheticItem($item)) {
+            if (! StartOffsetHelper::isSyntheticNode($item)) {
                 continue;
             }
 
@@ -650,7 +645,7 @@ final class JsonPreservingPrinter implements JsonPrinter
     {
         // Mutations mark synthetic nodes with a null original text attribute;
         // only parsed source metadata makes a node non-synthetic.
-        if (! $this->isSyntheticItem($nodeJson)) {
+        if (! StartOffsetHelper::isSyntheticNode($nodeJson)) {
             return false;
         }
 

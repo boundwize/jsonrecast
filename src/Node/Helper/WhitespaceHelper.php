@@ -9,8 +9,6 @@ use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
 
 use function count;
-use function is_int;
-use function is_string;
 use function preg_match;
 use function str_contains;
 use function str_replace;
@@ -97,8 +95,9 @@ final readonly class WhitespaceHelper
                     continue;
                 }
 
-                $isSyntheticClosingCopy = ! is_int($item->getAttribute(NodeAttributes::START_OFFSET))
-                    && ! is_string($item->getAttribute(NodeAttributes::ORIGINAL_TEXT))
+                // A synthetic item may have copied closing whitespace during an earlier insertion.
+                // It is not a reliable source for inter-item separator whitespace.
+                $isSyntheticClosingCopy = StartOffsetHelper::isSyntheticNode($item)
                     && $item->afterValue === $closingDonor->afterValue;
 
                 if ($isSyntheticClosingCopy) {

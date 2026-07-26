@@ -103,6 +103,17 @@ JSON,
         $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
     }
 
+    public function testItKeepsWholeLineIndentWhenItDoesNotShareRootIndentPrefix(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            "\t{\n"
+            . "    \"a\": 1\n"
+            . "\t}",
+        );
+
+        $this->assertSame('    ', $jsonDocument->getAttribute(NodeAttributes::INDENT));
+    }
+
     public function testItFallsBackToLineIndentWhenIndentGainIsNotDivisibleByDepthIncrease(): void
     {
         $jsonDocument = (new JsonParser())->parse(

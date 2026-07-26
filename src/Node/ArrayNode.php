@@ -37,8 +37,13 @@ final class ArrayNode extends AbstractNodeJson
     {
         array_splice($this->items, 0, 0);
 
-        $index                      = $this->normalizeInsertionIndex($index);
-        $itemCount                  = count($this->items);
+        $index     = $this->normalizeInsertionIndex($index);
+        $itemCount = count($this->items);
+
+        if ($itemCount === 0 && ! StartOffsetHelper::isSyntheticNode($this)) {
+            $this->afterOpenBracket = $this->beforeCloseBracket;
+        }
+
         [$beforeValue, $styleDonor] = $this->layoutForInsertedItem($index);
         $arrayItemNode              = new ArrayItemNode(
             value: $nodeJson,

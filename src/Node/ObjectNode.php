@@ -120,7 +120,12 @@ final class ObjectNode extends AbstractNodeJson
 
     private function appendNewItem(string $key, NodeJson $nodeJson): void
     {
-        $itemCount  = count($this->items);
+        $itemCount = count($this->items);
+
+        if ($itemCount === 0 && ! StartOffsetHelper::isSyntheticNode($this)) {
+            $this->afterOpenBrace = $this->beforeCloseBrace;
+        }
+
         $lastItem   = $itemCount > 0 ? $this->items[$itemCount - 1] : null;
         $styleDonor = StartOffsetHelper::findStyleDonor($this->items) ?? $lastItem;
         $beforeKey  = $this->beforeKeyForAppendedItem($styleDonor);

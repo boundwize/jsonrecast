@@ -75,15 +75,18 @@ final class IndentDetector
             }
 
             if ($awaitingContent) {
-                // a line opening with a closing delimiter is conventionally
-                // indented at the level of the container it closes, one level
-                // above the contents the running depth still counts
-                $lineDepth = $token->type === TokenType::RIGHT_BRACE || $token->type === TokenType::RIGHT_BRACKET
-                    ? $depth - 1
-                    : $depth;
+                // a line's leading run of closing delimiters steps back out of
+                // the containers it closes, so the line's effective depth is
+                // the depth of the first content after the run; a line holding
+                // only closers never pairs with a deeper line and needs no record
+                if ($token->type === TokenType::RIGHT_BRACE || $token->type === TokenType::RIGHT_BRACKET) {
+                    $depth--;
+
+                    continue;
+                }
 
                 if ($previousIndent !== null) {
-                    $unit = self::unitFromDelta($previousIndent, $pendingIndent, $lineDepth - $previousDepth);
+                    $unit = self::unitFromDelta($previousIndent, $pendingIndent, $depth - $previousDepth);
 
                     if ($unit !== null) {
                         $units[] = $unit;
@@ -91,7 +94,7 @@ final class IndentDetector
                 }
 
                 $previousIndent  = $pendingIndent;
-                $previousDepth   = $lineDepth;
+                $previousDepth   = $depth;
                 $awaitingContent = false;
             }
 

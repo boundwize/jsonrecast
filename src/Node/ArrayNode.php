@@ -40,14 +40,13 @@ final class ArrayNode extends AbstractNodeJson
         $index                      = $this->normalizeInsertionIndex($index);
         $itemCount                  = count($this->items);
         [$beforeValue, $styleDonor] = $this->layoutForInsertedItem($index);
-        $startOffset                = $this->startOffsetForInsertedItem($index);
         $arrayItemNode              = new ArrayItemNode(
             value: $nodeJson,
             beforeValue: $beforeValue,
-            afterValue: $this->afterValueForInsertedItem($index, $startOffset),
+            afterValue: $this->afterValueForInsertedItem($index),
         );
         $arrayItemNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
-        $arrayItemNode->setAttribute(NodeAttributes::START_OFFSET, $startOffset);
+        $arrayItemNode->setAttribute(NodeAttributes::START_OFFSET, $this->startOffsetForInsertedItem($index));
         LayoutCoordinateHelper::setForNewItem($arrayItemNode, $this, $styleDonor);
 
         if ($index === 0 && $this->items !== []) {
@@ -55,28 +54,8 @@ final class ArrayNode extends AbstractNodeJson
             $this->items[0]->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
         }
 
-        $closingStyleDonor = StartOffsetHelper::findStyleDonor($this->items);
-        $previousDonor     = StartOffsetHelper::findStyleDonorBefore($this->items, $startOffset);
-
-        if ($closingStyleDonor instanceof NodeJson && $previousDonor === $closingStyleDonor) {
-            $separatorAfterValue = WhitespaceHelper::separatorAfterValue($this->items);
-
-            if ($index === $itemCount) {
-                $lastIndex = $itemCount - 1;
-
-                $this->items[$lastIndex]->afterValue = $separatorAfterValue;
-                $this->items[$lastIndex]->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
-            }
-
-            if ($closingStyleDonor->afterValue !== $separatorAfterValue) {
-                $closingStyleDonor->afterValue = $separatorAfterValue;
-                $closingStyleDonor->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
-            }
-        } elseif (! $closingStyleDonor instanceof NodeJson && $index === $itemCount && $this->items !== []) {
-            $lastIndex = $itemCount - 1;
-
-            $this->items[$lastIndex]->afterValue = WhitespaceHelper::separatorAfterValue($this->items);
-            $this->items[$lastIndex]->setAttribute(NodeAttributes::ORIGINAL_TEXT, null);
+        if ($index === $itemCount && $this->items !== []) {
+            WhitespaceHelper::normalizeAfterValuesForAppend($this->items);
         }
 
         if ($itemCount === 0) {
@@ -165,38 +144,20 @@ final class ArrayNode extends AbstractNodeJson
         return $this->layoutForAppendedItem();
     }
 
-    private function afterValueForInsertedItem(int $index, float $startOffset): string
+    private function afterValueForInsertedItem(int $index): string
     {
         $itemCount = count($this->items);
 
-        if ($itemCount === 0) {
-            if ($this->afterOpenBracket === $this->beforeCloseBracket) {
-                return WhitespaceHelper::closingLine($this->beforeCloseBracket);
-            }
-
-            return $this->beforeCloseBracket;
-        }
-
         if ($index === $itemCount) {
-            return $this->items[$itemCount - 1]->afterValue;
-        }
-
-        $previousStyleDonor = StartOffsetHelper::findStyleDonorBefore($this->items, $startOffset);
-
-        if ($previousStyleDonor instanceof ArrayItemNode) {
-            return $previousStyleDonor->afterValue;
-        }
-
-        if (StartOffsetHelper::findStyleDonor($this->items) instanceof ArrayItemNode) {
-            if ($itemCount > 1) {
-                $nextStyleDonor = StartOffsetHelper::findStyleDonorAfter($this->items, $startOffset);
-
-                if ($nextStyleDonor instanceof ArrayItemNode) {
-                    return $nextStyleDonor->afterValue;
+            if ($itemCount === 0) {
+                if ($this->afterOpenBracket === $this->beforeCloseBracket) {
+                    return WhitespaceHelper::closingLine($this->beforeCloseBracket);
                 }
+
+                return $this->beforeCloseBracket;
             }
 
-            return '';
+            return $this->items[$itemCount - 1]->afterValue;
         }
 
         if ($itemCount > 1) {

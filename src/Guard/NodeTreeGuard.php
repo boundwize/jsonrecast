@@ -53,7 +53,7 @@ final class NodeTreeGuard
                 continue;
             }
 
-            if ($activePathNodes->contains($currentNode)) {
+            if ($activePathNodes->offsetExists($currentNode)) {
                 throw new RuntimeException(self::CYCLIC_MESSAGE);
             }
 

@@ -275,7 +275,11 @@ final readonly class AstDumper
         $index       = 0;
 
         foreach ($values as $key => $value) {
-            if (is_string($value) && $this->shouldFormatAsBlockString($value)) {
+            if (
+                is_string($value)
+                && $this->shouldFormatAsSourceText($key)
+                && $this->shouldFormatAsBlockString($value)
+            ) {
                 $this->appendBlockString($lines, $key, $value, $childPrefix, $index === $lastIndex);
                 $index++;
 

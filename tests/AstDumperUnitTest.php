@@ -150,6 +150,21 @@ TXT,
         );
     }
 
+    public function testItDumpsNumericStringAttributeNames(): void
+    {
+        $stringNode = new StringNode('value');
+        $stringNode->setAttribute('0', 'metadata');
+
+        $this->assertSame(
+            <<<'TXT'
+StringNode(value: "value")
+└── attributes
+    └── 0: "metadata"
+TXT,
+            (new AstDumper(includeAttributes: true))->dump($stringNode),
+        );
+    }
+
     public function testItOmitsEmptyAttributes(): void
     {
         $this->assertSame(

@@ -22,9 +22,10 @@ use function count;
 use function implode;
 use function is_string;
 use function json_decode;
-use function preg_match;
 use function str_ends_with;
+use function str_starts_with;
 use function strlen;
+use function strpbrk;
 use function substr;
 
 use const JSON_THROW_ON_ERROR;
@@ -331,11 +332,13 @@ final class JsonParser
 
     private function detectNewline(string $source): string
     {
-        if (preg_match('/\r\n|\r|\n/', $source, $matches) === 1) {
-            return $matches[0];
+        $firstNewline = strpbrk($source, "\r\n");
+
+        if ($firstNewline === false || $firstNewline[0] === "\n") {
+            return "\n";
         }
 
-        return "\n";
+        return str_starts_with($firstNewline, "\r\n") ? "\r\n" : "\r";
     }
 
     private function hasTrailingNewline(string $source): bool

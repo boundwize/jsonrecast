@@ -49,7 +49,7 @@ final class NodeTreeGuard
             [$currentNode, $depth, $leaving] = $entry;
 
             if ($leaving) {
-                $activePathNodes->detach($currentNode);
+                $activePathNodes->offsetUnset($currentNode);
                 continue;
             }
 
@@ -58,14 +58,14 @@ final class NodeTreeGuard
             }
 
             if ($currentNode instanceof JsonDocument) {
-                $activePathNodes->attach($currentNode);
+                $activePathNodes->offsetSet($currentNode);
                 $stack[] = [$currentNode, $depth, true];
                 $stack[] = [$currentNode->value, $depth, false];
                 continue;
             }
 
             if ($currentNode instanceof ObjectItemNode) {
-                $activePathNodes->attach($currentNode);
+                $activePathNodes->offsetSet($currentNode);
                 $stack[] = [$currentNode, $depth, true];
                 $stack[] = [$currentNode->key, $depth, false];
                 $stack[] = [$currentNode->value, $depth, false];
@@ -77,7 +77,7 @@ final class NodeTreeGuard
                 // so scalar leaves at the final allowed depth are printable
                 MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth);
 
-                $activePathNodes->attach($currentNode);
+                $activePathNodes->offsetSet($currentNode);
                 $stack[] = [$currentNode, $depth, true];
 
                 foreach ($currentNode->items as $item) {
@@ -88,7 +88,7 @@ final class NodeTreeGuard
             }
 
             if ($currentNode instanceof ArrayItemNode) {
-                $activePathNodes->attach($currentNode);
+                $activePathNodes->offsetSet($currentNode);
                 $stack[] = [$currentNode, $depth, true];
                 $stack[] = [$currentNode->value, $depth, false];
             }

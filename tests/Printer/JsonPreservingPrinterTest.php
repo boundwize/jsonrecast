@@ -578,14 +578,14 @@ JSON,
 
     public function testItKeepsBodyNewlineWhenOnlyTrailingNewlineIsCrlf(): void
     {
-        $hostDocument = (new JsonParser())->parse(
+        $jsonDocument = (new JsonParser())->parse(
             <<<'JSON'
 {
   "payload": null
 }
 JSON . "\r\n",
         );
-        $this->assertInstanceOf(ObjectNode::class, $hostDocument->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
 
         $donorDocument = (new JsonParser())->parse(
             <<<'JSON'
@@ -598,7 +598,7 @@ JSON,
         );
         $this->assertInstanceOf(ObjectNode::class, $donorDocument->value);
 
-        $hostDocument->value->set('payload', $donorDocument->value);
+        $jsonDocument->value->set('payload', $donorDocument->value);
 
         $this->assertSame(
             <<<'JSON'
@@ -609,7 +609,7 @@ JSON,
   }
 }
 JSON . "\r\n",
-            (new JsonPreservingPrinter())->print($hostDocument),
+            (new JsonPreservingPrinter())->print($jsonDocument),
         );
     }
 

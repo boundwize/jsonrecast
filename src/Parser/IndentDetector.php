@@ -147,14 +147,11 @@ final class IndentDetector
             return null;
         }
 
-        $delta       = substr($indent, strlen($previousIndent));
-        $deltaLength = strlen($delta);
-
-        if ($deltaLength % $depthIncrease !== 0) {
-            return null;
-        }
-
-        $unit = substr($delta, 0, intdiv($deltaLength, $depthIncrease));
+        // a delta whose length is not a multiple of the depth increase yields a
+        // floored unit whose repetition is shorter than the delta, failing the
+        // comparison below
+        $delta = substr($indent, strlen($previousIndent));
+        $unit  = substr($delta, 0, intdiv(strlen($delta), $depthIncrease));
 
         return str_repeat($unit, $depthIncrease) === $delta ? $unit : null;
     }

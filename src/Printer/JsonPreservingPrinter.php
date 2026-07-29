@@ -1125,10 +1125,8 @@ final class JsonPreservingPrinter implements JsonPrinter
                 continue;
             }
 
-            if ($leadLength % $originalIndentLength !== 0) {
-                return true;
-            }
-
+            // covers leads whose length is not a multiple of the unit as well:
+            // the floored repetition is then shorter than the lead
             if ($lead !== str_repeat($originalIndent, intdiv($leadLength, $originalIndentLength))) {
                 return true;
             }

@@ -14,6 +14,7 @@ use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
+use ReflectionProperty;
 use RuntimeException;
 use stdClass;
 
@@ -59,6 +60,27 @@ TXT,
                 afterOpenBracket: "\n",
                 beforeCloseBracket: "\n",
             )),
+        );
+    }
+
+    public function testItDumpsContainerWithNonSequentialItemKeys(): void
+    {
+        $arrayNode = new ArrayNode([
+            new ArrayItemNode(new StringNode('first')),
+            new ArrayItemNode(new StringNode('second')),
+        ]);
+        $items     = $arrayNode->items;
+        unset($items[0]);
+        (new ReflectionProperty($arrayNode, 'items'))->setValue($arrayNode, $items);
+
+        $this->assertSame(
+            <<<'TXT'
+ArrayNode
+└── items (1 item)
+    └── [0]: ArrayItemNode
+        └── value: StringNode(value: "second")
+TXT,
+            (new AstDumper())->dump($arrayNode),
         );
     }
 

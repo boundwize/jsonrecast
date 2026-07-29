@@ -20,6 +20,7 @@ use Boundwize\JsonRecast\Node\StringNode;
 use RuntimeException;
 
 use function array_pop;
+use function array_values;
 use function count;
 use function explode;
 use function get_debug_type;
@@ -232,8 +233,8 @@ final readonly class AstDumper
     }
 
     /**
-     * @param list<string>   $lines
-     * @param list<NodeJson> $nodes
+     * @param list<string>    $lines
+     * @param array<NodeJson> $nodes
      */
     private function appendNodeGroup(
         array &$lines,
@@ -243,6 +244,8 @@ final readonly class AstDumper
         bool $isLast,
         int $depth,
     ): void {
+        $nodes = array_values($nodes);
+
         $lines[] = $this->line($prefix, $isLast, $name);
 
         $childPrefix = $this->childPrefix($prefix, $isLast);

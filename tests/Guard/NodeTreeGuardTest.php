@@ -19,6 +19,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
+use ReflectionProperty;
 use RuntimeException;
 
 final class NodeTreeGuardTest extends TestCase
@@ -105,6 +106,36 @@ final class NodeTreeGuardTest extends TestCase
         $this->expectExceptionMessage('Maximum stack depth exceeded.');
 
         NodeTreeGuard::guard($arrayNode, maximumDepth: 1);
+    }
+
+    public function testItRejectsObjectContainingArrayItem(): void
+    {
+        $objectNode = new ObjectNode([]);
+        // Reproduce a runtime contract violation without making this test fail static analysis.
+        (new ReflectionProperty($objectNode, 'items'))->setValue(
+            $objectNode,
+            [new ArrayItemNode(new StringNode('value'))],
+        );
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('ObjectNode children must be ObjectItemNode.');
+
+        NodeTreeGuard::guard($objectNode, maximumDepth: 512);
+    }
+
+    public function testItRejectsArrayContainingObjectItem(): void
+    {
+        $arrayNode = new ArrayNode([]);
+        // Reproduce a runtime contract violation without making this test fail static analysis.
+        (new ReflectionProperty($arrayNode, 'items'))->setValue(
+            $arrayNode,
+            [new ObjectItemNode(new StringNode('key'), new StringNode('value'))],
+        );
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('ArrayNode children must be ArrayItemNode.');
+
+        NodeTreeGuard::guard($arrayNode, maximumDepth: 512);
     }
 
     public function testItAllowsScalarLeafAtMaximumDepth(): void

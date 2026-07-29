@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast\Tests;
 
 use Boundwize\JsonRecast\AstDumper;
+use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use Boundwize\JsonRecast\Node\AbstractNodeJson;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
@@ -129,6 +130,21 @@ StringNode(value: "name")
 └── attributes
     ├── originalText: "name"
     └── label: "\"name\""
+TXT,
+            (new AstDumper(includeAttributes: true))->dump($stringNode),
+        );
+    }
+
+    public function testItFormatsMultilineNonSourceTextAttributesInline(): void
+    {
+        $stringNode = new StringNode('value');
+        $stringNode->setAttribute(NodeAttributes::NEWLINE, "\r\n");
+
+        $this->assertSame(
+            <<<'TXT'
+StringNode(value: "value")
+└── attributes
+    └── newline: "\r\n"
 TXT,
             (new AstDumper(includeAttributes: true))->dump($stringNode),
         );

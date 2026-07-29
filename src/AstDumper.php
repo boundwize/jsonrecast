@@ -275,6 +275,9 @@ final readonly class AstDumper
         $index       = 0;
 
         foreach ($values as $key => $value) {
+            // PHP casts canonical integer-string keys like "0" to int; restore string type
+            $key = (string) $key;
+
             if (
                 is_string($value)
                 && $this->shouldFormatAsSourceText($key)

@@ -25,9 +25,10 @@ final class NodeTreeGuard
 
     /**
      * Rejects node trees that cannot be traversed safely: trees whose container
-     * nesting exceeds the maximum depth, and cyclic trees. Wrapper nodes
-     * (documents and items) re-enter their value at the same depth, so a cycle
-     * through them would never trip the depth guard alone.
+     * nesting exceeds the maximum depth, cyclic trees, and containers holding
+     * the wrong item kind, which printers would render as invalid JSON. Wrapper
+     * nodes (documents and items) re-enter their value at the same depth, so a
+     * cycle through them would never trip the depth guard alone.
      *
      * @param positive-int $maximumDepth
      */
@@ -81,6 +82,14 @@ final class NodeTreeGuard
                 $stack[] = [$currentNode, $depth, true];
 
                 foreach ($currentNode->items as $item) {
+                    if ($currentNode instanceof ObjectNode && ! $item instanceof ObjectItemNode) {
+                        throw new RuntimeException('ObjectNode children must be ObjectItemNode.');
+                    }
+
+                    if ($currentNode instanceof ArrayNode && ! $item instanceof ArrayItemNode) {
+                        throw new RuntimeException('ArrayNode children must be ArrayItemNode.');
+                    }
+
                     $stack[] = [$item, $depth + 1, false];
                 }
 

@@ -576,6 +576,43 @@ JSON,
         );
     }
 
+    public function testItKeepsBodyNewlineWhenOnlyTrailingNewlineIsCrlf(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "payload": null
+}
+JSON . "\r\n",
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $donorDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "x": 1,
+    "y": 2
+}
+
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $donorDocument->value);
+
+        $jsonDocument->value->set('payload', $donorDocument->value);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+  "payload": {
+    "x": 1,
+    "y": 2
+  }
+}
+JSON . "\r\n",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItUsesIndentUnitRatherThanRootIndentForIndentedEmptyObject(): void
     {
         $jsonDocument = (new JsonParser())->parse(

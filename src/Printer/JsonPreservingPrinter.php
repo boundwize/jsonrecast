@@ -167,7 +167,7 @@ final class JsonPreservingPrinter implements JsonPrinter
                 detectScalarMutation: $detectScalarMutation,
                 depth: $depth,
             ),
-            $nodeJson instanceof StringNode => $this->encodeString($nodeJson->value),
+            $nodeJson instanceof StringNode => $this->printStringPreserving($nodeJson),
             $nodeJson instanceof NumberNode => $this->encodeNumber($nodeJson->rawValue),
             $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
             $nodeJson instanceof NullNode => 'null',
@@ -1431,6 +1431,17 @@ final class JsonPreservingPrinter implements JsonPrinter
             : null;
 
         return is_string($value) && $value !== $stringNode->value;
+    }
+
+    private function printStringPreserving(StringNode $stringNode): string
+    {
+        $originalText = $stringNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+
+        if (is_string($originalText) && ! $this->hasStringValueChanged($stringNode)) {
+            return $originalText;
+        }
+
+        return $this->encodeString($stringNode->value);
     }
 
     private function hasNumberValueChanged(NumberNode $numberNode): bool

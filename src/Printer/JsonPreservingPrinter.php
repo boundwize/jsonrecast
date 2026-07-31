@@ -125,11 +125,8 @@ final class JsonPreservingPrinter implements JsonPrinter
     private function printNode(
         NodeJson $nodeJson,
         PrintContext $printContext,
-        bool $detectScalarMutation = false,
         int $depth = 0,
     ): string {
-        $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($nodeJson);
-
         if (! $this->isChanged($nodeJson)) {
             $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
@@ -146,25 +143,21 @@ final class JsonPreservingPrinter implements JsonPrinter
             $nodeJson instanceof JsonDocument => $this->printDocument(
                 $nodeJson,
                 $printContext,
-                $detectScalarMutation,
                 $depth,
             ),
             $nodeJson instanceof ObjectNode, $nodeJson instanceof ArrayNode => $this->printContainer(
                 $nodeJson,
                 $printContext,
-                $detectScalarMutation,
                 $depth,
             ),
             $nodeJson instanceof ObjectItemNode => $this->printObjectItemPreserving(
                 $nodeJson,
                 $printContext,
-                detectScalarMutation: $detectScalarMutation,
                 depth: $depth,
             ),
             $nodeJson instanceof ArrayItemNode => $this->printArrayItemPreserving(
                 $nodeJson,
                 $printContext,
-                detectScalarMutation: $detectScalarMutation,
                 depth: $depth,
             ),
             $nodeJson instanceof StringNode => $this->printStringPreserving($nodeJson),
@@ -178,11 +171,10 @@ final class JsonPreservingPrinter implements JsonPrinter
     private function printDocument(
         JsonDocument $jsonDocument,
         PrintContext $printContext,
-        bool $detectScalarMutation,
         int $depth,
     ): string {
         $output = $jsonDocument->beforeValue
-            . $this->printNode($jsonDocument->value, $printContext, $detectScalarMutation, $depth)
+            . $this->printNode($jsonDocument->value, $printContext, $depth)
             . $jsonDocument->afterValue;
 
         if (
@@ -199,7 +191,6 @@ final class JsonPreservingPrinter implements JsonPrinter
     private function printContainer(
         ArrayNode|ObjectNode $containerNode,
         PrintContext $printContext,
-        bool $detectScalarMutation,
         int $depth,
     ): string {
         array_splice($containerNode->items, 0, 0);
@@ -212,7 +203,6 @@ final class JsonPreservingPrinter implements JsonPrinter
             [$shouldPrintBestEffort, $printedChangedItemValues] = $this->printChangedItemValues(
                 $containerNode,
                 $printContext,
-                $detectScalarMutation,
                 $depth,
             );
         }
@@ -221,7 +211,6 @@ final class JsonPreservingPrinter implements JsonPrinter
             return $this->printContainerBestEffort(
                 $containerNode,
                 $printContext,
-                $detectScalarMutation,
                 $depth,
                 $printedChangedItemValues,
             );
@@ -234,7 +223,6 @@ final class JsonPreservingPrinter implements JsonPrinter
         $output               = $this->openingDelimiter($containerNode);
         $lastIndex            = count($containerNode->items) - 1;
         $itemsInOriginalOrder = $this->getItemsInOriginalOrder($containerNode->items);
-        $isInOriginalOrder    = $itemsInOriginalOrder === $containerNode->items;
         $interiorShift        = $this->resolveInteriorItemShift($containerNode, $printContext);
         $childPrintContext    = $printContext->next();
         $containerAfterOpen   = $this->adoptNewlineStyle(
@@ -252,7 +240,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             [$beforeItem, $afterValue] = $this->getItemLayout(
                 $containerNode->items,
                 $i,
-                $isInOriginalOrder ? $item : $itemsInOriginalOrder[$i],
+                $itemsInOriginalOrder[$i],
                 $containerAfterOpen,
                 $containerBeforeClose,
             );
@@ -272,7 +260,6 @@ final class JsonPreservingPrinter implements JsonPrinter
                     $childPrintContext,
                     $beforeItem,
                     $afterValue,
-                    $detectScalarMutation,
                     $depth + 1,
                     $printedChangedItemValues[$i] ?? null,
                 )
@@ -281,7 +268,6 @@ final class JsonPreservingPrinter implements JsonPrinter
                     $childPrintContext,
                     $beforeItem,
                     $afterValue,
-                    $detectScalarMutation,
                     $depth + 1,
                     $printedChangedItemValues[$i] ?? null,
                 );
@@ -300,7 +286,6 @@ final class JsonPreservingPrinter implements JsonPrinter
     private function printContainerBestEffort(
         ArrayNode|ObjectNode $containerNode,
         PrintContext $printContext,
-        bool $detectScalarMutation,
         int $depth,
         array $printedChangedItemValues = [],
     ): string {
@@ -320,7 +305,6 @@ final class JsonPreservingPrinter implements JsonPrinter
                     ? $this->printObjectItemBestEffort(
                         $item,
                         $childPrintContext,
-                        $detectScalarMutation,
                         $depth + 1,
                         $printedChangedItemValues[$i] ?? null,
                     )
@@ -328,7 +312,6 @@ final class JsonPreservingPrinter implements JsonPrinter
                         ?? $this->printNode(
                             $item->value,
                             $childPrintContext,
-                            $detectScalarMutation,
                             $depth + 1,
                         )));
 
@@ -388,19 +371,16 @@ final class JsonPreservingPrinter implements JsonPrinter
         PrintContext $printContext,
         ?string $beforeKey = null,
         ?string $afterValue = null,
-        bool $detectScalarMutation = false,
         int $depth = 0,
         ?string $printedValue = null,
     ): string {
-        $beforeKey          ??= $objectItemNode->beforeKey;
-        $afterValue         ??= $objectItemNode->afterValue;
-        $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($objectItemNode);
+        $beforeKey  ??= $objectItemNode->beforeKey;
+        $afterValue ??= $objectItemNode->afterValue;
 
         if (
             $beforeKey === $objectItemNode->beforeKey
             && $afterValue === $objectItemNode->afterValue
             && ! $this->isChanged($objectItemNode)
-            && ! $detectScalarMutation
         ) {
             $originalText = $objectItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
@@ -410,24 +390,23 @@ final class JsonPreservingPrinter implements JsonPrinter
         }
 
         return $beforeKey
-            . $this->printNode($objectItemNode->key, $printContext, $detectScalarMutation, $depth)
+            . $this->printNode($objectItemNode->key, $printContext, $depth)
             . $this->adoptNewlineStyle($this->objectItemSeparator($objectItemNode), $objectItemNode, $printContext)
             . ($printedValue
-                ?? $this->printNode($objectItemNode->value, $printContext, $detectScalarMutation, $depth))
+                ?? $this->printNode($objectItemNode->value, $printContext, $depth))
             . $afterValue;
     }
 
     private function printObjectItemBestEffort(
         ObjectItemNode $objectItemNode,
         PrintContext $printContext,
-        bool $detectScalarMutation,
         int $depth,
         ?string $printedValue = null,
     ): string {
-        return $this->printNode($objectItemNode->key, $printContext, $detectScalarMutation, $depth)
+        return $this->printNode($objectItemNode->key, $printContext, $depth)
             . $this->adoptNewlineStyle($this->objectItemSeparator($objectItemNode), $objectItemNode, $printContext)
             . ($printedValue
-                ?? $this->printNode($objectItemNode->value, $printContext, $detectScalarMutation, $depth));
+                ?? $this->printNode($objectItemNode->value, $printContext, $depth));
     }
 
     private function objectItemSeparator(ObjectItemNode $objectItemNode): string
@@ -451,19 +430,16 @@ final class JsonPreservingPrinter implements JsonPrinter
         PrintContext $printContext,
         ?string $beforeValue = null,
         ?string $afterValue = null,
-        bool $detectScalarMutation = false,
         int $depth = 0,
         ?string $printedValue = null,
     ): string {
-        $beforeValue        ??= $arrayItemNode->beforeValue;
-        $afterValue         ??= $arrayItemNode->afterValue;
-        $detectScalarMutation = $detectScalarMutation || $this->isExplicitlyChanged($arrayItemNode);
+        $beforeValue ??= $arrayItemNode->beforeValue;
+        $afterValue  ??= $arrayItemNode->afterValue;
 
         if (
             $beforeValue === $arrayItemNode->beforeValue
             && $afterValue === $arrayItemNode->afterValue
             && ! $this->isChanged($arrayItemNode)
-            && ! $detectScalarMutation
         ) {
             $originalText = $arrayItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
@@ -474,7 +450,7 @@ final class JsonPreservingPrinter implements JsonPrinter
 
         return $beforeValue
             . ($printedValue
-                ?? $this->printNode($arrayItemNode->value, $printContext, $detectScalarMutation, $depth))
+                ?? $this->printNode($arrayItemNode->value, $printContext, $depth))
             . $afterValue;
     }
 
@@ -593,7 +569,6 @@ final class JsonPreservingPrinter implements JsonPrinter
     private function printChangedItemValues(
         ArrayNode|ObjectNode $containerNode,
         PrintContext $printContext,
-        bool $detectScalarMutation,
         int $depth,
     ): array {
         $printedValues     = [];
@@ -609,7 +584,6 @@ final class JsonPreservingPrinter implements JsonPrinter
                 : $this->printNode(
                     $item->value,
                     $childPrintContext,
-                    $detectScalarMutation,
                     $depth + 1,
                 );
             $printedValues[$i] = $printedValue;
@@ -676,8 +650,9 @@ final class JsonPreservingPrinter implements JsonPrinter
     private function printSyntheticNodeInline(NodeJson $nodeJson): string
     {
         return match (true) {
-            $nodeJson instanceof ObjectNode => $this->printSyntheticObjectInline($nodeJson),
-            $nodeJson instanceof ArrayNode => $this->printSyntheticArrayInline($nodeJson),
+            $nodeJson instanceof ObjectNode, $nodeJson instanceof ArrayNode => $this->printSyntheticContainerInline(
+                $nodeJson,
+            ),
             $nodeJson instanceof ObjectItemNode => $this->printSyntheticNodeInline($nodeJson->key)
                 . ': '
                 . $this->printSyntheticNodeInline($nodeJson->value),
@@ -690,13 +665,13 @@ final class JsonPreservingPrinter implements JsonPrinter
         };
     }
 
-    private function printSyntheticObjectInline(ObjectNode $objectNode): string
+    private function printSyntheticContainerInline(ArrayNode|ObjectNode $containerNode): string
     {
-        array_splice($objectNode->items, 0, 0);
+        array_splice($containerNode->items, 0, 0);
 
-        $output = '{';
+        $output = $this->openingDelimiter($containerNode);
 
-        foreach ($objectNode->items as $i => $item) {
+        foreach ($containerNode->items as $i => $item) {
             if ($i > 0) {
                 $output .= ', ';
             }
@@ -704,24 +679,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             $output .= $this->printSyntheticNodeInline($item);
         }
 
-        return $output . '}';
-    }
-
-    private function printSyntheticArrayInline(ArrayNode $arrayNode): string
-    {
-        array_splice($arrayNode->items, 0, 0);
-
-        $output = '[';
-
-        foreach ($arrayNode->items as $i => $item) {
-            if ($i > 0) {
-                $output .= ', ';
-            }
-
-            $output .= $this->printSyntheticNodeInline($item);
-        }
-
-        return $output . ']';
+        return $output . $this->closingDelimiter($containerNode);
     }
 
     private function itemWasOriginallyMultiline(ArrayItemNode|ObjectItemNode $item): bool
@@ -955,9 +913,6 @@ final class JsonPreservingPrinter implements JsonPrinter
                 : '';
         }
 
-        $targetLevel  = $indentLevel + $delta;
-        $targetPrefix = str_repeat($targetIndent, max($targetLevel, 0));
-
         if (str_contains($targetIndent, "\t")) {
             $wholeIndentLevel       = intdiv($leadingWhitespaceLength, $originalIndentLength);
             $targetWholeIndentLevel = $wholeIndentLevel + $delta;
@@ -984,6 +939,9 @@ final class JsonPreservingPrinter implements JsonPrinter
             return str_repeat($targetIndent, $targetWholeIndentLevel)
                 . $residualWhitespace;
         }
+
+        $targetLevel  = $indentLevel + $delta;
+        $targetPrefix = str_repeat($targetIndent, max($targetLevel, 0));
 
         if ($targetLevel < 0 || ($targetLevel === 0 && $residual < 0)) {
             // Clamped lines plateau flush at the target container: lifting any of
@@ -1402,15 +1360,6 @@ final class JsonPreservingPrinter implements JsonPrinter
                 . $this->getOriginalText($item->value),
             $item instanceof ArrayItemNode => $this->getOriginalText($item->value),
         };
-    }
-
-    private function isExplicitlyChanged(NodeJson $nodeJson): bool
-    {
-        if ($this->nodeChangeSet instanceof NodeChangeSet && $this->nodeChangeSet->isChanged($nodeJson)) {
-            return true;
-        }
-
-        return ! $nodeJson->hasAttribute(NodeAttributes::ORIGINAL_TEXT);
     }
 
     private function hasScalarValueChanged(NodeJson $nodeJson): bool

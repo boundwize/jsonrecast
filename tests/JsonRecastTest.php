@@ -28,6 +28,7 @@ use function array_reverse;
 use function count;
 use function json_decode;
 use function str_repeat;
+use function trim;
 
 use const JSON_THROW_ON_ERROR;
 
@@ -209,6 +210,29 @@ JSON, JsonRecast::print($jsonRecastResult));
         );
 
         $this->assertSame(" \n{\"name\": \"new\"}\n ", JsonRecast::print($jsonRecastResult));
+    }
+
+    public function testNoOpStringMutationPreservesOriginalEscapes(): void
+    {
+        $source = '{"homepage": "https:\/\/example.com\/\u00e9"}';
+
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse($source),
+            new class extends NodeJsonVisitorAbstract {
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if (! $nodeJson instanceof StringNode) {
+                        return null;
+                    }
+
+                    $nodeJson->value = trim($nodeJson->value);
+
+                    return $nodeJson;
+                }
+            },
+        );
+
+        $this->assertSame($source, JsonRecast::print($jsonRecastResult));
     }
 
     public function testVisitorContainerReplacementPreservesInlineDocumentFormatting(): void

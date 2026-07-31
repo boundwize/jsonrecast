@@ -21,7 +21,6 @@ use stdClass;
 use UnitEnum;
 
 use function array_is_list;
-use function array_map;
 use function get_object_vars;
 use function is_array;
 use function is_bool;
@@ -123,12 +122,13 @@ final class JsonValue
         MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth);
 
         if (array_is_list($value)) {
-            return new ArrayNode(array_map(
-                static fn(mixed $item): ArrayItemNode => new ArrayItemNode(
-                    self::fromValue($item, $maximumDepth, $depth + 1),
-                ),
-                $value,
-            ));
+            $items = [];
+
+            foreach ($value as $item) {
+                $items[] = new ArrayItemNode(self::fromValue($item, $maximumDepth, $depth + 1));
+            }
+
+            return new ArrayNode($items);
         }
 
         $items = [];

@@ -206,10 +206,15 @@ final class Lexer
     {
         $numberLexemeScanResult = NumberLexemeScanner::scan($this->source, $this->offset);
 
-        // advance() keeps line, column and carriage-return state in sync, so
-        // the error position below and later tokens stay accurate
-        while ($this->offset < $numberLexemeScanResult->endOffset) {
-            $this->advance();
+        // JSON number lexemes contain only single-byte ASCII characters and no
+        // line breaks, so the scanner's result can update the cursor directly
+        // instead of walking the same characters a second time.
+        $consumedLength = $numberLexemeScanResult->endOffset - $this->offset;
+        $this->offset   = $numberLexemeScanResult->endOffset;
+        $this->column  += $consumedLength;
+
+        if ($consumedLength > 0) {
+            $this->previousWasCarriageReturn = false;
         }
 
         if ($numberLexemeScanResult->errorMessage !== null) {
@@ -218,7 +223,7 @@ final class Lexer
 
         return new Token(
             TokenType::NUMBER,
-            substr($this->source, $startOffset, $this->offset - $startOffset),
+            substr($this->source, $startOffset, $consumedLength),
             $startOffset,
             $this->offset,
             $line,

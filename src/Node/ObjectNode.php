@@ -9,8 +9,10 @@ use Boundwize\JsonRecast\Node\Helper\LayoutCoordinateHelper;
 use Boundwize\JsonRecast\Node\Helper\StartOffsetHelper;
 use Boundwize\JsonRecast\Node\Helper\WhitespaceHelper;
 
+use function array_is_list;
 use function array_pop;
 use function array_splice;
+use function array_values;
 use function count;
 use function is_string;
 use function max;
@@ -30,7 +32,7 @@ final class ObjectNode extends AbstractNodeJson
 
     public function get(string $key): ?ObjectItemNode
     {
-        array_splice($this->items, 0, 0);
+        $this->items = self::normalizeItems($this->items);
 
         for ($i = count($this->items) - 1; $i >= 0; $i--) {
             if ($this->items[$i]->key->value === $key) {
@@ -39,6 +41,15 @@ final class ObjectNode extends AbstractNodeJson
         }
 
         return null;
+    }
+
+    /**
+     * @param array<array-key, ObjectItemNode> $items
+     * @return list<ObjectItemNode>
+     */
+    private static function normalizeItems(array $items): array
+    {
+        return array_is_list($items) ? $items : array_values($items);
     }
 
     public function has(string $key): bool

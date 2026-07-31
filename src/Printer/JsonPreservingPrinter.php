@@ -1433,17 +1433,6 @@ final class JsonPreservingPrinter implements JsonPrinter
         return is_string($value) && $value !== $stringNode->value;
     }
 
-    private function printStringPreserving(StringNode $stringNode): string
-    {
-        $originalText = $stringNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
-
-        if (is_string($originalText) && ! $this->hasStringValueChanged($stringNode)) {
-            return $originalText;
-        }
-
-        return $this->encodeString($stringNode->value);
-    }
-
     private function hasNumberValueChanged(NumberNode $numberNode): bool
     {
         $originalText = $numberNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
@@ -1504,6 +1493,22 @@ final class JsonPreservingPrinter implements JsonPrinter
         }
 
         return $encoded;
+    }
+
+    private function printStringPreserving(StringNode $stringNode): string
+    {
+        $originalText  = $stringNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+        $originalValue = is_string($originalText)
+            ? json_decode($originalText, true, $this->maximumDepth)
+            : null;
+
+        // Decoding loses the source escape spelling, so reuse the token only
+        // after positively confirming that it still represents the node value.
+        if (is_string($originalText) && $originalValue === $stringNode->value) {
+            return $originalText;
+        }
+
+        return $this->encodeString($stringNode->value);
     }
 
     private function encodeNumber(string $rawValue): string

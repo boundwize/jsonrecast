@@ -2692,6 +2692,21 @@ JSON,
         $this->assertSame('{"name":"new"}', (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItEncodesChangedStringWhenOriginalTextIsInvalid(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('"value"');
+        $this->assertInstanceOf(StringNode::class, $jsonDocument->value);
+        $jsonDocument->value->setAttribute(NodeAttributes::ORIGINAL_TEXT, 'GARBAGE');
+
+        $nodeChangeSet = new NodeChangeSet();
+        $nodeChangeSet->markChanged($jsonDocument->value);
+
+        $this->assertSame(
+            '"value"',
+            (new JsonPreservingPrinter($nodeChangeSet))->print($jsonDocument->value),
+        );
+    }
+
     public function testItPrintsNewStringNodeWithoutEscapingUnicode(): void
     {
         $city         = "M\xC3\xBCnchen";

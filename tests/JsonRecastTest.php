@@ -214,7 +214,7 @@ JSON, JsonRecast::print($jsonRecastResult));
 
     public function testNoOpStringMutationPreservesOriginalEscapes(): void
     {
-        $source = '{"homepage": "https:\/\/example.com\/caf\u00e9"}';
+        $source = '{"homepage": "https:\/\/example.com\/\u00e9"}';
 
         $jsonRecastResult = JsonRecast::traverse(
             JsonRecast::parse($source),

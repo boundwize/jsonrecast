@@ -1430,7 +1430,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             ? json_decode($originalText, true, $this->maximumDepth)
             : null;
 
-        return is_string($value) && $value !== $stringNode->value;
+        return is_string($originalText) && $value !== $stringNode->value;
     }
 
     private function hasNumberValueChanged(NumberNode $numberNode): bool
@@ -1504,7 +1504,7 @@ final class JsonPreservingPrinter implements JsonPrinter
 
         // Decoding loses the source escape spelling, so reuse the token only
         // after positively confirming that it still represents the node value.
-        if (is_string($originalText) && $originalValue === $stringNode->value) {
+        if (is_string($originalValue) && $originalValue === $stringNode->value) {
             return $originalText;
         }
 

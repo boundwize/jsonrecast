@@ -102,15 +102,21 @@ final class Lexer
             default => null,
         };
 
-        if ($text === null || substr($this->source, $this->offset, strlen($text)) !== $text) {
+        if ($text === null) {
             throw $this->error('Unexpected character.');
         }
 
         $length = strlen($text);
 
-        for ($i = 0; $i < $length; $i++) {
-            $this->advance();
+        if (substr($this->source, $this->offset, $length) !== $text) {
+            throw $this->error('Unexpected character.');
         }
+
+        // JSON keywords contain only single-byte ASCII characters and no line
+        // breaks, so validation can be followed by a direct cursor update.
+        $this->offset                   += $length;
+        $this->column                   += $length;
+        $this->previousWasCarriageReturn = false;
 
         return new Token(self::KEYWORD_TOKENS[$text], $text, $startOffset, $this->offset, $line, $column);
     }

@@ -87,13 +87,15 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
             return $openDelimiter . $closeDelimiter;
         }
 
-        $output    = $openDelimiter;
-        $lastIndex = count($node->items) - 1;
+        $output            = $openDelimiter;
+        $lastIndex         = count($node->items) - 1;
+        $childPrintContext = $printContext->next();
+        $childIndentation  = $printContext->childIndentation();
 
         foreach ($node->items as $i => $item) {
             $output .= $printContext->newline
-                . $printContext->childIndentation()
-                . $this->printNode($item, $printContext->next());
+                . $childIndentation
+                . $this->printNode($item, $childPrintContext);
 
             if ($i < $lastIndex) {
                 $output .= ',';

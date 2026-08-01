@@ -117,9 +117,9 @@ final class JsonValue
      */
     private static function fromArray(array $value, int $maximumDepth, int $depth): NodeJson
     {
-        // Match the parser's json_decode()-compatible boundary so converted
-        // values can be printed and parsed again at the same maximum depth.
-        MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth + 1);
+        // Match json_encode(): it only consumes a nesting level when entering
+        // a container, so scalar leaves at the final depth are convertible.
+        MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth);
 
         if (array_is_list($value)) {
             $items = [];
@@ -152,7 +152,7 @@ final class JsonValue
             throw new InvalidArgumentException('Unsupported JSON value.');
         }
 
-        MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth + 1);
+        MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth);
 
         $items = [];
 

@@ -476,7 +476,7 @@ JSON,
 
     public function testItRejectsNodeThatExceedsMaximumNestingDepth(): void
     {
-        $nodeJson = JsonValue::from([[[0]]], maximumDepth: 4);
+        $nodeJson = JsonValue::from([[[0]]], maximumDepth: 3);
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Maximum stack depth exceeded.');

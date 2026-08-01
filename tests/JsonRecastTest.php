@@ -169,11 +169,16 @@ JSON, JsonRecast::print($jsonRecastResult));
         JsonRecast::print($jsonDocument, maximumDepth: 2);
     }
 
-    public function testPrintRejectsDocumentThatDefaultParserCannotRead(): void
+    public function testPrintRejectsGeneratedDocumentThatDefaultParserCannotRead(): void
     {
-        $depth        = 512;
-        $source       = str_repeat('[', $depth) . '1' . str_repeat(']', $depth);
-        $jsonDocument = JsonRecast::parse($source, maximumDepth: $depth + 1);
+        $value = 1;
+
+        for ($depth = 0; $depth < 512; $depth++) {
+            $value = [$value];
+        }
+
+        $jsonDocument        = JsonRecast::parse('null');
+        $jsonDocument->value = JsonValue::from($value);
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Maximum stack depth exceeded.');

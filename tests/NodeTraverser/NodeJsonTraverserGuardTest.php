@@ -242,7 +242,7 @@ final class NodeJsonTraverserGuardTest extends TestCase
 
     public function testItRejectsNodeTreeThatExceedsMaximumNestingDepth(): void
     {
-        $nodeJson = JsonValue::from([[[0]]], maximumDepth: 4);
+        $nodeJson = JsonValue::from([[[0]]], maximumDepth: 3);
 
         $nodeJsonTraverser = new NodeJsonTraverser(maximumDepth: 3);
         $nodeJsonTraverser->addVisitor(new class extends NodeJsonVisitorAbstract {

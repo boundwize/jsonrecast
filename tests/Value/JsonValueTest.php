@@ -164,68 +164,52 @@ final class JsonValueTest extends TestCase
 
     public function testMaximumNestingDepthIsCheckedWhenEnteringPhpArrayStack(): void
     {
-        // The parser rejects the third container at depth 3, so conversion
-        // must reject it at the same boundary.
+        // Mirrors json_encode([1 => [[2]], 2], depth: 2), which fails, while
+        // json_encode([1 => [2], 2], depth: 2) succeeds.
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Maximum stack depth exceeded.');
 
-        JsonValue::from([1 => [[2]], 2], maximumDepth: 3);
+        JsonValue::from([1 => [[2]], 2], maximumDepth: 2);
     }
 
-    public function testItRejectsParserIncompatibleValueAtDefaultMaximumNestingDepth(): void
+    public function testItRejectsValueThatExceedsMaximumNestingDepth(): void
     {
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Maximum stack depth exceeded.');
 
-        JsonValue::from($this->nestedArray(512));
+        JsonValue::from($this->nestedArray(513));
     }
 
     public function testMaximumNestingDepthCanBeOverridden(): void
     {
-        $nodeJson = JsonValue::from($this->nestedArray(512), maximumDepth: 513);
+        $nodeJson = JsonValue::from($this->nestedArray(513), maximumDepth: 513);
 
         $this->assertInstanceOf(ArrayNode::class, $nodeJson);
     }
 
-    public function testItAcceptsContainerWithScalarWithinMaximumNestingDepth(): void
+    public function testItAcceptsScalarAtMaximumNestingDepth(): void
     {
-        $nodeJson = JsonValue::from([1], maximumDepth: 2);
+        // Mirrors json_encode([1], depth: 1): scalar leaves do not consume
+        // another nesting level.
+        $nodeJson = JsonValue::from([1], maximumDepth: 1);
 
         $this->assertInstanceOf(ArrayNode::class, $nodeJson);
         $this->assertInstanceOf(NumberNode::class, $nodeJson->items[0]->value);
 
-        $objectNode = JsonValue::from(['value' => 1], maximumDepth: 2);
+        $objectNode = JsonValue::from(['value' => 1], maximumDepth: 1);
 
         $this->assertInstanceOf(ObjectNode::class, $objectNode);
         $this->assertInstanceOf(NumberNode::class, $objectNode->items[0]->value);
     }
 
-    /**
-     * @return iterable<string, array{mixed, int}>
-     */
-    public static function collectionAtMaximumDepthProvider(): iterable
+    public function testItAcceptsEmptyCollectionAtMaximumNestingDepth(): void
     {
-        yield 'root empty array' => [[], 1];
-        yield 'root empty object' => [new stdClass(), 1];
-        yield 'nested empty array' => [[[]], 2];
-        yield 'nested empty object' => [['value' => new stdClass()], 2];
-    }
-
-    #[DataProvider('collectionAtMaximumDepthProvider')]
-    public function testItRejectsCollectionAtMaximumNestingDepth(mixed $value, int $maximumDepth): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Maximum stack depth exceeded.');
-
-        JsonValue::from($value, maximumDepth: $maximumDepth);
-    }
-
-    public function testItAcceptsEmptyCollectionWithinMaximumNestingDepth(): void
-    {
-        $this->assertInstanceOf(ArrayNode::class, JsonValue::from([], maximumDepth: 2));
-        $this->assertInstanceOf(ObjectNode::class, JsonValue::from(new stdClass(), maximumDepth: 2));
-        $this->assertInstanceOf(ArrayNode::class, JsonValue::from([[]], maximumDepth: 3));
-        $this->assertInstanceOf(ObjectNode::class, JsonValue::from(['value' => new stdClass()], maximumDepth: 3));
+        // Conversion keeps json_encode() compatibility. Printers apply the
+        // stricter parser-compatible boundary before emitting output.
+        $this->assertInstanceOf(ArrayNode::class, JsonValue::from([], maximumDepth: 1));
+        $this->assertInstanceOf(ObjectNode::class, JsonValue::from(new stdClass(), maximumDepth: 1));
+        $this->assertInstanceOf(ArrayNode::class, JsonValue::from([[]], maximumDepth: 2));
+        $this->assertInstanceOf(ObjectNode::class, JsonValue::from(['value' => new stdClass()], maximumDepth: 2));
     }
 
     public function testMaximumNestingDepthMustBeGreaterThanZero(): void

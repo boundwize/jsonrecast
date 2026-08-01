@@ -125,7 +125,7 @@ $result = JsonRecast::traverse($document, $visitor);
 echo JsonRecast::print($result);
 ```
 
-After traversal, pass the `JsonRecastResult` itself to `JsonRecast::print()` so explicit change records are retained. Those records matter when the only edit changes document-level printer metadata: `NodeAttributes::INDENT`, `NodeAttributes::NEWLINE`, or `NodeAttributes::TRAILING_NEWLINE`. These attributes are not represented by the node's original text and do not trigger a rebuild by themselves. Return the document after changing one of them so it is marked as changed, then print `$result` to apply the metadata change.
+After traversal, pass the `JsonRecastResult` itself to `JsonRecast::print()` so explicit change records are retained. The preserving printer also detects direct changes to document-level printer metadata: `NodeAttributes::INDENT`, `NodeAttributes::NEWLINE`, and `NodeAttributes::TRAILING_NEWLINE`. These attributes can therefore be changed on a parsed document and printed without requiring a traversal solely to mark the document as changed.
 
 The preserving printer keeps the document newline style and trailing newline when they were present in the parsed source.
 

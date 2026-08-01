@@ -200,6 +200,32 @@ JSON,
         );
     }
 
+    public function testItIndentsSyntheticSubtreeRelativeToBaseIndentedDocument(): void
+    {
+        $source = <<<'JSON'
+            {
+                "a": 1
+            }
+        JSON;
+
+        $jsonDocument = (new JsonParser())->parse($source);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('NEW', JsonValue::from(['x' => 1]));
+
+        $this->assertSame(
+            <<<'JSON'
+                {
+                    "a": 1,
+                    "NEW": {
+                        "x": 1
+                    }
+                }
+            JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPrettyPrintsArrayWithNewItem(): void
     {
         $arrayNode = new ArrayNode([

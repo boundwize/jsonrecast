@@ -14,13 +14,24 @@ final readonly class PrintContext
         private string $indent = '    ',
         public string $newline = "\n",
         private int $level = 0,
+        ?string $indentation = null,
     ) {
-        $this->indentation = str_repeat($indent, $level);
+        $this->indentation = $indentation ?? str_repeat($indent, $level);
     }
 
     public function next(): self
     {
-        return new self($this->indent, $this->newline, $this->level + 1);
+        return new self(
+            $this->indent,
+            $this->newline,
+            $this->level + 1,
+            $this->childIndentation(),
+        );
+    }
+
+    public function withIndentation(string $indentation): self
+    {
+        return new self($this->indent, $this->newline, $this->level, $indentation);
     }
 
     public function indentation(): string

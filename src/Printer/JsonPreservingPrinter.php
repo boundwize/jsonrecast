@@ -173,8 +173,11 @@ final class JsonPreservingPrinter implements JsonPrinter
         PrintContext $printContext,
         int $depth,
     ): string {
-        $output = $jsonDocument->beforeValue
-            . $this->printNode($jsonDocument->value, $printContext, $depth)
+        $valuePrintContext = $printContext->withIndentation(
+            $this->leadingIndentationAfterLastNewline($jsonDocument->beforeValue),
+        );
+        $output            = $jsonDocument->beforeValue
+            . $this->printNode($jsonDocument->value, $valuePrintContext, $depth)
             . $jsonDocument->afterValue;
 
         if (
@@ -196,15 +199,25 @@ final class JsonPreservingPrinter implements JsonPrinter
         array_splice($containerNode->items, 0, 0);
 
         $printedChangedItemValues = [];
+        $itemLayouts              = [];
         $shouldPrintBestEffort    = $this->shouldPrintContainerBestEffort($containerNode, $containerNode->items)
             || $this->shouldPrintInsertedMultilineItemsBestEffort($containerNode);
 
         if (! $shouldPrintBestEffort) {
+            $itemLayouts = $this->resolveContainerItemLayouts($containerNode, $printContext);
+
             [$shouldPrintBestEffort, $printedChangedItemValues] = $this->printChangedItemValues(
                 $containerNode,
-                $printContext,
+                $itemLayouts,
                 $depth,
             );
+
+            if ($shouldPrintBestEffort) {
+                // The values were measured in their preserved layout. Once the
+                // parent switches to best-effort formatting, render them again
+                // in the normalized child context chosen below.
+                $printedChangedItemValues = [];
+            }
         }
 
         if ($shouldPrintBestEffort) {
@@ -220,44 +233,16 @@ final class JsonPreservingPrinter implements JsonPrinter
             return $this->printEmptyContainer($containerNode, $printContext);
         }
 
-        $output               = $this->openingDelimiter($containerNode);
-        $lastIndex            = count($containerNode->items) - 1;
-        $itemsInOriginalOrder = $this->getItemsInOriginalOrder($containerNode->items);
-        $interiorShift        = $this->resolveInteriorItemShift($containerNode, $printContext);
-        $childPrintContext    = $printContext->next();
-        $containerAfterOpen   = $this->adoptNewlineStyle(
-            $this->afterOpen($containerNode),
-            $containerNode,
-            $printContext,
-        );
-        $containerBeforeClose = $this->reindentWhitespaceBeforeNode(
-            $containerNode,
-            $this->adoptNewlineStyle($this->beforeClose($containerNode), $containerNode, $printContext),
-            $printContext,
-        );
+        $output    = $this->openingDelimiter($containerNode);
+        $lastIndex = count($containerNode->items) - 1;
 
         foreach ($containerNode->items as $i => $item) {
-            [$beforeItem, $afterValue] = $this->getItemLayout(
-                $containerNode->items,
-                $i,
-                $itemsInOriginalOrder[$i],
-                $containerAfterOpen,
-                $containerBeforeClose,
-            );
-
-            $newlineSource = $this->newlineStyleSource($item, $containerNode);
-            $afterValue    = $this->adoptNewlineStyle($afterValue, $newlineSource, $printContext);
-
-            $beforeItem ??= $this->beforeItem($item);
-            $beforeItem   = $this->adoptNewlineStyle($beforeItem, $newlineSource, $printContext);
-            $beforeItem   = $interiorShift !== null
-                ? $this->shiftWhitespaceBeforeNode($beforeItem, $interiorShift)
-                : $this->reindentWhitespaceBeforeNode($item, $beforeItem, $childPrintContext);
+            [$beforeItem, $afterValue, $itemPrintContext] = $itemLayouts[$i];
 
             $output .= $item instanceof ObjectItemNode
                 ? $this->printObjectItemPreserving(
                     $item,
-                    $childPrintContext,
+                    $itemPrintContext,
                     $beforeItem,
                     $afterValue,
                     $depth + 1,
@@ -265,7 +250,7 @@ final class JsonPreservingPrinter implements JsonPrinter
                 )
                 : $this->printArrayItemPreserving(
                     $item,
-                    $childPrintContext,
+                    $itemPrintContext,
                     $beforeItem,
                     $afterValue,
                     $depth + 1,
@@ -389,11 +374,18 @@ final class JsonPreservingPrinter implements JsonPrinter
             }
         }
 
+        $separator         = $this->adoptNewlineStyle(
+            $this->objectItemSeparator($objectItemNode),
+            $objectItemNode,
+            $printContext,
+        );
+        $valuePrintContext = $this->valuePrintContext($objectItemNode, $printContext, $separator);
+
         return $beforeKey
             . $this->printNode($objectItemNode->key, $printContext, $depth)
-            . $this->adoptNewlineStyle($this->objectItemSeparator($objectItemNode), $objectItemNode, $printContext)
+            . $separator
             . ($printedValue
-                ?? $this->printNode($objectItemNode->value, $printContext, $depth))
+                ?? $this->printNode($objectItemNode->value, $valuePrintContext, $depth))
             . $afterValue;
     }
 
@@ -403,10 +395,17 @@ final class JsonPreservingPrinter implements JsonPrinter
         int $depth,
         ?string $printedValue = null,
     ): string {
+        $separator         = $this->adoptNewlineStyle(
+            $this->objectItemSeparator($objectItemNode),
+            $objectItemNode,
+            $printContext,
+        );
+        $valuePrintContext = $this->valuePrintContext($objectItemNode, $printContext, $separator);
+
         return $this->printNode($objectItemNode->key, $printContext, $depth)
-            . $this->adoptNewlineStyle($this->objectItemSeparator($objectItemNode), $objectItemNode, $printContext)
+            . $separator
             . ($printedValue
-                ?? $this->printNode($objectItemNode->value, $printContext, $depth));
+                ?? $this->printNode($objectItemNode->value, $valuePrintContext, $depth));
     }
 
     private function objectItemSeparator(ObjectItemNode $objectItemNode): string
@@ -490,6 +489,88 @@ final class JsonPreservingPrinter implements JsonPrinter
     }
 
     /**
+     * @return array<int, array{string, string, PrintContext}>
+     */
+    private function resolveContainerItemLayouts(
+        ArrayNode|ObjectNode $containerNode,
+        PrintContext $printContext,
+    ): array {
+        $itemLayouts          = [];
+        $itemsInOriginalOrder = $this->getItemsInOriginalOrder($containerNode->items);
+        $interiorShift        = $this->resolveInteriorItemShift($containerNode, $printContext);
+        $childPrintContext    = $printContext->next();
+        $containerAfterOpen   = $this->adoptNewlineStyle(
+            $this->afterOpen($containerNode),
+            $containerNode,
+            $printContext,
+        );
+        $containerBeforeClose = $this->reindentWhitespaceBeforeNode(
+            $containerNode,
+            $this->adoptNewlineStyle($this->beforeClose($containerNode), $containerNode, $printContext),
+            $printContext,
+        );
+
+        foreach ($containerNode->items as $i => $item) {
+            [$beforeItem, $afterValue] = $this->getItemLayout(
+                $containerNode->items,
+                $i,
+                $itemsInOriginalOrder[$i],
+                $containerAfterOpen,
+                $containerBeforeClose,
+            );
+
+            $newlineSource = $this->newlineStyleSource($item, $containerNode);
+            $afterValue    = $this->adoptNewlineStyle($afterValue, $newlineSource, $printContext);
+
+            $beforeItem ??= $this->beforeItem($item);
+            $beforeItem   = $this->adoptNewlineStyle($beforeItem, $newlineSource, $printContext);
+            $beforeItem   = $interiorShift !== null
+                ? $this->shiftWhitespaceBeforeNode($beforeItem, $interiorShift)
+                : $this->reindentWhitespaceBeforeNode($item, $beforeItem, $childPrintContext);
+
+            $itemPrintContext = $this->printContextAfterLastNewline(
+                $childPrintContext->withIndentation($printContext->indentation()),
+                $beforeItem,
+            );
+            $itemLayouts[$i]  = [$beforeItem, $afterValue, $itemPrintContext];
+        }
+
+        return $itemLayouts;
+    }
+
+    private function valuePrintContext(
+        ArrayItemNode|ObjectItemNode $item,
+        PrintContext $printContext,
+        ?string $separator = null,
+    ): PrintContext {
+        if ($item instanceof ArrayItemNode) {
+            return $printContext;
+        }
+
+        return $this->printContextAfterLastNewline(
+            $printContext,
+            $separator ?? $this->objectItemSeparator($item),
+        );
+    }
+
+    private function printContextAfterLastNewline(PrintContext $printContext, string $text): PrintContext
+    {
+        if ($this->lastNewlinePosition($text) < 0) {
+            return $printContext;
+        }
+
+        return $printContext->withIndentation($this->leadingIndentationAfterLastNewline($text));
+    }
+
+    private function leadingIndentationAfterLastNewline(string $text): string
+    {
+        $lastNewlinePosition = $this->lastNewlinePosition($text);
+        $currentLine         = substr($text, $lastNewlinePosition + 1);
+
+        return substr($currentLine, 0, strspn($currentLine, " \t"));
+    }
+
+    /**
      * @param list<ArrayItemNode|ObjectItemNode> $items
      */
     private function normalizeSyntheticAfterValue(
@@ -565,14 +646,16 @@ final class JsonPreservingPrinter implements JsonPrinter
         return false;
     }
 
-    /** @return array{bool, array<int, string>} */
+    /**
+     * @param array<int, array{string, string, PrintContext}> $itemLayouts
+     * @return array{bool, array<int, string>}
+     */
     private function printChangedItemValues(
         ArrayNode|ObjectNode $containerNode,
-        PrintContext $printContext,
+        array $itemLayouts,
         int $depth,
     ): array {
-        $printedValues     = [];
-        $childPrintContext = $printContext->next();
+        $printedValues = [];
 
         foreach ($containerNode->items as $i => $item) {
             if (! $this->isChanged($item)) {
@@ -583,7 +666,7 @@ final class JsonPreservingPrinter implements JsonPrinter
                 ? $this->printSyntheticNodeInline($item->value)
                 : $this->printNode(
                     $item->value,
-                    $childPrintContext,
+                    $this->valuePrintContext($item, $itemLayouts[$i][2]),
                     $depth + 1,
                 );
             $printedValues[$i] = $printedValue;

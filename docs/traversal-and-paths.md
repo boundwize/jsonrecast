@@ -134,6 +134,22 @@ if ($node instanceof NumberNode && $node->rawValue === '1' && $path->depth() ===
 
 The original `1` is visited at depth `1` (path `[0]`). The `1` inside the replacement is visited at depth `3` (path `[0, 'm', 0]`), so the visitor fires once. An exact match such as `$path->matches([0])` works the same way when the target location is known in advance.
 
+## Input Tree Validation
+
+`traverse()` validates the input tree at entry, before any visitor runs, using the same guard as the printers. A cyclic tree — a container placed somewhere below itself, for example via `set()` or `append()` — throws a catchable `RuntimeException` with the message `Cyclic JSON AST detected.` A tree whose container nesting exceeds the configured maximum depth throws `InvalidArgumentException` with the message `Maximum stack depth exceeded.` Without this guard, traversing a cyclic tree would recurse until PHP's memory limit kills the process with an uncatchable fatal error.
+
+The default limit is `512`. Raise or lower it through the facade or the traverser constructor — see [Maximum Depth](parsing-and-printers.html#maximum-depth):
+
+```php
+$result = JsonRecast::traverse($document, $visitor, maximumDepth: 1024);
+
+$traverser = new NodeJsonTraverser(maximumDepth: 1024);
+```
+
+The guard tracks only the active path, so the same node appearing under two sibling positions is not a cycle; such aliased subtrees traverse normally. `NodeJsonFinder` runs a traverser internally, so `find()` and `findFirst()` reject cyclic trees the same way.
+
+The guard runs once, at entry. Nodes a visitor introduces mid-traversal are not re-validated — a self-triggering replacement that deepens the tree forever remains your responsibility as the visitor author, as described in the warning above.
+
 ## Change Tracking
 
 JsonRecast keeps change metadata outside the AST. The traverser records a change when a visitor returns a node.

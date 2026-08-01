@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast\Tests\NodeTraverser;
 
 use Boundwize\JsonRecast\Node\ArrayItemNode;
+use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\NodeJson;
 use Boundwize\JsonRecast\Node\NumberNode;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
+use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodePath\NodeJsonPath;
 use Boundwize\JsonRecast\NodeTraverser\NodeJsonTraversalResult;
@@ -15,9 +17,12 @@ use Boundwize\JsonRecast\NodeTraverser\NodeJsonTraverser;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitor;
 use Boundwize\JsonRecast\NodeVisitor\NodeJsonVisitorAbstract;
 use Boundwize\JsonRecast\Parser\JsonParser;
+use Boundwize\JsonRecast\Value\JsonValue;
+use InvalidArgumentException;
 use LogicException;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
+use RuntimeException;
 
 final class NodeJsonTraverserGuardTest extends TestCase
 {
@@ -211,6 +216,77 @@ final class NodeJsonTraverserGuardTest extends TestCase
                 return NodeJsonVisitor::REMOVE_NODE;
             }
         });
+    }
+
+    public function testItRejectsCyclicNodeTree(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a": {"b": 1}}');
+
+        $rootObject = $jsonDocument->value;
+        $this->assertInstanceOf(ObjectNode::class, $rootObject);
+
+        $objectItemNode = $rootObject->get('a');
+        $this->assertInstanceOf(ObjectItemNode::class, $objectItemNode);
+
+        $nestedObject = $objectItemNode->value;
+        $this->assertInstanceOf(ObjectNode::class, $nestedObject);
+
+        $nestedObject->set('self', $rootObject);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Cyclic JSON AST detected.');
+
+        $this->traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
+        });
+    }
+
+    public function testItRejectsNodeTreeThatExceedsMaximumNestingDepth(): void
+    {
+        $nodeJson = JsonValue::from([[[0]]], maximumDepth: 3);
+
+        $nodeJsonTraverser = new NodeJsonTraverser(maximumDepth: 2);
+        $nodeJsonTraverser->addVisitor(new class extends NodeJsonVisitorAbstract {
+        });
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
+        $nodeJsonTraverser->traverse($nodeJson);
+    }
+
+    public function testItTraversesScalarAtMaximumNestingDepth(): void
+    {
+        // mirrors the printers: only entering another container consumes a
+        // nesting level, scalar leaves do not exceed the depth
+        $nodeJson = JsonValue::from([1], maximumDepth: 1);
+
+        $nodeJsonTraverser = new NodeJsonTraverser(maximumDepth: 1);
+        $nodeJsonTraverser->addVisitor(new class extends NodeJsonVisitorAbstract {
+        });
+
+        $this->assertSame($nodeJson, $nodeJsonTraverser->traverse($nodeJson)->node);
+    }
+
+    public function testItTraversesNodeSharedBetweenSiblings(): void
+    {
+        // the guard tracks the active path only, so legal aliasing — the same
+        // node under two sibling items — must keep traversing
+        $sharedArrayNode = new ArrayNode([]);
+        $arrayNode       = new ArrayNode([
+            new ArrayItemNode($sharedArrayNode),
+            new ArrayItemNode($sharedArrayNode),
+        ]);
+
+        $this->assertSame($arrayNode, $this->traverse($arrayNode, new class extends NodeJsonVisitorAbstract {
+        })->node);
+    }
+
+    public function testItRejectsNonPositiveMaximumDepth(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum depth must be greater than 0.');
+
+        new NodeJsonTraverser(maximumDepth: 0);
     }
 
     private function traverse(

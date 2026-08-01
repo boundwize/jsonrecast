@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast\NodeTraverser;
 
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
+use Boundwize\JsonRecast\Guard\MaximumDepthGuard;
+use Boundwize\JsonRecast\Guard\NodeTreeGuard;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\Helper\WhitespaceHelper;
@@ -35,12 +37,16 @@ final class NodeJsonTraverser
     /** @var list<NodeJsonVisitor> */
     private array $visitors = [];
 
+    /** @var positive-int */
+    private readonly int $maximumDepth;
+
     private NodeChangeSet $nodeChangeSet;
 
     private bool $stopTraversal = false;
 
-    public function __construct()
+    public function __construct(int $maximumDepth = MaximumDepthGuard::DEFAULT_MAXIMUM_DEPTH)
     {
+        $this->maximumDepth  = MaximumDepthGuard::validateMaximumDepth($maximumDepth);
         $this->nodeChangeSet = new NodeChangeSet();
     }
 
@@ -51,6 +57,13 @@ final class NodeJsonTraverser
 
     public function traverse(NodeJson $nodeJson): NodeJsonTraversalResult
     {
+        // entry-time input validation only, matching the printers: a tree that
+        // is already cyclic would otherwise recurse until the memory limit
+        // kills the process with an uncatchable fatal error. Cycles or extra
+        // depth a visitor introduces mid-traversal remain the visitor author's
+        // responsibility.
+        NodeTreeGuard::guard($nodeJson, $this->maximumDepth);
+
         $this->nodeChangeSet = new NodeChangeSet();
         $this->stopTraversal = false;
 

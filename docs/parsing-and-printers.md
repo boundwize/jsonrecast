@@ -53,9 +53,9 @@ try {
 
 ## Maximum Depth
 
-JsonRecast limits JSON nesting depth to `512` by default, matching PHP's `json_decode()` default depth. The same default applies when parsing JSON, building nodes from PHP values, and printing node trees, so default-generated output remains parseable by the default parser.
+JsonRecast limits JSON nesting depth to `512` by default, matching PHP's `json_decode()` default depth. The same default applies when parsing JSON, building nodes from PHP values, traversing node trees, and printing node trees, so default-generated output remains parseable by the default parser.
 
-If parsed input exceeds the configured limit, parsing throws a catchable `ParseError` with the message `Maximum stack depth exceeded.` If PHP value conversion or printing exceeds the configured limit, JsonRecast throws `InvalidArgumentException` with the same message.
+If parsed input exceeds the configured limit, parsing throws a catchable `ParseError` with the message `Maximum stack depth exceeded.` If PHP value conversion, traversal, or printing exceeds the configured limit, JsonRecast throws `InvalidArgumentException` with the same message.
 
 You can raise or lower the limit when parsing through the facade:
 
@@ -91,6 +91,16 @@ $json = JsonRecast::print($document, maximumDepth: 1024);
 
 $preserved = (new JsonPreservingPrinter(maximumDepth: 1024))->print($document);
 $pretty = (new JsonPrettyPrinter(maximumDepth: 1024))->print($document);
+```
+
+And when traversing:
+
+```php
+use Boundwize\JsonRecast\NodeTraverser\NodeJsonTraverser;
+
+$result = JsonRecast::traverse($document, $visitor, maximumDepth: 1024);
+
+$traversalResult = (new NodeJsonTraverser(maximumDepth: 1024))->traverse($document);
 ```
 
 The maximum depth must be greater than `0`.

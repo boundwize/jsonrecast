@@ -100,6 +100,7 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     public function print(NodeJson $nodeJson): string
     {
+        NodeTreeGuard::guardPrintableRoot($nodeJson);
         NodeTreeGuard::guard($nodeJson, $this->maximumDepth);
 
         $nodeNewline = $nodeJson->getAttribute(NodeAttributes::NEWLINE);

@@ -138,6 +138,8 @@ The original `1` is visited at depth `1` (path `[0]`). The `1` inside the replac
 
 `traverse()` validates the input tree at entry, before any visitor runs, using the same guard as the printers. A cyclic tree — a container placed somewhere below itself, for example via `set()` or `append()` — throws a catchable `RuntimeException` with the message `Cyclic JSON AST detected.` A tree whose container nesting exceeds the configured maximum depth throws `InvalidArgumentException` with the message `Maximum stack depth exceeded.` Without this guard, traversing a cyclic tree would recurse until PHP's memory limit kills the process with an uncatchable fatal error.
 
+The guard also rejects wrapper nodes placed where a JSON value belongs. A `JsonDocument`, `ObjectItemNode`, or `ArrayItemNode` used as the value of a document or of another item — for example `new ObjectItemNode($key, new ObjectItemNode(...))` — throws a `RuntimeException` such as `ObjectItemNode cannot be used as a JSON value.` Printers would otherwise render the inner item as a bare `"key": value` fragment without surrounding braces, producing invalid JSON.
+
 The default limit is `512`. Raise or lower it through the facade or the traverser constructor — see [Maximum Depth](parsing-and-printers.html#maximum-depth):
 
 ```php

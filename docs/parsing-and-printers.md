@@ -159,3 +159,5 @@ function render(JsonPrinter $printer, NodeJson $node): string
 ```
 
 Use `JsonPreservingPrinter` for source-to-source transformations. Use `JsonPrettyPrinter` for generated JSON or tests where stable normalized output is easier to assert.
+
+Both printers accept a `JsonDocument`, a container, or a scalar node as the printed root. Item nodes only carry meaning inside their container, so printing an `ObjectItemNode` or `ArrayItemNode` directly throws a catchable `RuntimeException` such as `ObjectItemNode cannot be printed as a JSON document.` — a standalone object item would render as a bare `"key": value` fragment, which is not valid JSON. Traversal and the AST dumper still accept item subtrees.

@@ -64,12 +64,6 @@ final class NodeTreeGuardTest extends TestCase
         $containerItemNode->value = $containerArrayNode;
 
         yield 'array item referencing its own container' => [$containerArrayNode];
-
-        $innerDocument        = new JsonDocument(new NullNode());
-        $outerDocument        = new JsonDocument($innerDocument);
-        $innerDocument->value = $outerDocument;
-
-        yield 'documents referencing each other' => [$outerDocument];
     }
 
     #[DataProvider('provideCyclicNode')]
@@ -79,6 +73,81 @@ final class NodeTreeGuardTest extends TestCase
         $this->expectExceptionMessage('Cyclic JSON AST detected.');
 
         NodeTreeGuard::guard($nodeJson, maximumDepth: 512);
+    }
+
+    /**
+     * @return iterable<string, array{NodeJson, string}>
+     */
+    public static function provideWrapperNodeInValuePosition(): iterable
+    {
+        $wrapperNodeFactories = [
+            'JsonDocument'   => static fn (): NodeJson => new JsonDocument(new NullNode()),
+            'ObjectItemNode' => static fn (): NodeJson => new ObjectItemNode(new StringNode('inner'), new NullNode()),
+            'ArrayItemNode'  => static fn (): NodeJson => new ArrayItemNode(new NullNode()),
+        ];
+
+        foreach ($wrapperNodeFactories as $wrapperNodeName => $createWrapperNode) {
+            $expectedMessage = $wrapperNodeName . ' cannot be used as a JSON value.';
+
+            yield $wrapperNodeName . ' as document value' => [
+                new JsonDocument($createWrapperNode()),
+                $expectedMessage,
+            ];
+
+            yield $wrapperNodeName . ' as object item value' => [
+                new ObjectNode([new ObjectItemNode(new StringNode('outer'), $createWrapperNode())]),
+                $expectedMessage,
+            ];
+
+            yield $wrapperNodeName . ' as array item value' => [
+                new ArrayNode([new ArrayItemNode($createWrapperNode())]),
+                $expectedMessage,
+            ];
+        }
+    }
+
+    #[DataProvider('provideWrapperNodeInValuePosition')]
+    public function testItRejectsWrapperNodeInValuePosition(NodeJson $nodeJson, string $expectedMessage): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage($expectedMessage);
+
+        NodeTreeGuard::guard($nodeJson, maximumDepth: 512);
+    }
+
+    /**
+     * @return iterable<string, array{NodeJson, string}>
+     */
+    public static function provideItemNodeAsPrintableRoot(): iterable
+    {
+        yield 'object item as printed root' => [
+            new ObjectItemNode(new StringNode('inner'), new NumberNode('1')),
+            'ObjectItemNode cannot be printed as a JSON document.',
+        ];
+
+        yield 'array item as printed root' => [
+            new ArrayItemNode(new NumberNode('1')),
+            'ArrayItemNode cannot be printed as a JSON document.',
+        ];
+    }
+
+    #[DataProvider('provideItemNodeAsPrintableRoot')]
+    public function testItRejectsItemNodeAsPrintableRoot(NodeJson $nodeJson, string $expectedMessage): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage($expectedMessage);
+
+        NodeTreeGuard::guardPrintableRoot($nodeJson);
+    }
+
+    public function testItAllowsDocumentAndValueNodesAsPrintableRoot(): void
+    {
+        NodeTreeGuard::guardPrintableRoot(new JsonDocument(new NullNode()));
+        NodeTreeGuard::guardPrintableRoot(new ObjectNode([]));
+        NodeTreeGuard::guardPrintableRoot(new ArrayNode([]));
+        NodeTreeGuard::guardPrintableRoot(new NumberNode('1'));
+
+        $this->addToAssertionCount(1);
     }
 
     public function testItAllowsNodeSharedBetweenSiblings(): void

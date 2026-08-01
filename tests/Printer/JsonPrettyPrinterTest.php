@@ -63,6 +63,31 @@ final class JsonPrettyPrinterTest extends TestCase
         $this->assertSame('"' . $value . '"', (new JsonPrettyPrinter())->print(new StringNode($value)));
     }
 
+    public function testItRejectsObjectItemNodeAsPrintedRoot(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('ObjectItemNode cannot be printed as a JSON document.');
+
+        (new JsonPrettyPrinter())->print(
+            new ObjectItemNode(new StringNode('inner'), new NumberNode('1')),
+        );
+    }
+
+    public function testItRejectsObjectItemNodeUsedAsValue(): void
+    {
+        $objectNode = new ObjectNode([
+            new ObjectItemNode(
+                new StringNode('outer'),
+                new ObjectItemNode(new StringNode('inner'), new NumberNode('1')),
+            ),
+        ]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('ObjectItemNode cannot be used as a JSON value.');
+
+        (new JsonPrettyPrinter())->print($objectNode);
+    }
+
     public function testItRejectsInvalidUtf8String(): void
     {
         $this->expectException(RuntimeException::class);

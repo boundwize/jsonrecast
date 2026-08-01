@@ -117,13 +117,15 @@ $document = JsonRecast::parse("{\r\n  \"name\" : \"jsonrecast\"\r\n}\r\n");
 echo JsonRecast::print($document);
 ```
 
-When it receives a `JsonRecastResult`, it uses the result change set so changed nodes are rebuilt while unchanged nodes reuse original text.
+When it receives a `JsonRecastResult`, it also uses the result change set as an explicit signal that returned nodes should be rebuilt. Independently of that change set, the printer detects AST mutations by comparing parsed nodes with their original text and checking their descendants. Direct edits and in-place visitor mutations that return `null` are therefore still printed.
 
 ```php
 $result = JsonRecast::traverse($document, $visitor);
 
 echo JsonRecast::print($result);
 ```
+
+Printing `$result->document` also includes mutations the printer can detect from the AST itself. Prefer passing `$result` after traversal so explicit change records are retained as well.
 
 The preserving printer keeps the document newline style and trailing newline when they were present in the parsed source.
 

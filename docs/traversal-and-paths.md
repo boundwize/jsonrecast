@@ -50,7 +50,7 @@ final class MyVisitor extends NodeJsonVisitorAbstract
 
 Hook return values mean:
 
-- `null`: leave the current node unchanged.
+- `null`: keep the current node instance and do not record an explicit change. Any in-place mutations remain in the AST.
 - `NodeJson`: replace the current node or mark the same mutated node as changed.
 - `NodeJsonVisitor::REMOVE_NODE`: remove the current object item or array item.
 - `NodeJsonVisitor::STOP_TRAVERSAL`: stop the traversal, keeping the tree as it is.
@@ -152,7 +152,7 @@ The guard runs once, at entry. Nodes a visitor introduces mid-traversal are not 
 
 ## Change Tracking
 
-JsonRecast keeps change metadata outside the AST. The traverser records a change when a visitor returns a node.
+JsonRecast keeps explicit change metadata outside the AST. The traverser records a node in `NodeChangeSet` when a visitor returns it.
 
 ```php
 public function leaveNode(NodeJson $node, NodeJsonPath $path): ?NodeJson
@@ -167,7 +167,15 @@ public function leaveNode(NodeJson $node, NodeJsonPath $path): ?NodeJson
 }
 ```
 
-If you mutate a node and return `null`, the object changes in memory, but the preserving printer does not know that the container needs to be rebuilt.
+Returning the mutated object makes the transformation observable through the result:
+
+```php
+$result->changeSet->isChanged($result->document->value); // true
+```
+
+Returning `null` does not undo an in-place mutation. It keeps the same node in the AST but does not record that node in `NodeChangeSet`. The preserving printer independently detects changed scalar values, stale container text, and changed descendants, so the added `license` still appears in the output. For this in-place edit, both `JsonRecast::print($result)` and `JsonRecast::print($result->document)` include the change.
+
+Return the node when callers need an explicit change signal, such as for dry-run or "no changes needed" reporting. Return `null` when no explicit record is needed. After traversal, prefer printing the `JsonRecastResult` so the printer also receives any explicit change records.
 
 ## Path Basics
 

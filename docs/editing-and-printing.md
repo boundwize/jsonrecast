@@ -84,7 +84,7 @@ $result = JsonRecast::traverse($document, new class extends NodeJsonVisitorAbstr
 });
 ```
 
-Returning `$node` is important. It records the object in the change set so the preserving printer knows a new child was added.
+Returning `$node` explicitly records the object in `NodeChangeSet`, which is useful when callers need to inspect whether that object was reported as changed. It is not required for output correctness: if this method returns `null` after `set()`, the new child remains in the AST and the preserving printer detects that the object's original text is stale.
 
 ## Remove Object Items
 

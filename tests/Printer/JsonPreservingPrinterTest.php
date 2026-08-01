@@ -637,6 +637,12 @@ JSON,
             false,
             "{\n    \"a\": 1\n}",
         ];
+        yield 'remove multiple trailing newlines' => [
+            "{}\n\n\n",
+            NodeAttributes::TRAILING_NEWLINE,
+            false,
+            '{}',
+        ];
     }
 
     #[DataProvider('changedDocumentPrintMetadataProvider')]

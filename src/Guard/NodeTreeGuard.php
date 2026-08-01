@@ -48,7 +48,7 @@ final class NodeTreeGuard
             /** @var array{NodeJson, int, bool, bool} $entry */
             $entry = array_pop($stack);
 
-            [$currentNode, $depth, $leaving, $inValuePosition] = $entry;
+            [$currentNode, $depth, $leaving, $isInValuePosition] = $entry;
 
             if ($leaving) {
                 $activePathNodes->offsetUnset($currentNode);
@@ -60,7 +60,7 @@ final class NodeTreeGuard
             }
 
             if ($currentNode instanceof JsonDocument) {
-                if ($inValuePosition) {
+                if ($isInValuePosition) {
                     throw new RuntimeException('JsonDocument cannot be used as a JSON value.');
                 }
 
@@ -71,7 +71,7 @@ final class NodeTreeGuard
             }
 
             if ($currentNode instanceof ObjectItemNode) {
-                if ($inValuePosition) {
+                if ($isInValuePosition) {
                     throw new RuntimeException('ObjectItemNode cannot be used as a JSON value.');
                 }
 
@@ -100,7 +100,7 @@ final class NodeTreeGuard
             }
 
             if ($currentNode instanceof ArrayItemNode) {
-                if ($inValuePosition) {
+                if ($isInValuePosition) {
                     throw new RuntimeException('ArrayItemNode cannot be used as a JSON value.');
                 }
 

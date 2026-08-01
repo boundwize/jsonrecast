@@ -117,13 +117,15 @@ $document = JsonRecast::parse("{\r\n  \"name\" : \"jsonrecast\"\r\n}\r\n");
 echo JsonRecast::print($document);
 ```
 
-When it receives a `JsonRecastResult`, it uses the result change set so changed nodes are rebuilt while unchanged nodes reuse original text.
+When it receives a `JsonRecastResult`, it also uses the result change set as an explicit signal that returned nodes should be rebuilt. Independently of that change set, the printer detects changes to JSON values and syntax trivia by comparing parsed nodes with their original text and checking their descendants. Direct edits to those fields and in-place visitor mutations that return `null` are therefore still printed.
 
 ```php
 $result = JsonRecast::traverse($document, $visitor);
 
 echo JsonRecast::print($result);
 ```
+
+After traversal, pass the `JsonRecastResult` itself to `JsonRecast::print()` so explicit change records are retained. Those records matter when the only edit changes document-level printer metadata: `NodeAttributes::INDENT`, `NodeAttributes::NEWLINE`, or `NodeAttributes::TRAILING_NEWLINE`. These attributes are not represented by the node's original text and do not trigger a rebuild by themselves. Return the document after changing one of them so it is marked as changed, then print `$result` to apply the metadata change.
 
 The preserving printer keeps the document newline style and trailing newline when they were present in the parsed source.
 

@@ -42,7 +42,6 @@ use function str_ends_with;
 use function str_repeat;
 use function str_replace;
 use function strlen;
-use function strrpos;
 use function strspn;
 use function substr;
 use function substr_compare;
@@ -174,7 +173,7 @@ final class JsonPreservingPrinter implements JsonPrinter
         int $depth,
     ): string {
         $valuePrintContext = $printContext->withIndentation(
-            $this->leadingIndentationAfterLastNewline($jsonDocument->beforeValue),
+            WhitespaceHelper::leadingIndentationOnLastLine($jsonDocument->beforeValue),
         );
         $output            = $jsonDocument->beforeValue
             . $this->printNode($jsonDocument->value, $valuePrintContext, $depth)
@@ -528,10 +527,9 @@ final class JsonPreservingPrinter implements JsonPrinter
                 ? $this->shiftWhitespaceBeforeNode($beforeItem, $interiorShift)
                 : $this->reindentWhitespaceBeforeNode($item, $beforeItem, $childPrintContext);
 
-            $itemPrintContext = $this->printContextAfterLastNewline(
-                $childPrintContext->withIndentation($printContext->indentation()),
-                $beforeItem,
-            );
+            $itemPrintContext = $childPrintContext
+                ->withIndentation($printContext->indentation())
+                ->afterText($beforeItem);
             $itemLayouts[$i]  = [$beforeItem, $afterValue, $itemPrintContext];
         }
 
@@ -547,27 +545,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             return $printContext;
         }
 
-        return $this->printContextAfterLastNewline(
-            $printContext,
-            $separator ?? $this->objectItemSeparator($item),
-        );
-    }
-
-    private function printContextAfterLastNewline(PrintContext $printContext, string $text): PrintContext
-    {
-        if ($this->lastNewlinePosition($text) < 0) {
-            return $printContext;
-        }
-
-        return $printContext->withIndentation($this->leadingIndentationAfterLastNewline($text));
-    }
-
-    private function leadingIndentationAfterLastNewline(string $text): string
-    {
-        $lastNewlinePosition = $this->lastNewlinePosition($text);
-        $currentLine         = substr($text, $lastNewlinePosition + 1);
-
-        return substr($currentLine, 0, strspn($currentLine, " \t"));
+        return $printContext->afterText($separator ?? $this->objectItemSeparator($item));
     }
 
     /**
@@ -789,7 +767,7 @@ final class JsonPreservingPrinter implements JsonPrinter
         string $whitespace,
         PrintContext $printContext,
     ): string {
-        $lastNewlinePosition = $this->lastNewlinePosition($whitespace);
+        $lastNewlinePosition = WhitespaceHelper::lastNewlinePosition($whitespace);
 
         if ($lastNewlinePosition < 0) {
             return $whitespace;
@@ -805,7 +783,7 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     private function shiftWhitespaceBeforeNode(string $whitespace, int $interiorShift): string
     {
-        $lastNewlinePosition = $this->lastNewlinePosition($whitespace);
+        $lastNewlinePosition = WhitespaceHelper::lastNewlinePosition($whitespace);
 
         if ($lastNewlinePosition < 0) {
             return $whitespace;
@@ -857,17 +835,6 @@ final class JsonPreservingPrinter implements JsonPrinter
         return is_string($item->getAttribute(NodeAttributes::NEWLINE)) ? $item : $containerNode;
     }
 
-    private function lastNewlinePosition(string $whitespace): int
-    {
-        $lineFeedPosition       = strrpos($whitespace, "\n");
-        $carriageReturnPosition = strrpos($whitespace, "\r");
-
-        return max(
-            $lineFeedPosition === false ? -1 : $lineFeedPosition,
-            $carriageReturnPosition === false ? -1 : $carriageReturnPosition,
-        );
-    }
-
     private function resolveInteriorItemShift(
         ArrayNode|ObjectNode $containerNode,
         PrintContext $printContext,
@@ -885,7 +852,7 @@ final class JsonPreservingPrinter implements JsonPrinter
 
         $itemLeads = [];
         foreach ($itemWhitespace as $whitespace) {
-            $lastNewlinePosition = $this->lastNewlinePosition($whitespace);
+            $lastNewlinePosition = WhitespaceHelper::lastNewlinePosition($whitespace);
 
             if ($lastNewlinePosition < 0) {
                 continue;

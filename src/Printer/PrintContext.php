@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Printer;
 
+use Boundwize\JsonRecast\Node\Helper\WhitespaceHelper;
+
 use function str_repeat;
 
 final readonly class PrintContext
@@ -32,6 +34,15 @@ final readonly class PrintContext
     public function withIndentation(string $indentation): self
     {
         return new self($this->indent, $this->newline, $this->level, $indentation);
+    }
+
+    public function afterText(string $text): self
+    {
+        if (WhitespaceHelper::lastNewlinePosition($text) < 0) {
+            return $this;
+        }
+
+        return $this->withIndentation(WhitespaceHelper::leadingIndentationOnLastLine($text));
     }
 
     public function indentation(): string

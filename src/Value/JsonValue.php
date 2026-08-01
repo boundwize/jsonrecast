@@ -117,8 +117,8 @@ final class JsonValue
      */
     private static function fromArray(array $value, int $maximumDepth, int $depth): NodeJson
     {
-        // json_encode() only consumes a nesting level when entering a container,
-        // so scalar leaves at the final allowed depth are convertible
+        // Match json_encode(): it only consumes a nesting level when entering
+        // a container, so scalar leaves at the final depth are convertible.
         MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth);
 
         if (array_is_list($value)) {

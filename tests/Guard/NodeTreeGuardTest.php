@@ -138,15 +138,25 @@ final class NodeTreeGuardTest extends TestCase
         NodeTreeGuard::guard($arrayNode, maximumDepth: 512);
     }
 
-    public function testItAllowsScalarLeafAtMaximumDepth(): void
+    public function testItRejectsContainerAtMaximumDepth(): void
     {
-        // json_encode() only consumes a nesting level when entering a container,
-        // so scalar leaves at the final allowed depth are printable
         $objectNode = new ObjectNode([
             new ObjectItemNode(new StringNode('value'), new NumberNode('1')),
         ]);
 
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
         NodeTreeGuard::guard(new JsonDocument($objectNode), maximumDepth: 1);
+    }
+
+    public function testItAllowsContainerWithScalarWithinMaximumDepth(): void
+    {
+        $objectNode = new ObjectNode([
+            new ObjectItemNode(new StringNode('value'), new NumberNode('1')),
+        ]);
+
+        NodeTreeGuard::guard(new JsonDocument($objectNode), maximumDepth: 2);
 
         $this->addToAssertionCount(1);
     }

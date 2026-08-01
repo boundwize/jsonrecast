@@ -244,7 +244,7 @@ final class NodeJsonTraverserGuardTest extends TestCase
     {
         $nodeJson = JsonValue::from([[[0]]], maximumDepth: 3);
 
-        $nodeJsonTraverser = new NodeJsonTraverser(maximumDepth: 2);
+        $nodeJsonTraverser = new NodeJsonTraverser(maximumDepth: 3);
         $nodeJsonTraverser->addVisitor(new class extends NodeJsonVisitorAbstract {
         });
 
@@ -254,13 +254,11 @@ final class NodeJsonTraverserGuardTest extends TestCase
         $nodeJsonTraverser->traverse($nodeJson);
     }
 
-    public function testItTraversesScalarAtMaximumNestingDepth(): void
+    public function testItTraversesContainerWithScalarWithinMaximumNestingDepth(): void
     {
-        // mirrors the printers: only entering another container consumes a
-        // nesting level, scalar leaves do not exceed the depth
-        $nodeJson = JsonValue::from([1], maximumDepth: 1);
+        $nodeJson = JsonValue::from([1], maximumDepth: 2);
 
-        $nodeJsonTraverser = new NodeJsonTraverser(maximumDepth: 1);
+        $nodeJsonTraverser = new NodeJsonTraverser(maximumDepth: 2);
         $nodeJsonTraverser->addVisitor(new class extends NodeJsonVisitorAbstract {
         });
 

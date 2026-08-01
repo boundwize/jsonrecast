@@ -164,8 +164,8 @@ final class JsonValueTest extends TestCase
 
     public function testMaximumNestingDepthIsCheckedWhenEnteringPhpArrayStack(): void
     {
-        // mirrors json_encode([1 => [[2]], 2], depth: 2), which fails, while
-        // json_encode([1 => [2], 2], depth: 2) succeeds
+        // Mirrors json_encode([1 => [[2]], 2], depth: 2), which fails, while
+        // json_encode([1 => [2], 2], depth: 2) succeeds.
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Maximum stack depth exceeded.');
 
@@ -189,8 +189,8 @@ final class JsonValueTest extends TestCase
 
     public function testItAcceptsScalarAtMaximumNestingDepth(): void
     {
-        // mirrors json_encode([1], depth: 1): only entering another container
-        // consumes a nesting level, scalar leaves do not exceed the depth
+        // Mirrors json_encode([1], depth: 1): scalar leaves do not consume
+        // another nesting level.
         $nodeJson = JsonValue::from([1], maximumDepth: 1);
 
         $this->assertInstanceOf(ArrayNode::class, $nodeJson);
@@ -204,9 +204,8 @@ final class JsonValueTest extends TestCase
 
     public function testItAcceptsEmptyCollectionAtMaximumNestingDepth(): void
     {
-        // value conversion mirrors json_encode(), which lets an empty container occupy
-        // the final depth level (json_encode([[]], depth: 2) succeeds), while parsing
-        // mirrors json_decode(), which rejects it (json_decode('[[]]', depth: 2))
+        // Conversion keeps json_encode() compatibility. Printers apply the
+        // stricter parser-compatible boundary before emitting output.
         $this->assertInstanceOf(ArrayNode::class, JsonValue::from([], maximumDepth: 1));
         $this->assertInstanceOf(ObjectNode::class, JsonValue::from(new stdClass(), maximumDepth: 1));
         $this->assertInstanceOf(ArrayNode::class, JsonValue::from([[]], maximumDepth: 2));

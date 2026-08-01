@@ -91,14 +91,12 @@ final class JsonPrettyPrinterTest extends TestCase
 
     public function testItRejectsNodeThatExceedsMaximumNestingDepth(): void
     {
-        // mirrors json_encode([[[0]]], depth: 2), which fails, while
-        // json_encode([[0]], depth: 2) succeeds
         $nodeJson = JsonValue::from([[[0]]], maximumDepth: 3);
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Maximum stack depth exceeded.');
 
-        (new JsonPrettyPrinter(maximumDepth: 2))->print($nodeJson);
+        (new JsonPrettyPrinter(maximumDepth: 3))->print($nodeJson);
     }
 
     public function testItRejectsCyclicNodeTree(): void
@@ -114,17 +112,15 @@ final class JsonPrettyPrinterTest extends TestCase
         (new JsonPrettyPrinter())->print($jsonDocument);
     }
 
-    public function testItPrintsScalarAtMaximumNestingDepth(): void
+    public function testItPrintsContainerWithScalarWithinMaximumNestingDepth(): void
     {
-        // mirrors json_encode([1], depth: 1): only entering another container
-        // consumes a nesting level, scalar leaves do not exceed the depth
         $arrayNode = new ArrayNode([
             new ArrayItemNode(new NumberNode('1')),
         ]);
 
         $this->assertSame(
             "[\n    1\n]",
-            (new JsonPrettyPrinter(maximumDepth: 1))->print($arrayNode),
+            (new JsonPrettyPrinter(maximumDepth: 2))->print($arrayNode),
         );
 
         $objectNode = new ObjectNode([
@@ -136,7 +132,7 @@ final class JsonPrettyPrinterTest extends TestCase
 
         $this->assertSame(
             "{\n    \"value\": 1\n}",
-            (new JsonPrettyPrinter(maximumDepth: 1))->print($objectNode),
+            (new JsonPrettyPrinter(maximumDepth: 2))->print($objectNode),
         );
     }
 
@@ -173,20 +169,25 @@ final class JsonPrettyPrinterTest extends TestCase
         new JsonPrettyPrinter(indent: 'x');
     }
 
-    public function testItPrintsEmptyCollectionAtMaximumNestingDepth(): void
+    public function testItRejectsCollectionAtMaximumNestingDepth(): void
     {
-        // printing mirrors json_encode(), which lets an empty container occupy the
-        // final depth level (json_encode([[]], depth: 2) succeeds), while parsing
-        // mirrors json_decode(), which rejects it (json_decode('[[]]', depth: 2))
-        $this->assertSame('[]', (new JsonPrettyPrinter(maximumDepth: 1))->print(new ArrayNode([])));
-        $this->assertSame('{}', (new JsonPrettyPrinter(maximumDepth: 1))->print(new ObjectNode([])));
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
+        (new JsonPrettyPrinter(maximumDepth: 1))->print(new ArrayNode([]));
+    }
+
+    public function testItPrintsEmptyCollectionWithinMaximumNestingDepth(): void
+    {
+        $this->assertSame('[]', (new JsonPrettyPrinter(maximumDepth: 2))->print(new ArrayNode([])));
+        $this->assertSame('{}', (new JsonPrettyPrinter(maximumDepth: 2))->print(new ObjectNode([])));
         $this->assertSame(
             "[\n    []\n]",
-            (new JsonPrettyPrinter(maximumDepth: 2))->print(JsonValue::from([[]])),
+            (new JsonPrettyPrinter(maximumDepth: 3))->print(JsonValue::from([[]])),
         );
         $this->assertSame(
             "{\n    \"value\": {}\n}",
-            (new JsonPrettyPrinter(maximumDepth: 2))->print(JsonValue::from(['value' => new stdClass()])),
+            (new JsonPrettyPrinter(maximumDepth: 3))->print(JsonValue::from(['value' => new stdClass()])),
         );
     }
 }

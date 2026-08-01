@@ -117,7 +117,7 @@ $document = JsonRecast::parse("{\r\n  \"name\" : \"jsonrecast\"\r\n}\r\n");
 echo JsonRecast::print($document);
 ```
 
-When it receives a `JsonRecastResult`, it also uses the result change set as an explicit signal that returned nodes should be rebuilt. Independently of that change set, the printer detects AST mutations by comparing parsed nodes with their original text and checking their descendants. Direct edits and in-place visitor mutations that return `null` are therefore still printed.
+When it receives a `JsonRecastResult`, it also uses the result change set as an explicit signal that returned nodes should be rebuilt. Independently of that change set, the printer detects changes to JSON values and syntax trivia by comparing parsed nodes with their original text and checking their descendants. Direct edits to those fields and in-place visitor mutations that return `null` are therefore still printed.
 
 ```php
 $result = JsonRecast::traverse($document, $visitor);
@@ -125,7 +125,7 @@ $result = JsonRecast::traverse($document, $visitor);
 echo JsonRecast::print($result);
 ```
 
-Printing `$result->document` also includes mutations the printer can detect from the AST itself. Prefer passing `$result` after traversal so explicit change records are retained as well.
+Printing `$result->document` also includes mutations the printer can detect from the AST itself, but it drops the explicit change records. Those records can matter for printer metadata that is not represented by a node's original text. For example, when it is the only mutation, changing `NodeAttributes::TRAILING_NEWLINE` affects output only if the document is explicitly marked as changed. Prefer passing `$result` after traversal.
 
 The preserving printer keeps the document newline style and trailing newline when they were present in the parsed source.
 

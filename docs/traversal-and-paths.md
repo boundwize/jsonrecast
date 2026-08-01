@@ -173,9 +173,9 @@ Returning the mutated object makes the transformation observable through the res
 $result->changeSet->isChanged($result->document->value); // true
 ```
 
-Returning `null` does not undo an in-place mutation. It keeps the same node in the AST but does not record that node in `NodeChangeSet`. The preserving printer independently detects changed scalar values, stale container text, and changed descendants, so the added `license` still appears in the output. For this in-place edit, both `JsonRecast::print($result)` and `JsonRecast::print($result->document)` include the change.
+Returning `null` does not undo an in-place mutation. It keeps the same node in the AST but does not record that node in `NodeChangeSet`. The preserving printer independently detects changed scalar values, stale container text, and changed descendants, so the added `license` still appears when `$result` is printed.
 
-Return the node when callers need an explicit change signal, such as for dry-run or "no changes needed" reporting. Return `null` when no explicit record is needed. After traversal, prefer printing the `JsonRecastResult` so the printer also receives any explicit change records.
+Return the node when callers need an explicit change signal, such as for dry-run or "no changes needed" reporting. Return `null` when no explicit record is needed. After traversal, pass the `JsonRecastResult` to `JsonRecast::print()` so the printer receives any explicit change records.
 
 ## Path Basics
 

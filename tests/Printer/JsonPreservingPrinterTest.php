@@ -343,6 +343,38 @@ JSON,
         );
     }
 
+    public function testItKeepsSyntheticSiblingInlineWhenParsedMultilineValueReflowsParent(): void
+    {
+        $fragment = (new JsonParser())->parse(
+            <<<'JSON'
+{
+    "x": 1,
+    "y": 2
+}
+JSON,
+        );
+
+        $jsonDocument = (new JsonParser())->parse('{"a": null, "b": null}');
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('a', JsonValue::from([1, 2]));
+        $jsonDocument->value->set('b', $fragment->value);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "a": [1, 2],
+    "b": {
+        "x": 1,
+        "y": 2
+    }
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesBracketHuggingArrayWhenNestedScalarIsReplaced(): void
     {
         $source = <<<'JSON'
@@ -731,6 +763,36 @@ JSON,
             "value": {
                 "x": 1
             }}}}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItKeepsInlineContainerAlignedWhenPrependingToItsParent(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{"k": [[
+            1
+        ]]}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $item = $jsonDocument->value->get('k');
+        $this->assertInstanceOf(ObjectItemNode::class, $item);
+        $this->assertInstanceOf(ArrayNode::class, $item->value);
+
+        $item->value->insert(0, JsonValue::from(42));
+
+        $this->assertSame(
+            <<<'JSON'
+{"k": [
+        42,
+        [
+            1
+        ]
+    ]}
 JSON,
             (new JsonPreservingPrinter())->print($jsonDocument),
         );

@@ -210,13 +210,6 @@ final class JsonPreservingPrinter implements JsonPrinter
                 $itemLayouts,
                 $depth,
             );
-
-            if ($shouldPrintBestEffort) {
-                // The values were measured in their preserved layout. Once the
-                // parent switches to best-effort formatting, render them again
-                // in the normalized child context chosen below.
-                $printedChangedItemValues = [];
-            }
         }
 
         if ($shouldPrintBestEffort) {
@@ -527,9 +520,7 @@ final class JsonPreservingPrinter implements JsonPrinter
                 ? $this->shiftWhitespaceBeforeNode($beforeItem, $interiorShift)
                 : $this->reindentWhitespaceBeforeNode($item, $beforeItem, $childPrintContext);
 
-            $itemPrintContext = $childPrintContext
-                ->withIndentation($printContext->indentation())
-                ->afterText($beforeItem);
+            $itemPrintContext = $childPrintContext->afterText($beforeItem);
             $itemLayouts[$i]  = [$beforeItem, $afterValue, $itemPrintContext];
         }
 

@@ -9,10 +9,13 @@ use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
 
 use function count;
+use function max;
 use function preg_match;
 use function str_contains;
 use function str_replace;
 use function strlen;
+use function strrpos;
+use function strspn;
 use function substr;
 
 /**
@@ -20,6 +23,24 @@ use function substr;
  */
 final readonly class WhitespaceHelper
 {
+    public static function lastNewlinePosition(string $text): int
+    {
+        $lineFeedPosition       = strrpos($text, "\n");
+        $carriageReturnPosition = strrpos($text, "\r");
+
+        return max(
+            $lineFeedPosition === false ? -1 : $lineFeedPosition,
+            $carriageReturnPosition === false ? -1 : $carriageReturnPosition,
+        );
+    }
+
+    public static function leadingIndentationOnLastLine(string $text): string
+    {
+        $currentLine = substr($text, self::lastNewlinePosition($text) + 1);
+
+        return substr($currentLine, 0, strspn($currentLine, " \t"));
+    }
+
     public static function normalizeNewlines(string $text): string
     {
         return str_replace(["\r\n", "\r"], "\n", $text);

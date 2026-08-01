@@ -112,6 +112,23 @@ final class NodeTreeGuard
     }
 
     /**
+     * Item nodes only carry meaning inside their container, so printers reject
+     * them as the printed root: a standalone object item would render as a bare
+     * `"key": value` fragment, which is not valid JSON. Traversal-only callers
+     * skip this check — visiting or dumping an item subtree is fine.
+     */
+    public static function guardPrintableRoot(NodeJson $nodeJson): void
+    {
+        if ($nodeJson instanceof ObjectItemNode) {
+            throw new RuntimeException('ObjectItemNode cannot be printed as a JSON document.');
+        }
+
+        if ($nodeJson instanceof ArrayItemNode) {
+            throw new RuntimeException('ArrayItemNode cannot be printed as a JSON document.');
+        }
+    }
+
+    /**
      * The declared item types hold by construction; this re-checks them because
      * the items property is public and accepts any node array at runtime.
      */

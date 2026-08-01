@@ -45,6 +45,7 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
 
     public function print(NodeJson $nodeJson): string
     {
+        NodeTreeGuard::guardPrintableRoot($nodeJson);
         NodeTreeGuard::guard($nodeJson, $this->maximumDepth);
 
         return $this->printNode($nodeJson, new PrintContext($this->indent));

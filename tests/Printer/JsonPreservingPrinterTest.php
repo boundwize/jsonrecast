@@ -46,6 +46,14 @@ use const PHP_FLOAT_EPSILON;
 
 final class JsonPreservingPrinterTest extends TestCase
 {
+    public function testItRejectsArrayItemNodeAsPrintedRoot(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('ArrayItemNode cannot be printed as a JSON document.');
+
+        (new JsonPreservingPrinter())->print(new ArrayItemNode(new NumberNode('1')));
+    }
+
     public function testItPrintsValidJsonWhenContainerItemKeysAreNonSequential(): void
     {
         foreach (

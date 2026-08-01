@@ -115,6 +115,41 @@ final class NodeTreeGuardTest extends TestCase
         NodeTreeGuard::guard($nodeJson, maximumDepth: 512);
     }
 
+    /**
+     * @return iterable<string, array{NodeJson, string}>
+     */
+    public static function provideItemNodeAsPrintableRoot(): iterable
+    {
+        yield 'object item as printed root' => [
+            new ObjectItemNode(new StringNode('inner'), new NumberNode('1')),
+            'ObjectItemNode cannot be printed as a JSON document.',
+        ];
+
+        yield 'array item as printed root' => [
+            new ArrayItemNode(new NumberNode('1')),
+            'ArrayItemNode cannot be printed as a JSON document.',
+        ];
+    }
+
+    #[DataProvider('provideItemNodeAsPrintableRoot')]
+    public function testItRejectsItemNodeAsPrintableRoot(NodeJson $nodeJson, string $expectedMessage): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage($expectedMessage);
+
+        NodeTreeGuard::guardPrintableRoot($nodeJson);
+    }
+
+    public function testItAllowsDocumentAndValueNodesAsPrintableRoot(): void
+    {
+        NodeTreeGuard::guardPrintableRoot(new JsonDocument(new NullNode()));
+        NodeTreeGuard::guardPrintableRoot(new ObjectNode([]));
+        NodeTreeGuard::guardPrintableRoot(new ArrayNode([]));
+        NodeTreeGuard::guardPrintableRoot(new NumberNode('1'));
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testItAllowsNodeSharedBetweenSiblings(): void
     {
         $sharedNode = new ArrayNode([]);

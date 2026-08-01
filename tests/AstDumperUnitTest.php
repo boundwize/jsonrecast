@@ -194,7 +194,7 @@ TXT,
         $nestedNode = new ArrayNode([
             new ArrayItemNode(new StringNode('value')),
         ]);
-        $nestedNode->setAttribute('metadata', [1 => [2], 2]);
+        $nestedNode->setAttribute('metadata', [1 => [[2]], 2]);
 
         $arrayNode = new ArrayNode([
             new ArrayItemNode($nestedNode),
@@ -203,7 +203,7 @@ TXT,
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Unable to encode AST dump value.');
 
-        (new AstDumper(includeAttributes: true, maximumDepth: 2))->dump($arrayNode);
+        (new AstDumper(includeAttributes: true, maximumDepth: 3))->dump($arrayNode);
     }
 
     public function testAttributeEncodingDepthResetsForNextInlineValue(): void
@@ -225,8 +225,6 @@ TXT,
 
     public function testItRejectsNodeThatExceedsMaximumNestingDepth(): void
     {
-        // mirrors json_encode([[["value"]]], depth: 2), which fails, while
-        // json_encode([["value"]], depth: 2) succeeds
         $arrayNode = new ArrayNode([
             new ArrayItemNode(new ArrayNode([
                 new ArrayItemNode(new ArrayNode([
@@ -238,7 +236,7 @@ TXT,
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Maximum stack depth exceeded.');
 
-        (new AstDumper(maximumDepth: 2))->dump($arrayNode);
+        (new AstDumper(maximumDepth: 3))->dump($arrayNode);
     }
 
     public function testItRejectsCyclicNodeTree(): void
@@ -254,11 +252,8 @@ TXT,
         (new AstDumper())->dump($jsonDocument);
     }
 
-    public function testItDumpsScalarAtMaximumNestingDepth(): void
+    public function testItDumpsContainerWithScalarWithinMaximumNestingDepth(): void
     {
-        // mirrors json_encode(["value"], depth: 1): only entering another
-        // container consumes a nesting level, scalar leaves do not exceed
-        // the depth
         $arrayNode = new ArrayNode([
             new ArrayItemNode(new StringNode('value')),
         ]);
@@ -270,7 +265,7 @@ ArrayNode
     └── [0]: ArrayItemNode
         └── value: StringNode(value: "value")
 TXT,
-            (new AstDumper(maximumDepth: 1))->dump($arrayNode),
+            (new AstDumper(maximumDepth: 2))->dump($arrayNode),
         );
     }
 
@@ -284,7 +279,7 @@ TXT,
 
         $this->assertStringContainsString(
             'value: StringNode(value: "value")',
-            (new AstDumper(maximumDepth: 2))->dump($arrayNode),
+            (new AstDumper(maximumDepth: 3))->dump($arrayNode),
         );
     }
 

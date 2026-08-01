@@ -74,9 +74,9 @@ final class NodeTreeGuard
             }
 
             if ($currentNode instanceof ObjectNode || $currentNode instanceof ArrayNode) {
-                // json_encode() only consumes a nesting level when entering a container,
-                // so scalar leaves at the final allowed depth are printable
-                MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth);
+                // Match the parser's json_decode()-compatible boundary so every
+                // printable tree can be parsed again at the same maximum depth.
+                MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth + 1);
 
                 $activePathNodes->offsetSet($currentNode);
                 $stack[] = [$currentNode, $depth, true];

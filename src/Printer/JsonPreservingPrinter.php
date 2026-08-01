@@ -108,7 +108,7 @@ final class JsonPreservingPrinter implements JsonPrinter
         $newline     = is_string($nodeNewline) ? $nodeNewline : "\n";
         $nodeIndent  = $nodeJson->getAttribute(NodeAttributes::INDENT);
         $indent      = $this->indent
-            ?? (is_string($nodeIndent) ? $nodeIndent : '    ');
+            ?? (is_string($nodeIndent) ? IndentGuard::validateIndent($nodeIndent) : '    ');
 
         $this->printingDocument = $nodeJson instanceof JsonDocument;
 

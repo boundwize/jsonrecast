@@ -53,7 +53,9 @@ try {
 
 ## Maximum Depth
 
-JsonRecast limits JSON nesting depth to `512` by default, matching PHP's `json_decode()` default depth. The same default applies when parsing JSON, building nodes from PHP values, traversing node trees, and printing node trees, so default-generated output remains parseable by the default parser.
+JsonRecast limits JSON nesting depth to `512` by default. The same numeric limit applies when parsing JSON, building nodes from PHP values, traversing node trees, and printing node trees.
+
+Parsing, traversal, and printing use the `json_decode()`-compatible depth boundary. `JsonValue::from()` retains `json_encode()` depth semantics, which allow a container at the exact boundary that `json_decode()` rejects. Consequently, conversion can succeed while traversal or printing at the same maximum depth rejects the resulting tree. Printers validate before emitting output, so anything successfully printed at a given limit remains parseable at that same limit.
 
 If parsed input exceeds the configured limit, parsing throws a catchable `ParseError` with the message `Maximum stack depth exceeded.` If PHP value conversion, traversal, or printing exceeds the configured limit, JsonRecast throws `InvalidArgumentException` with the same message.
 

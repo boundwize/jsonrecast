@@ -37,6 +37,7 @@ use function json_encode;
 use function max;
 use function min;
 use function preg_split;
+use function rtrim;
 use function str_contains;
 use function str_ends_with;
 use function str_repeat;
@@ -127,24 +128,21 @@ final class JsonPreservingPrinter implements JsonPrinter
         PrintContext $printContext,
         int $depth = 0,
     ): string {
+        if ($nodeJson instanceof JsonDocument) {
+            return $this->printDocument($nodeJson, $printContext, $depth);
+        }
+
         if (! $this->isChanged($nodeJson)) {
             $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
             // isChanged() already covers hasScalarValueChanged(), so an
             // unchanged node can never carry a mutated scalar value here.
             if (is_string($originalText)) {
-                return $nodeJson instanceof JsonDocument
-                    ? $originalText
-                    : $this->reindentOriginalText($nodeJson, $originalText, $printContext);
+                return $this->reindentOriginalText($nodeJson, $originalText, $printContext);
             }
         }
 
         return match (true) {
-            $nodeJson instanceof JsonDocument => $this->printDocument(
-                $nodeJson,
-                $printContext,
-                $depth,
-            ),
             $nodeJson instanceof ObjectNode, $nodeJson instanceof ArrayNode => $this->printContainer(
                 $nodeJson,
                 $printContext,
@@ -186,6 +184,11 @@ final class JsonPreservingPrinter implements JsonPrinter
             && ! str_ends_with($output, "\r")
         ) {
             $output .= $printContext->newline;
+        } elseif (
+            $jsonDocument->getAttribute(NodeAttributes::TRAILING_NEWLINE) === false
+            && $this->hasOriginalTrailingNewline($jsonDocument)
+        ) {
+            $output = rtrim($output, "\r\n");
         }
 
         return $output;
@@ -1323,6 +1326,14 @@ final class JsonPreservingPrinter implements JsonPrinter
             || $this->hasStaleOriginalText($nodeJson)
             || $this->hasChangedDescendant($nodeJson)
             || ! is_string($originalText);
+    }
+
+    private function hasOriginalTrailingNewline(JsonDocument $jsonDocument): bool
+    {
+        $source = $jsonDocument->getAttribute(NodeAttributes::SOURCE);
+
+        return is_string($source)
+            && (str_ends_with($source, "\n") || str_ends_with($source, "\r"));
     }
 
     private function hasStaleOriginalText(NodeJson $nodeJson): bool

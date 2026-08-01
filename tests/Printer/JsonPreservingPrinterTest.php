@@ -608,6 +608,56 @@ JSON,
         );
     }
 
+    /**
+     * @return iterable<string, array{string, string, mixed, string}>
+     */
+    public static function changedDocumentPrintMetadataProvider(): iterable
+    {
+        yield 'indent' => [
+            "{\n    \"a\": 1\n}",
+            NodeAttributes::INDENT,
+            "\t",
+            "{\n\t\"a\": 1\n}",
+        ];
+        yield 'newline' => [
+            "{\n    \"a\": 1\n}",
+            NodeAttributes::NEWLINE,
+            "\r\n",
+            "{\r\n    \"a\": 1\r\n}",
+        ];
+        yield 'add trailing newline' => [
+            "{\n    \"a\": 1\n}",
+            NodeAttributes::TRAILING_NEWLINE,
+            true,
+            "{\n    \"a\": 1\n}\n",
+        ];
+        yield 'remove trailing newline' => [
+            "{\n    \"a\": 1\n}\n",
+            NodeAttributes::TRAILING_NEWLINE,
+            false,
+            "{\n    \"a\": 1\n}",
+        ];
+        yield 'remove multiple trailing newlines' => [
+            "{}\n\n\n",
+            NodeAttributes::TRAILING_NEWLINE,
+            false,
+            '{}',
+        ];
+    }
+
+    #[DataProvider('changedDocumentPrintMetadataProvider')]
+    public function testItAppliesDirectChangesToParsedDocumentPrintMetadata(
+        string $source,
+        string $attribute,
+        mixed $value,
+        string $expected,
+    ): void {
+        $jsonDocument = (new JsonParser())->parse($source);
+        $jsonDocument->setAttribute($attribute, $value);
+
+        $this->assertSame($expected, (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
     public function testItPreservesTrailingNewlineWhenDocumentAfterValueIsEmpty(): void
     {
         $jsonDocument = new JsonDocument(new StringNode('json'));

@@ -19,9 +19,12 @@ final class JsonRecast
         return (new JsonParser($maximumDepth))->parse($source);
     }
 
-    public static function traverse(JsonDocument $jsonDocument, NodeJsonVisitor $nodeJsonVisitor): JsonRecastResult
-    {
-        $nodeJsonTraverser = new NodeJsonTraverser();
+    public static function traverse(
+        JsonDocument $jsonDocument,
+        NodeJsonVisitor $nodeJsonVisitor,
+        int $maximumDepth = JsonParser::DEFAULT_MAXIMUM_DEPTH,
+    ): JsonRecastResult {
+        $nodeJsonTraverser = new NodeJsonTraverser($maximumDepth);
         $nodeJsonTraverser->addVisitor($nodeJsonVisitor);
 
         $nodeJsonTraversalResult = $nodeJsonTraverser->traverse($jsonDocument);

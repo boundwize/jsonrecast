@@ -16,6 +16,7 @@ use Boundwize\JsonRecast\NodeJsonFinder;
 use Boundwize\JsonRecast\NodePath\NodeJsonPath;
 use Boundwize\JsonRecast\Parser\JsonParser;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 use function array_map;
 
@@ -203,5 +204,27 @@ JSON;
             ['json', 'ast'],
             array_map(static fn (StringNode $stringNode): string => $stringNode->value, $stringNodes),
         );
+    }
+
+    public function testFindRejectsCyclicNodeTree(): void
+    {
+        // a pure read must fail with a catchable exception, not exhaust memory
+        $jsonDocument = (new JsonParser())->parse('{"a": {"b": 1}}');
+
+        $rootObject = $jsonDocument->value;
+        $this->assertInstanceOf(ObjectNode::class, $rootObject);
+
+        $objectItemNode = $rootObject->get('a');
+        $this->assertInstanceOf(ObjectItemNode::class, $objectItemNode);
+
+        $nestedObject = $objectItemNode->value;
+        $this->assertInstanceOf(ObjectNode::class, $nestedObject);
+
+        $nestedObject->set('self', $rootObject);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Cyclic JSON AST detected.');
+
+        (new NodeJsonFinder())->find($jsonDocument, static fn (): bool => true);
     }
 }

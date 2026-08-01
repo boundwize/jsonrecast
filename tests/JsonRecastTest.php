@@ -1238,4 +1238,55 @@ JSON,
             JsonRecast::print($jsonDocument),
         );
     }
+
+    public function testTraverseRejectsCyclicDocument(): void
+    {
+        $jsonDocument = JsonRecast::parse('{"a": {"b": 1}}');
+
+        $rootObject = $jsonDocument->value;
+        $this->assertInstanceOf(ObjectNode::class, $rootObject);
+
+        $objectItemNode = $rootObject->get('a');
+        $this->assertInstanceOf(ObjectItemNode::class, $objectItemNode);
+
+        $nestedObject = $objectItemNode->value;
+        $this->assertInstanceOf(ObjectNode::class, $nestedObject);
+
+        $nestedObject->set('self', $rootObject);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Cyclic JSON AST detected.');
+
+        JsonRecast::traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
+        });
+    }
+
+    public function testTraverseAcceptsRaisedMaximumDepth(): void
+    {
+        $depth        = 600;
+        $source       = str_repeat('[', $depth) . '1' . str_repeat(']', $depth);
+        $jsonDocument = JsonRecast::parse($source, maximumDepth: 1024);
+
+        $jsonRecastResult = JsonRecast::traverse(
+            $jsonDocument,
+            new class extends NodeJsonVisitorAbstract {
+            },
+            maximumDepth: 1024,
+        );
+
+        $this->assertSame($jsonDocument, $jsonRecastResult->document);
+    }
+
+    public function testTraverseRejectsDocumentThatExceedsMaximumNestingDepth(): void
+    {
+        $depth        = 600;
+        $source       = str_repeat('[', $depth) . '1' . str_repeat(']', $depth);
+        $jsonDocument = JsonRecast::parse($source, maximumDepth: 1024);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
+        JsonRecast::traverse($jsonDocument, new class extends NodeJsonVisitorAbstract {
+        });
+    }
 }

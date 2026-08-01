@@ -584,6 +584,28 @@ JSON,
         new JsonPreservingPrinter(indent: 'x');
     }
 
+    public function testItRejectsNonWhitespaceIndentFromDocumentMetadata(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("{\n    \"a\": 1\n}");
+        $jsonDocument->setAttribute(NodeAttributes::INDENT, 'x');
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Indent must contain only spaces or tabs.');
+
+        (new JsonPreservingPrinter())->print($jsonDocument);
+    }
+
+    public function testExplicitIndentSkipsInvalidDocumentMetadataIndent(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("{\n    \"a\": 1\n}");
+        $jsonDocument->setAttribute(NodeAttributes::INDENT, 'x');
+
+        $this->assertSame(
+            "{\n    \"a\": 1\n}",
+            (new JsonPreservingPrinter(indent: '    '))->print($jsonDocument),
+        );
+    }
+
     public function testItRejectsCollectionAtMaximumNestingDepth(): void
     {
         $this->expectException(InvalidArgumentException::class);

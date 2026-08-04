@@ -171,12 +171,15 @@ final class JsonPreservingPrinter implements JsonPrinter
         PrintContext $printContext,
         int $depth,
     ): string {
+        $beforeValue = $this->adoptNewlineStyle($jsonDocument->beforeValue, $jsonDocument->value, $printContext);
+        $afterValue  = $this->adoptNewlineStyle($jsonDocument->afterValue, $jsonDocument->value, $printContext);
+
         $valuePrintContext = $printContext->withIndentation(
-            WhitespaceHelper::leadingIndentationOnLastLine($jsonDocument->beforeValue),
+            WhitespaceHelper::leadingIndentationOnLastLine($beforeValue),
         );
-        $output            = $jsonDocument->beforeValue
+        $output            = $beforeValue
             . $this->printNode($jsonDocument->value, $valuePrintContext, $depth)
-            . $jsonDocument->afterValue;
+            . $afterValue;
 
         if (
             $jsonDocument->getAttribute(NodeAttributes::TRAILING_NEWLINE) === true
@@ -789,12 +792,11 @@ final class JsonPreservingPrinter implements JsonPrinter
     }
 
     /**
-     * Line endings spliced from another document's original text are converted
-     * to the host's newline style, mirroring how leading whitespace is converted
-     * to the host's indent unit. The parser stamps a single detected NEWLINE per
-     * document, so a same-document node always matches the print context and its
-     * bytes pass through untouched — including minority endings in a mixed-EOL
-     * source; only cross-document grafts differ and get converted.
+     * Line endings from parsed text are converted when its detected style differs
+     * from the requested print style, mirroring how leading whitespace is converted
+     * to the requested indent unit. This happens for cross-document grafts and
+     * direct changes to document NEWLINE metadata. Otherwise the bytes pass through
+     * untouched, including minority endings in a mixed-EOL source.
      */
     private function adoptNewlineStyle(
         string $text,

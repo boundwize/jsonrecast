@@ -695,6 +695,16 @@ JSON,
             "\n",
             "\n{\n    \"a\": 1\n}\n",
         ];
+        yield 'mixed LF and CRLF to CRLF' => [
+            "\n{\r\n    \"a\": 1\n}\r\n",
+            "\r\n",
+            "\r\n{\r\n    \"a\": 1\r\n}\r\n",
+        ];
+        yield 'mixed CRLF and LF to LF' => [
+            "\r\n{\n    \"a\": 1\r\n}\n",
+            "\n",
+            "\n{\n    \"a\": 1\n}\n",
+        ];
     }
 
     #[DataProvider('changedDocumentNewlineProvider')]

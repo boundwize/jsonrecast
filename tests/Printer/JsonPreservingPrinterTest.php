@@ -680,6 +680,35 @@ JSON,
         $this->assertSame($expected, (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    /**
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function changedDocumentNewlineProvider(): iterable
+    {
+        yield 'LF to CRLF' => [
+            "\n{\n    \"a\": 1\n}\n",
+            "\r\n",
+            "\r\n{\r\n    \"a\": 1\r\n}\r\n",
+        ];
+        yield 'CRLF to LF' => [
+            "\r\n{\r\n    \"a\": 1\r\n}\r\n",
+            "\n",
+            "\n{\n    \"a\": 1\n}\n",
+        ];
+    }
+
+    #[DataProvider('changedDocumentNewlineProvider')]
+    public function testItAppliesChangedDocumentNewlineToLeadingAndTrailingWhitespace(
+        string $source,
+        string $newline,
+        string $expected,
+    ): void {
+        $jsonDocument = (new JsonParser())->parse($source);
+        $jsonDocument->setAttribute(NodeAttributes::NEWLINE, $newline);
+
+        $this->assertSame($expected, (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
     public function testItPreservesTrailingNewlineWhenDocumentAfterValueIsEmpty(): void
     {
         $jsonDocument = new JsonDocument(new StringNode('json'));

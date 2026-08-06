@@ -9,6 +9,7 @@ use Boundwize\JsonRecast\Guard\MaximumDepthGuard;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
+use Boundwize\JsonRecast\Node\Helper\WhitespaceHelper;
 use Boundwize\JsonRecast\Node\JsonDocument;
 use Boundwize\JsonRecast\Node\NodeJson;
 use Boundwize\JsonRecast\Node\NullNode;
@@ -22,9 +23,7 @@ use function count;
 use function is_string;
 use function json_decode;
 use function str_ends_with;
-use function str_starts_with;
 use function strlen;
-use function strpbrk;
 use function substr;
 
 use const JSON_THROW_ON_ERROR;
@@ -58,7 +57,7 @@ final class JsonParser
         $this->tokens   = (new Lexer())->tokenize($source);
         $this->position = 0;
         $this->indent   = IndentDetector::detect($this->tokens);
-        $this->newline  = $this->detectNewline($source);
+        $this->newline  = WhitespaceHelper::detectNewline($source);
 
         $beforeValue = $this->readWhitespace();
 
@@ -300,17 +299,6 @@ final class JsonParser
             NodeAttributes::ORIGINAL_TEXT,
             substr($this->source, $startOffset, $endOffset - $startOffset),
         );
-    }
-
-    private function detectNewline(string $source): string
-    {
-        $firstNewline = strpbrk($source, "\r\n");
-
-        if ($firstNewline === false || $firstNewline[0] === "\n") {
-            return "\n";
-        }
-
-        return str_starts_with($firstNewline, "\r\n") ? "\r\n" : "\r";
     }
 
     private function hasTrailingNewline(string $source): bool

@@ -13,7 +13,9 @@ use function max;
 use function preg_match;
 use function str_contains;
 use function str_replace;
+use function str_starts_with;
 use function strlen;
+use function strpbrk;
 use function strrpos;
 use function strspn;
 use function substr;
@@ -44,6 +46,17 @@ final readonly class WhitespaceHelper
     public static function normalizeNewlines(string $text): string
     {
         return str_replace(["\r\n", "\r"], "\n", $text);
+    }
+
+    public static function detectNewline(string $source): string
+    {
+        $firstNewline = strpbrk($source, "\r\n");
+
+        if ($firstNewline === false || $firstNewline[0] === "\n") {
+            return "\n";
+        }
+
+        return str_starts_with($firstNewline, "\r\n") ? "\r\n" : "\r";
     }
 
     public static function closingLine(string $whitespace): string

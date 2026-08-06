@@ -171,8 +171,10 @@ final class JsonPreservingPrinter implements JsonPrinter
         PrintContext $printContext,
         int $depth,
     ): string {
-        $beforeValue = $this->adoptNewlineStyle($jsonDocument->beforeValue, $jsonDocument->value, $printContext);
-        $afterValue  = $this->adoptNewlineStyle($jsonDocument->afterValue, $jsonDocument->value, $printContext);
+        $originalNewline = $this->originalDocumentNewline($jsonDocument);
+
+        $beforeValue = $this->convertNewlineStyle($jsonDocument->beforeValue, $originalNewline, $printContext);
+        $afterValue  = $this->convertNewlineStyle($jsonDocument->afterValue, $originalNewline, $printContext);
 
         $valuePrintContext = $printContext->withIndentation(
             WhitespaceHelper::leadingIndentationOnLastLine($beforeValue),
@@ -803,13 +805,23 @@ final class JsonPreservingPrinter implements JsonPrinter
         NodeJson $nodeJson,
         PrintContext $printContext,
     ): string {
+        return $this->convertNewlineStyle(
+            $text,
+            $nodeJson->getAttribute(NodeAttributes::NEWLINE),
+            $printContext,
+        );
+    }
+
+    private function convertNewlineStyle(
+        string $text,
+        mixed $originalNewline,
+        PrintContext $printContext,
+    ): string {
         if (! str_contains($text, "\n") && ! str_contains($text, "\r")) {
             return $text;
         }
 
-        $nodeNewline = $nodeJson->getAttribute(NodeAttributes::NEWLINE);
-
-        if (! is_string($nodeNewline) || $nodeNewline === $printContext->newline) {
+        if (! is_string($originalNewline) || $originalNewline === $printContext->newline) {
             return $text;
         }
 
@@ -818,6 +830,25 @@ final class JsonPreservingPrinter implements JsonPrinter
         return $printContext->newline === "\n"
             ? $normalized
             : str_replace("\n", $printContext->newline, $normalized);
+    }
+
+    /**
+     * The newline style the document framing was parsed with. Detected from the
+     * document's own source bytes rather than its NEWLINE attribute (which the
+     * user may have changed and print() adopts as the target style) or the root
+     * value node (which may have been grafted from another document and must
+     * not rewrite the host framing). A synthetic document has no source; its
+     * framing then follows the root value's parsed style, if any.
+     */
+    private function originalDocumentNewline(JsonDocument $jsonDocument): mixed
+    {
+        $source = $jsonDocument->getAttribute(NodeAttributes::SOURCE);
+
+        if (is_string($source)) {
+            return WhitespaceHelper::detectNewline($source);
+        }
+
+        return $jsonDocument->value->getAttribute(NodeAttributes::NEWLINE);
     }
 
     /**

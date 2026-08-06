@@ -719,6 +719,26 @@ JSON,
         $this->assertSame($expected, (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testRootReplacementDoesNotRewriteDocumentFraming(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("\n1\r\n");
+        $donor        = (new JsonParser())->parse("\r\n2\r\n");
+
+        $jsonDocument->value = $donor->value;
+
+        $this->assertSame("\n2\r\n", (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testRootReplacementPreservesCrLfDocumentFraming(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("\r\n1\n");
+        $donor        = (new JsonParser())->parse("\n2\n");
+
+        $jsonDocument->value = $donor->value;
+
+        $this->assertSame("\r\n2\n", (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
     public function testItPreservesTrailingNewlineWhenDocumentAfterValueIsEmpty(): void
     {
         $jsonDocument = new JsonDocument(new StringNode('json'));

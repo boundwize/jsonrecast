@@ -310,6 +310,50 @@ final class JsonValueTest extends TestCase
         $this->assertSame('jsonrecast', $nodeJson->items[0]->value->value);
     }
 
+    public function testItAcceptsPlainObjectReturnedByJsonSerializable(): void
+    {
+        $nodeJson = JsonValue::from(
+            new class implements JsonSerializable {
+                public function jsonSerialize(): mixed
+                {
+                    return new class {
+                        public string $name = 'jsonrecast';
+                    };
+                }
+            },
+        );
+
+        $this->assertInstanceOf(ObjectNode::class, $nodeJson);
+        $this->assertSame('name', $nodeJson->items[0]->key->value);
+        $this->assertInstanceOf(StringNode::class, $nodeJson->items[0]->value);
+        $this->assertSame('jsonrecast', $nodeJson->items[0]->value->value);
+    }
+
+    public function testItAcceptsPlainObjectNestedInJsonSerializableRepresentation(): void
+    {
+        $nodeJson = JsonValue::from(
+            new class implements JsonSerializable {
+                public function jsonSerialize(): mixed
+                {
+                    return [
+                        'package' => new class {
+                            public string $name = 'jsonrecast';
+                        },
+                    ];
+                }
+            },
+        );
+
+        $this->assertInstanceOf(ObjectNode::class, $nodeJson);
+        $this->assertSame('package', $nodeJson->items[0]->key->value);
+
+        $package = $nodeJson->items[0]->value;
+        $this->assertInstanceOf(ObjectNode::class, $package);
+        $this->assertSame('name', $package->items[0]->key->value);
+        $this->assertInstanceOf(StringNode::class, $package->items[0]->value);
+        $this->assertSame('jsonrecast', $package->items[0]->value->value);
+    }
+
     public function testItSerializesObjectPropertiesWhenJsonSerializeReturnsSelf(): void
     {
         $nodeJson = JsonValue::from(

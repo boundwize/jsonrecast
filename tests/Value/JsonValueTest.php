@@ -253,6 +253,49 @@ final class JsonValueTest extends TestCase
         $this->assertSame('bar', $nodeJson->items[0]->value->value);
     }
 
+    public function testItAcceptsPlainObjectPropertyOfStdClass(): void
+    {
+        $package           = new stdClass();
+        $package->metadata = new class {
+            public string $name = 'jsonrecast';
+        };
+
+        $nodeJson = JsonValue::from($package);
+
+        $this->assertInstanceOf(ObjectNode::class, $nodeJson);
+        $this->assertSame('metadata', $nodeJson->items[0]->key->value);
+
+        $metadata = $nodeJson->items[0]->value;
+        $this->assertInstanceOf(ObjectNode::class, $metadata);
+        $this->assertSame('name', $metadata->items[0]->key->value);
+        $this->assertInstanceOf(StringNode::class, $metadata->items[0]->value);
+        $this->assertSame('jsonrecast', $metadata->items[0]->value->value);
+    }
+
+    public function testItAcceptsPlainObjectInArrayPropertyOfStdClass(): void
+    {
+        $package           = new stdClass();
+        $package->packages = [
+            new class {
+                public string $name = 'jsonrecast';
+            },
+        ];
+
+        $nodeJson = JsonValue::from($package);
+
+        $this->assertInstanceOf(ObjectNode::class, $nodeJson);
+        $this->assertSame('packages', $nodeJson->items[0]->key->value);
+
+        $packages = $nodeJson->items[0]->value;
+        $this->assertInstanceOf(ArrayNode::class, $packages);
+
+        $entry = $packages->items[0]->value;
+        $this->assertInstanceOf(ObjectNode::class, $entry);
+        $this->assertSame('name', $entry->items[0]->key->value);
+        $this->assertInstanceOf(StringNode::class, $entry->items[0]->value);
+        $this->assertSame('jsonrecast', $entry->items[0]->value->value);
+    }
+
     public function testItCreatesStringNodeFromStringBackedEnum(): void
     {
         $nodeJson = JsonValue::from(StringBackedStatus::Active);

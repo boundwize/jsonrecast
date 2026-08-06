@@ -177,12 +177,17 @@ final class JsonValue
 
         MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth);
 
+        // Entering an accepted stdClass makes its whole representation
+        // serializable, matching json_encode(); plain objects nested in it are
+        // converted even though direct conversion of them stays rejected.
+        $allowNestedPlainObjects = $allowPlainObjects || $value instanceof stdClass;
+
         $items = [];
 
         foreach (get_object_vars($value) as $key => $item) {
             $items[] = new ObjectItemNode(
                 key: self::stringNode((string) $key),
-                value: self::fromValue($item, $maximumDepth, $depth + 1, $allowPlainObjects),
+                value: self::fromValue($item, $maximumDepth, $depth + 1, $allowNestedPlainObjects),
             );
         }
 

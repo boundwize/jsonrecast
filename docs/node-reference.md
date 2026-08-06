@@ -114,7 +114,7 @@ Built-in attribute names are available in `Boundwize\JsonRecast\Attribute\NodeAt
 | `END_OFFSET` | End offset in the original source. |
 | `ORIGINAL_TEXT` | Exact source substring for the node. |
 | `DEPTH` | Original nesting depth, where the root JSON value and document are depth `0`. |
-| `SOURCE` | Full source string, stored on the document. |
+| `SOURCE` | Original source used as document-framing provenance; a replacement document that adopts host framing also adopts the host source. |
 | `NEWLINE` | Detected newline sequence, stored on the document and parsed nodes. |
 | `INDENT` | Detected indentation unit, stored on the document and parsed nodes, and used when printing newly-created nested structures. |
 | `TRAILING_NEWLINE` | Whether the document ended with a newline. |

@@ -25,6 +25,13 @@ use function is_int;
 
 final class NodeJsonTraverser
 {
+    private const DOCUMENT_FRAMING_ATTRIBUTES = [
+        NodeAttributes::NEWLINE,
+        NodeAttributes::INDENT,
+        NodeAttributes::TRAILING_NEWLINE,
+        NodeAttributes::SOURCE,
+    ];
+
     private const ITEM_SOURCE_ATTRIBUTES = [
         NodeAttributes::START_OFFSET,
         NodeAttributes::END_OFFSET,
@@ -323,16 +330,17 @@ final class NodeJsonTraverser
 
     private function preserveDocumentFraming(JsonDocument $previous, JsonDocument $replacement): JsonDocument
     {
-        // a parsed replacement carries its donor document's root framing, which must not
+        // SOURCE is the provenance for document framing. Carrying the host source
+        // forward also ensures that a later graft replaces this adopted framing.
+        // A parsed replacement carries its donor document's root framing, which must not
         // survive the move; a synthetic replacement keeps whatever framing was set on it
         if ($replacement->hasAttribute(NodeAttributes::SOURCE)) {
             $replacement->beforeValue = $previous->beforeValue;
             $replacement->afterValue  = $previous->afterValue;
 
-            $this->adoptAttribute($previous, $replacement, NodeAttributes::NEWLINE);
-            $this->adoptAttribute($previous, $replacement, NodeAttributes::INDENT);
-            $this->adoptAttribute($previous, $replacement, NodeAttributes::TRAILING_NEWLINE);
-            $this->adoptAttribute($previous, $replacement, NodeAttributes::SOURCE);
+            foreach (self::DOCUMENT_FRAMING_ATTRIBUTES as $attribute) {
+                $this->adoptAttribute($previous, $replacement, $attribute);
+            }
 
             return $replacement;
         }
@@ -345,10 +353,9 @@ final class NodeJsonTraverser
             $replacement->afterValue = $previous->afterValue;
         }
 
-        $this->copyAttribute($previous, $replacement, NodeAttributes::NEWLINE);
-        $this->copyAttribute($previous, $replacement, NodeAttributes::INDENT);
-        $this->copyAttribute($previous, $replacement, NodeAttributes::TRAILING_NEWLINE);
-        $this->copyAttribute($previous, $replacement, NodeAttributes::SOURCE);
+        foreach (self::DOCUMENT_FRAMING_ATTRIBUTES as $attribute) {
+            $this->copyAttribute($previous, $replacement, $attribute);
+        }
 
         return $replacement;
     }

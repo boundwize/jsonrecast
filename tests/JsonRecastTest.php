@@ -419,6 +419,51 @@ JSON, JsonRecast::print($jsonRecastResult));
         $this->assertSame("\n2\r\n", JsonRecast::print($jsonRecastResult));
     }
 
+    public function testRepeatedDocumentReplacementAdoptsLatestTargetFraming(): void
+    {
+        $donor = JsonRecast::parse("\r\n2\r\n");
+
+        $jsonRecastResult = JsonRecast::traverse(
+            JsonRecast::parse("\n1\r\n"),
+            new class ($donor->value) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly NodeJson $nodeJson,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if (! $nodeJson instanceof JsonDocument || ! $nodeJsonPath->isRoot()) {
+                        return null;
+                    }
+
+                    return new JsonDocument($this->nodeJson);
+                }
+            },
+        );
+
+        $secondReplacement = JsonRecast::traverse(
+            JsonRecast::parse("\r\n3\n"),
+            new class ($jsonRecastResult->document) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly JsonDocument $jsonDocument,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if (! $nodeJson instanceof JsonDocument || ! $nodeJsonPath->isRoot()) {
+                        return null;
+                    }
+
+                    return $this->jsonDocument;
+                }
+            },
+        );
+
+        $this->assertSame("\r\n2\n", JsonRecast::print($secondReplacement));
+    }
+
     public function testCrossDocumentGraftAdoptsHostNewlineStyle(): void
     {
         $jsonDocument = JsonRecast::parse(

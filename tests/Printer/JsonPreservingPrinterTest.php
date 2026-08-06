@@ -606,6 +606,28 @@ JSON,
         );
     }
 
+    public function testItRejectsInvalidNewlineFromDocumentMetadata(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("{\n    \"name\": \"jsonrecast\"\n}");
+        $jsonDocument->setAttribute(NodeAttributes::NEWLINE, 'x');
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Newline must be "\n", "\r\n", or "\r".');
+
+        (new JsonPreservingPrinter())->print($jsonDocument);
+    }
+
+    public function testItRejectsNewlineWithTrailingTextFromDocumentMetadata(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("{\n    \"name\": \"jsonrecast\"\n}");
+        $jsonDocument->setAttribute(NodeAttributes::NEWLINE, "\nX");
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Newline must be "\n", "\r\n", or "\r".');
+
+        (new JsonPreservingPrinter())->print($jsonDocument);
+    }
+
     public function testItRejectsCollectionAtMaximumNestingDepth(): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -704,6 +726,11 @@ JSON,
             "\r\n{\n    \"a\": 1\r\n}\n",
             "\n",
             "\n{\n    \"a\": 1\n}\n",
+        ];
+        yield 'LF to CR' => [
+            "\n{\n    \"a\": 1\n}\n",
+            "\r",
+            "\r{\r    \"a\": 1\r}\r",
         ];
     }
 

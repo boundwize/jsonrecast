@@ -332,6 +332,7 @@ final class NodeJsonTraverser
             $this->adoptAttribute($previous, $replacement, NodeAttributes::NEWLINE);
             $this->adoptAttribute($previous, $replacement, NodeAttributes::INDENT);
             $this->adoptAttribute($previous, $replacement, NodeAttributes::TRAILING_NEWLINE);
+            $this->adoptAttribute($previous, $replacement, NodeAttributes::SOURCE);
 
             return $replacement;
         }
@@ -347,6 +348,7 @@ final class NodeJsonTraverser
         $this->copyAttribute($previous, $replacement, NodeAttributes::NEWLINE);
         $this->copyAttribute($previous, $replacement, NodeAttributes::INDENT);
         $this->copyAttribute($previous, $replacement, NodeAttributes::TRAILING_NEWLINE);
+        $this->copyAttribute($previous, $replacement, NodeAttributes::SOURCE);
 
         return $replacement;
     }

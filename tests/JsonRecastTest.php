@@ -365,6 +365,60 @@ JSON, JsonRecast::print($jsonRecastResult));
         $this->assertSame("\t1\r\n", JsonRecast::print($jsonRecastResult));
     }
 
+    public function testParsedDocumentReplacementAdoptsTargetSourceForFraming(): void
+    {
+        $host  = JsonRecast::parse("\n1\r\n");
+        $donor = JsonRecast::parse("\r\n2\r\n");
+
+        $jsonRecastResult = JsonRecast::traverse(
+            $host,
+            new class ($donor) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly JsonDocument $donor,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if (! $nodeJson instanceof JsonDocument || ! $nodeJsonPath->isRoot()) {
+                        return null;
+                    }
+
+                    return $this->donor;
+                }
+            },
+        );
+
+        $this->assertSame("\n2\r\n", JsonRecast::print($jsonRecastResult));
+    }
+
+    public function testSyntheticDocumentReplacementAdoptsTargetSourceForFraming(): void
+    {
+        $host  = JsonRecast::parse("\n1\r\n");
+        $donor = JsonRecast::parse("\r\n2\r\n");
+
+        $jsonRecastResult = JsonRecast::traverse(
+            $host,
+            new class ($donor->value) extends NodeJsonVisitorAbstract {
+                public function __construct(
+                    private readonly NodeJson $value,
+                ) {
+                }
+
+                public function enterNode(NodeJson $nodeJson, NodeJsonPath $nodeJsonPath): ?NodeJson
+                {
+                    if (! $nodeJson instanceof JsonDocument || ! $nodeJsonPath->isRoot()) {
+                        return null;
+                    }
+
+                    return new JsonDocument($this->value);
+                }
+            },
+        );
+
+        $this->assertSame("\n2\r\n", JsonRecast::print($jsonRecastResult));
+    }
+
     public function testCrossDocumentGraftAdoptsHostNewlineStyle(): void
     {
         $jsonDocument = JsonRecast::parse(

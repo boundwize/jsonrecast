@@ -17,10 +17,10 @@ use Closure;
  * are identical to NodeJsonTraverser; prefer a visitor for transformations so
  * the editing intent is explicit and changes are recorded in the NodeChangeSet.
  */
-final class NodeJsonFinder
+final readonly class NodeJsonFinder
 {
     /** @var positive-int */
-    private readonly int $maximumDepth;
+    private int $maximumDepth;
 
     public function __construct(int $maximumDepth = MaximumDepthGuard::DEFAULT_MAXIMUM_DEPTH)
     {

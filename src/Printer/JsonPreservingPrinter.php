@@ -833,12 +833,12 @@ final class JsonPreservingPrinter implements JsonPrinter
     }
 
     /**
-     * The newline style the document framing was parsed with. Detected from the
-     * document's own source bytes rather than its NEWLINE attribute (which the
+     * The newline style the document framing originated with. Detected from
+     * the framing source bytes rather than the NEWLINE attribute (which the
      * user may have changed and print() adopts as the target style) or the root
      * value node (which may have been grafted from another document and must
-     * not rewrite the host framing). A synthetic document has no source; its
-     * framing then follows the root value's parsed style, if any.
+     * not rewrite the host framing). A standalone synthetic document has no
+     * source; its framing then follows the root value's parsed style, if any.
      */
     private function originalDocumentNewline(JsonDocument $jsonDocument): mixed
     {

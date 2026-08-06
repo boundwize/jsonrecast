@@ -7,6 +7,7 @@ namespace Boundwize\JsonRecast\Printer;
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
 use Boundwize\JsonRecast\Guard\IndentGuard;
 use Boundwize\JsonRecast\Guard\MaximumDepthGuard;
+use Boundwize\JsonRecast\Guard\NewlineGuard;
 use Boundwize\JsonRecast\Guard\NodeTreeGuard;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
@@ -105,7 +106,7 @@ final class JsonPreservingPrinter implements JsonPrinter
         NodeTreeGuard::guard($nodeJson, $this->maximumDepth);
 
         $nodeNewline = $nodeJson->getAttribute(NodeAttributes::NEWLINE);
-        $newline     = is_string($nodeNewline) ? $nodeNewline : "\n";
+        $newline     = is_string($nodeNewline) ? NewlineGuard::validateNewline($nodeNewline) : "\n";
         $nodeIndent  = $nodeJson->getAttribute(NodeAttributes::INDENT);
         $indent      = $this->indent
             ?? (is_string($nodeIndent) ? IndentGuard::validateIndent($nodeIndent) : '    ');

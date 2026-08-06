@@ -3014,6 +3014,24 @@ JSON,
         $this->assertSame('1', (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    public function testItDetectsChangedJsonDocumentDescendant(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('"old"');
+        $this->assertInstanceOf(StringNode::class, $jsonDocument->value);
+
+        $this->assertFalse($this->invokeJsonPreservingPrinterMethod(
+            'hasChangedDescendant',
+            [$jsonDocument],
+        ));
+
+        $jsonDocument->value->value = 'new';
+
+        $this->assertTrue($this->invokeJsonPreservingPrinterMethod(
+            'hasChangedDescendant',
+            [$jsonDocument],
+        ));
+    }
+
     public function testItPrintsDirectBooleanNodeValueMutation(): void
     {
         $jsonDocument = (new JsonParser())->parse('{"enabled":false}');

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast;
 
+use Boundwize\JsonRecast\Guard\MaximumDepthGuard;
 use Boundwize\JsonRecast\Node\NodeJson;
 use Boundwize\JsonRecast\NodePath\NodeJsonPath;
 use Boundwize\JsonRecast\NodeTraverser\NodeJsonTraverser;
@@ -16,8 +17,16 @@ use Closure;
  * are identical to NodeJsonTraverser; prefer a visitor for transformations so
  * the editing intent is explicit and changes are recorded in the NodeChangeSet.
  */
-final class NodeJsonFinder
+final readonly class NodeJsonFinder
 {
+    /** @var positive-int */
+    private int $maximumDepth;
+
+    public function __construct(int $maximumDepth = MaximumDepthGuard::DEFAULT_MAXIMUM_DEPTH)
+    {
+        $this->maximumDepth = MaximumDepthGuard::validateMaximumDepth($maximumDepth);
+    }
+
     /**
      * @param callable(NodeJson, NodeJsonPath): bool $filter
      * @return list<NodeJson>
@@ -26,7 +35,7 @@ final class NodeJsonFinder
     {
         $nodeJsonFindingVisitor = new NodeJsonFindingVisitor(Closure::fromCallable($filter));
 
-        $nodeJsonTraverser = new NodeJsonTraverser();
+        $nodeJsonTraverser = new NodeJsonTraverser($this->maximumDepth);
         $nodeJsonTraverser->addVisitor($nodeJsonFindingVisitor);
         $nodeJsonTraverser->traverse($nodeJson);
 
@@ -40,7 +49,7 @@ final class NodeJsonFinder
     {
         $nodeJsonFirstFindingVisitor = new NodeJsonFirstFindingVisitor(Closure::fromCallable($filter));
 
-        $nodeJsonTraverser = new NodeJsonTraverser();
+        $nodeJsonTraverser = new NodeJsonTraverser($this->maximumDepth);
         $nodeJsonTraverser->addVisitor($nodeJsonFirstFindingVisitor);
         $nodeJsonTraverser->traverse($nodeJson);
 

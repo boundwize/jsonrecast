@@ -148,7 +148,7 @@ $result = JsonRecast::traverse($document, $visitor, maximumDepth: 1024);
 $traverser = new NodeJsonTraverser(maximumDepth: 1024);
 ```
 
-The guard tracks only the active path, so the same node appearing under two sibling positions is not a cycle; such aliased subtrees traverse normally. `NodeJsonFinder` runs a traverser internally, so `find()` and `findFirst()` reject cyclic trees the same way.
+The guard tracks only the active path, so the same node appearing under two sibling positions is not a cycle; such aliased subtrees traverse normally. `NodeJsonFinder` runs a traverser internally, so `find()` and `findFirst()` reject cyclic trees the same way; its constructor accepts the same `maximumDepth` option.
 
 The guard runs once, at entry. Nodes a visitor introduces mid-traversal are not re-validated — a self-triggering replacement that deepens the tree forever remains your responsibility as the visitor author, as described in the warning above.
 

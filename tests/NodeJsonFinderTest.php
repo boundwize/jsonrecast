@@ -15,6 +15,8 @@ use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeJsonFinder;
 use Boundwize\JsonRecast\NodePath\NodeJsonPath;
 use Boundwize\JsonRecast\Parser\JsonParser;
+use Boundwize\JsonRecast\Value\JsonValue;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -226,5 +228,43 @@ JSON;
         $this->expectExceptionMessage('Cyclic JSON AST detected.');
 
         (new NodeJsonFinder())->find($jsonDocument, static fn (): bool => true);
+    }
+
+    public function testFindRejectsNodeTreeThatExceedsMaximumNestingDepth(): void
+    {
+        $nodeJson = JsonValue::from([[[0]]], maximumDepth: 3);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
+        (new NodeJsonFinder(maximumDepth: 3))->find($nodeJson, static fn (): bool => true);
+    }
+
+    public function testFindFirstRejectsNodeTreeThatExceedsMaximumNestingDepth(): void
+    {
+        $nodeJson = JsonValue::from([[[0]]], maximumDepth: 3);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
+        (new NodeJsonFinder(maximumDepth: 3))->findFirst($nodeJson, static fn (): bool => false);
+    }
+
+    public function testFindsWithinMaximumNestingDepth(): void
+    {
+        $nodeJson = JsonValue::from([1], maximumDepth: 2);
+
+        $numberNodes = (new NodeJsonFinder(maximumDepth: 2))->findInstanceOf($nodeJson, NumberNode::class);
+
+        $this->assertCount(1, $numberNodes);
+        $this->assertSame('1', $numberNodes[0]->rawValue);
+    }
+
+    public function testRejectsNonPositiveMaximumDepth(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum depth must be greater than 0.');
+
+        new NodeJsonFinder(maximumDepth: 0);
     }
 }

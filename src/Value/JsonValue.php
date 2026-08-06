@@ -41,11 +41,15 @@ final class JsonValue
     {
         MaximumDepthGuard::validateMaximumDepth($maximumDepth);
 
-        return self::fromValue($value, $maximumDepth, 0);
+        return self::fromValue($value, $maximumDepth, 0, false);
     }
 
-    private static function fromValue(mixed $value, int $maximumDepth, int $depth): NodeJson
-    {
+    private static function fromValue(
+        mixed $value,
+        int $maximumDepth,
+        int $depth,
+        bool $allowPlainObjects
+    ): NodeJson {
         return match (true) {
             is_string($value) => self::stringNode($value),
             is_float($value) && ! is_finite($value) => throw new InvalidArgumentException('Unsupported JSON value.'),
@@ -53,11 +57,16 @@ final class JsonValue
             is_float($value) => new NumberNode(self::formatFloat($value)),
             is_bool($value) => new BooleanNode($value),
             $value === null => new NullNode(),
-            is_array($value) => self::fromArray($value, $maximumDepth, $depth),
+            is_array($value) => self::fromArray($value, $maximumDepth, $depth, $allowPlainObjects),
             $value instanceof JsonSerializable => self::fromJsonSerializable($value, $maximumDepth, $depth),
-            $value instanceof BackedEnum => self::fromValue($value->value, $maximumDepth, $depth),
+            $value instanceof BackedEnum => self::fromValue(
+                $value->value,
+                $maximumDepth,
+                $depth,
+                $allowPlainObjects,
+            ),
             $value instanceof UnitEnum => throw new InvalidArgumentException('Unsupported JSON value.'),
-            is_object($value) => self::fromObject($value, $maximumDepth, $depth),
+            is_object($value) => self::fromObject($value, $maximumDepth, $depth, $allowPlainObjects),
             default => throw new InvalidArgumentException('Unsupported JSON value.'),
         };
     }
@@ -80,11 +89,11 @@ final class JsonValue
 
             // json_encode() serializes the object's properties when jsonSerialize() returns $this
             if ($serializedValue === $jsonSerializable) {
-                return self::fromObject($jsonSerializable, $maximumDepth, $depth);
+                return self::fromObject($jsonSerializable, $maximumDepth, $depth, true);
             }
 
             if (! $serializedValue instanceof JsonSerializable) {
-                return self::fromValue($serializedValue, $maximumDepth, $depth);
+                return self::fromValue($serializedValue, $maximumDepth, $depth, true);
             }
 
             $jsonSerializable = $serializedValue;
@@ -115,8 +124,12 @@ final class JsonValue
     /**
      * @param array<mixed> $value
      */
-    private static function fromArray(array $value, int $maximumDepth, int $depth): NodeJson
-    {
+    private static function fromArray(
+        array $value,
+        int $maximumDepth,
+        int $depth,
+        bool $allowPlainObjects
+    ): NodeJson {
         // Match json_encode(): it only consumes a nesting level when entering
         // a container, so scalar leaves at the final depth are convertible.
         MaximumDepthGuard::guardMaximumDepth($maximumDepth, $depth);
@@ -125,7 +138,9 @@ final class JsonValue
             $items = [];
 
             foreach ($value as $item) {
-                $items[] = new ArrayItemNode(self::fromValue($item, $maximumDepth, $depth + 1));
+                $items[] = new ArrayItemNode(
+                    self::fromValue($item, $maximumDepth, $depth + 1, $allowPlainObjects),
+                );
             }
 
             return new ArrayNode($items);
@@ -136,19 +151,27 @@ final class JsonValue
         foreach ($value as $key => $item) {
             $items[] = new ObjectItemNode(
                 key: self::stringNode((string) $key),
-                value: self::fromValue($item, $maximumDepth, $depth + 1),
+                value: self::fromValue($item, $maximumDepth, $depth + 1, $allowPlainObjects),
             );
         }
 
         return new ObjectNode($items);
     }
 
-    private static function fromObject(object $value, int $maximumDepth, int $depth): ObjectNode
-    {
-        // only stdClass and jsonSerialize()-returns-$this objects convert;
-        // supported object types are extended here deliberately instead of
-        // silently serializing any object's public properties
-        if (! $value instanceof stdClass && ! $value instanceof JsonSerializable) {
+    private static function fromObject(
+        object $value,
+        int $maximumDepth,
+        int $depth,
+        bool $allowPlainObjects
+    ): ObjectNode {
+        // Plain objects are supported only within the representation returned
+        // by jsonSerialize(); direct conversion remains deliberately limited
+        // to stdClass and jsonSerialize()-returns-$this objects.
+        if (
+            ! $allowPlainObjects
+            && ! $value instanceof stdClass
+            && ! $value instanceof JsonSerializable
+        ) {
             throw new InvalidArgumentException('Unsupported JSON value.');
         }
 
@@ -159,7 +182,7 @@ final class JsonValue
         foreach (get_object_vars($value) as $key => $item) {
             $items[] = new ObjectItemNode(
                 key: self::stringNode((string) $key),
-                value: self::fromValue($item, $maximumDepth, $depth + 1),
+                value: self::fromValue($item, $maximumDepth, $depth + 1, $allowPlainObjects),
             );
         }
 

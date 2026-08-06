@@ -134,11 +134,15 @@ final class NodeTreeGuard
      */
     private static function guardContainerItemKind(ObjectNode|ArrayNode $containerNode, NodeJson $nodeJson): void
     {
-        if ($containerNode instanceof ObjectNode && ! $nodeJson instanceof ObjectItemNode) {
+        if ($containerNode instanceof ObjectNode) {
+            if ($nodeJson instanceof ObjectItemNode) {
+                return;
+            }
+
             throw new RuntimeException('ObjectNode children must be ObjectItemNode.');
         }
 
-        if ($containerNode instanceof ArrayNode && ! $nodeJson instanceof ArrayItemNode) {
+        if (! $nodeJson instanceof ArrayItemNode) {
             throw new RuntimeException('ArrayNode children must be ArrayItemNode.');
         }
     }

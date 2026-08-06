@@ -105,6 +105,14 @@ $result = JsonRecast::traverse($document, $visitor, maximumDepth: 1024);
 $traversalResult = (new NodeJsonTraverser(maximumDepth: 1024))->traverse($document);
 ```
 
+And when finding nodes:
+
+```php
+use Boundwize\JsonRecast\NodeJsonFinder;
+
+$finder = new NodeJsonFinder(maximumDepth: 1024);
+```
+
 The maximum depth must be greater than `0`.
 
 ## Preserving Printer

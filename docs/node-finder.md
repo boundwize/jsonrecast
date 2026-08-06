@@ -7,7 +7,7 @@ nav_order: 5
 # Finding Nodes
 {: .no_toc }
 
-`NodeJsonFinder` locates nodes without writing a visitor. It mirrors PHP-Parser's `NodeFinder` and runs a normal `NodeJsonTraverser` under the hood, so it visits exactly the nodes a visitor would see. That includes the traverser's [input tree validation](traversal-and-paths.html#input-tree-validation): a cyclic or too-deeply-nested tree throws a catchable exception instead of exhausting memory.
+`NodeJsonFinder` locates nodes without writing a visitor. It mirrors PHP-Parser's `NodeFinder` and runs a normal `NodeJsonTraverser` under the hood, so it visits exactly the nodes a visitor would see. That includes the traverser's [input tree validation](traversal-and-paths.html#input-tree-validation): a cyclic or too-deeply-nested tree throws a catchable exception instead of exhausting memory. The depth limit defaults to `512`; pass `maximumDepth` to the constructor to change it — `new NodeJsonFinder(maximumDepth: 1024)` — see [Maximum Depth](parsing-and-printers.html#maximum-depth).
 
 Reach for it when a tool needs to *read* a JSON file before deciding what to do: look up a value, audit a config, or check whether an edit is needed at all.
 

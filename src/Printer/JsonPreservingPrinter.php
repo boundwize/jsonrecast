@@ -27,6 +27,7 @@ use RuntimeException;
 use SplObjectStorage;
 
 use function abs;
+use function array_keys;
 use function array_splice;
 use function count;
 use function intdiv;
@@ -1241,10 +1242,10 @@ final class JsonPreservingPrinter implements JsonPrinter
      */
     private function getItemsInOriginalOrder(array $items): array
     {
-        /** @var list<array{item: T, startOffset: float, currentIndex: int}> $itemsWithStartOffsets */
-        $itemsWithStartOffsets = [];
-        $previousStartOffset   = null;
-        $isInOriginalOrder     = true;
+        /** @var list<float> $startOffsets */
+        $startOffsets        = [];
+        $previousStartOffset = null;
+        $isInOriginalOrder   = true;
 
         foreach ($items as $i => $item) {
             $startOffset = $item->getAttribute(NodeAttributes::START_OFFSET);
@@ -1260,12 +1261,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             }
 
             $previousStartOffset = $startOffset;
-
-            $itemsWithStartOffsets[] = [
-                'item'         => $item,
-                'startOffset'  => $startOffset,
-                'currentIndex' => $i,
-            ];
+            $startOffsets[]      = $startOffset;
         }
 
         // Non-decreasing offsets sort to themselves (ties keep index order).
@@ -1273,21 +1269,22 @@ final class JsonPreservingPrinter implements JsonPrinter
             return $items;
         }
 
+        // Only the indexes are reordered: pairing each offset with its node up
+        // front would allocate a record per item that the common in-order
+        // return above discards.
+        $indexes = array_keys($items);
+
         usort(
-            $itemsWithStartOffsets,
-            /**
-             * @param array{item: T, startOffset: float, currentIndex: int} $left
-             * @param array{item: T, startOffset: float, currentIndex: int} $right
-             */
-            static fn (array $left, array $right): int => $left['startOffset'] <=> $right['startOffset']
-                ?: $left['currentIndex'] <=> $right['currentIndex'],
+            $indexes,
+            static fn (int $left, int $right): int => $startOffsets[$left] <=> $startOffsets[$right]
+                ?: $left <=> $right,
         );
 
         /** @var list<T> $itemsInOriginalOrder */
         $itemsInOriginalOrder = [];
 
-        foreach ($itemsWithStartOffsets as $itemWithStartOffset) {
-            $itemsInOriginalOrder[] = $itemWithStartOffset['item'];
+        foreach ($indexes as $index) {
+            $itemsInOriginalOrder[] = $items[$index];
         }
 
         return $itemsInOriginalOrder;

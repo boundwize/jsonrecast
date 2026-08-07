@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Boundwize\JsonRecast\Tests\Printer;
 
 use Boundwize\JsonRecast\Attribute\NodeAttributes;
+use Boundwize\JsonRecast\Node\AbstractNodeJson;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
@@ -3738,6 +3739,30 @@ JSON,
 
             $this->assertSame($expected, (new JsonPreservingPrinter())->print($jsonDocument));
         }
+    }
+
+    public function testItPrintsUnknownNodeJsonImplementationFromItsOriginalText(): void
+    {
+        // NodeJson is a public interface, so a node outside the built-in set can
+        // reach the printer. One carrying recorded source text has no assembled
+        // text to go stale and no child to recurse into, leaving it unchanged.
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '"jsonrecast"');
+
+        $this->assertSame(
+            '"jsonrecast"',
+            (new JsonPreservingPrinter())->print(new JsonDocument($unknownNode)),
+        );
+    }
+
+    public function testItRejectsUnknownNodeJsonImplementationWithoutOriginalText(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Unsupported JSON node.');
+
+        (new JsonPreservingPrinter())->print(new JsonDocument(new class extends AbstractNodeJson {
+        }));
     }
 
     public function testItRejectsInvalidUtf8String(): void

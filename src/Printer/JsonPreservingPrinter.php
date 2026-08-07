@@ -137,8 +137,8 @@ final class JsonPreservingPrinter implements JsonPrinter
         if (! $this->isChanged($nodeJson)) {
             $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
-            // isChanged() already covers hasScalarValueChanged(), so an
-            // unchanged node can never carry a mutated scalar value here.
+            // isChanged() already compares a scalar node against its token, so
+            // an unchanged node can never carry a mutated scalar value here.
             if (is_string($originalText)) {
                 return $this->reindentOriginalText($nodeJson, $originalText, $printContext);
             }
@@ -1385,9 +1385,17 @@ final class JsonPreservingPrinter implements JsonPrinter
             return true;
         }
 
-        return $this->hasScalarValueChanged($nodeJson, $originalText)
-            || $this->hasStaleOriginalText($nodeJson, $originalText)
-            || $this->hasChangedDescendant($nodeJson);
+        // The two groups are disjoint, so routing once beats asking every node
+        // all three questions: a scalar holds no assembled text and no child to
+        // recurse into, and a structural node carries no scalar value of its own.
+        return match (true) {
+            $nodeJson instanceof StringNode => $this->hasStringValueChanged($nodeJson, $originalText),
+            $nodeJson instanceof NumberNode => $originalText !== $nodeJson->rawValue,
+            $nodeJson instanceof BooleanNode => ($nodeJson->value ? 'true' : 'false') !== $originalText,
+            $nodeJson instanceof NullNode => false,
+            default => $this->hasStaleOriginalText($nodeJson, $originalText)
+                || $this->hasChangedDescendant($nodeJson),
+        };
     }
 
     private function hasOriginalTrailingNewline(JsonDocument $jsonDocument): bool
@@ -1468,16 +1476,6 @@ final class JsonPreservingPrinter implements JsonPrinter
                 . $item->betweenColonAndValue
                 . $this->getOriginalText($item->value),
             $item instanceof ArrayItemNode => $this->getOriginalText($item->value),
-        };
-    }
-
-    private function hasScalarValueChanged(NodeJson $nodeJson, string $originalText): bool
-    {
-        return match (true) {
-            $nodeJson instanceof StringNode => $this->hasStringValueChanged($nodeJson, $originalText),
-            $nodeJson instanceof NumberNode => $originalText !== $nodeJson->rawValue,
-            $nodeJson instanceof BooleanNode => ($nodeJson->value ? 'true' : 'false') !== $originalText,
-            default => false,
         };
     }
 

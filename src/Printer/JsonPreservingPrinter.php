@@ -1101,16 +1101,21 @@ final class JsonPreservingPrinter implements JsonPrinter
         }
 
         for ($i = 1; $i < $count; $i++) {
-            $line = $lines[$i];
+            $line                    = $lines[$i];
+            $leadingWhitespaceLength = strspn($line, " \t");
 
-            if (trim($line) === '') {
+            // A line holding nothing but its ending has no indentation to scale,
+            // and handing it one would introduce trailing whitespace the source
+            // never had. A whitespace-only line, by contrast, carries real
+            // indentation that has to move with the lines around it, so it falls
+            // through and is rescaled like any other.
+            if ($leadingWhitespaceLength === 0 && trim($line) === '') {
                 $output .= $line;
 
                 continue;
             }
 
-            $leadingWhitespaceLength = strspn($line, " \t");
-            $leadingWhitespace       = substr($line, 0, $leadingWhitespaceLength);
+            $leadingWhitespace = substr($line, 0, $leadingWhitespaceLength);
 
             // Interior lines off the original indent grid carry intentional relative
             // indentation that per-line level scaling would flatten; shift the whole

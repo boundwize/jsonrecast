@@ -874,6 +874,13 @@ final class JsonPreservingPrinter implements JsonPrinter
             return null;
         }
 
+        $delta          = $printContext->level() - $originalDepth;
+        $originalIndent = $containerNode->getAttribute(NodeAttributes::INDENT);
+
+        if (! $this->canShiftOffGridInterior($originalIndent, $printContext->indentUnit(), $delta)) {
+            return null;
+        }
+
         $itemWhitespace = [$this->afterOpen($containerNode)];
         foreach ($containerNode->items as $item) {
             $itemWhitespace[] = $this->beforeItem($item);
@@ -891,10 +898,10 @@ final class JsonPreservingPrinter implements JsonPrinter
         }
 
         return $this->resolveOffGridInteriorShift(
-            $containerNode->getAttribute(NodeAttributes::INDENT),
+            $originalIndent,
             $itemLeads,
             $printContext->indentUnit(),
-            $printContext->level() - $originalDepth,
+            $delta,
         );
     }
 
@@ -1063,21 +1070,27 @@ final class JsonPreservingPrinter implements JsonPrinter
         $output = $lines[0];
         $count  = count($lines);
 
-        $interiorLeads = [];
-        for ($i = 1; $i < $count - 1; $i++) {
-            if (trim($lines[$i]) === '') {
-                continue;
+        $delta          = $printContext->level() - $originalDepth;
+        $originalIndent = $nodeJson->getAttribute(NodeAttributes::INDENT);
+        $interiorShift  = null;
+
+        if ($this->canShiftOffGridInterior($originalIndent, $printContext->indentUnit(), $delta)) {
+            $interiorLeads = [];
+            for ($i = 1; $i < $count - 1; $i++) {
+                if (trim($lines[$i]) === '') {
+                    continue;
+                }
+
+                $interiorLeads[] = substr($lines[$i], 0, strspn($lines[$i], " \t"));
             }
 
-            $interiorLeads[] = substr($lines[$i], 0, strspn($lines[$i], " \t"));
+            $interiorShift = $this->resolveOffGridInteriorShift(
+                $originalIndent,
+                $interiorLeads,
+                $printContext->indentUnit(),
+                $delta,
+            );
         }
-
-        $interiorShift = $this->resolveOffGridInteriorShift(
-            $nodeJson->getAttribute(NodeAttributes::INDENT),
-            $interiorLeads,
-            $printContext->indentUnit(),
-            $printContext->level() - $originalDepth,
-        );
 
         for ($i = 1; $i < $count; $i++) {
             $line = $lines[$i];
@@ -1119,9 +1132,7 @@ final class JsonPreservingPrinter implements JsonPrinter
         int $delta,
     ): ?int {
         if (
-            ! is_string($originalIndent)
-            || $originalIndent === ''
-            || $originalIndent === $targetIndent
+            ! $this->canShiftOffGridInterior($originalIndent, $targetIndent, $delta)
             || $interiorLeads === []
             || ! $this->hasClampedLeadOffOriginalIndentGrid($interiorLeads, $originalIndent, $delta)
         ) {
@@ -1137,6 +1148,24 @@ final class JsonPreservingPrinter implements JsonPrinter
     }
 
     /**
+     * Preconditions for an interior shift that hold before any lead is known:
+     * only a node re-indented shallower with a different indent unit can have
+     * one. Checked before the leads are collected so the common print path does
+     * not scan whitespace for a result that would be discarded.
+     *
+     * @phpstan-assert-if-true string $originalIndent
+     */
+    private function canShiftOffGridInterior(mixed $originalIndent, string $targetIndent, int $delta): bool
+    {
+        return $delta < 0
+            && is_string($originalIndent)
+            && $originalIndent !== ''
+            && $originalIndent !== $targetIndent;
+    }
+
+    /**
+     * Called only for a negative depth delta, guarded by canShiftOffGridInterior().
+     *
      * @param list<string> $leads
      */
     private function hasClampedLeadOffOriginalIndentGrid(
@@ -1144,10 +1173,6 @@ final class JsonPreservingPrinter implements JsonPrinter
         string $originalIndent,
         int $delta,
     ): bool {
-        if ($delta >= 0) {
-            return false;
-        }
-
         $originalIndentLength = strlen($originalIndent);
 
         foreach ($leads as $lead) {

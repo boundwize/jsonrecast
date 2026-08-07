@@ -1350,16 +1350,15 @@ final class JsonPreservingPrinter implements JsonPrinter
             return true;
         }
 
-        if (! $nodeJson->hasAttribute(NodeAttributes::ORIGINAL_TEXT)) {
+        $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+
+        if (! is_string($originalText)) {
             return true;
         }
 
-        $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
-
-        return $this->hasScalarValueChanged($nodeJson)
-            || $this->hasStaleOriginalText($nodeJson)
-            || $this->hasChangedDescendant($nodeJson)
-            || ! is_string($originalText);
+        return $this->hasScalarValueChanged($nodeJson, $originalText)
+            || $this->hasStaleOriginalText($nodeJson, $originalText)
+            || $this->hasChangedDescendant($nodeJson);
     }
 
     private function hasOriginalTrailingNewline(JsonDocument $jsonDocument): bool
@@ -1370,14 +1369,8 @@ final class JsonPreservingPrinter implements JsonPrinter
             && (str_ends_with($source, "\n") || str_ends_with($source, "\r"));
     }
 
-    private function hasStaleOriginalText(NodeJson $nodeJson): bool
+    private function hasStaleOriginalText(NodeJson $nodeJson, string $originalText): bool
     {
-        $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
-
-        if (! is_string($originalText)) {
-            return false;
-        }
-
         $reconstructedOriginalText = match (true) {
             $nodeJson instanceof JsonDocument => $nodeJson->beforeValue
                 . $this->getOriginalText($nodeJson->value)
@@ -1449,39 +1442,21 @@ final class JsonPreservingPrinter implements JsonPrinter
         };
     }
 
-    private function hasScalarValueChanged(NodeJson $nodeJson): bool
+    private function hasScalarValueChanged(NodeJson $nodeJson, string $originalText): bool
     {
         return match (true) {
-            $nodeJson instanceof StringNode => $this->hasStringValueChanged($nodeJson),
-            $nodeJson instanceof NumberNode => $this->hasNumberValueChanged($nodeJson),
-            $nodeJson instanceof BooleanNode => $this->hasBooleanValueChanged($nodeJson),
+            $nodeJson instanceof StringNode => $this->hasStringValueChanged($nodeJson, $originalText),
+            $nodeJson instanceof NumberNode => $originalText !== $nodeJson->rawValue,
+            $nodeJson instanceof BooleanNode => ($nodeJson->value ? 'true' : 'false') !== $originalText,
             default => false,
         };
     }
 
-    private function hasStringValueChanged(StringNode $stringNode): bool
+    private function hasStringValueChanged(StringNode $stringNode, string $originalText): bool
     {
-        $originalText = $stringNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
-        $value        = is_string($originalText)
-            ? json_decode($originalText, true, $this->maximumDepth)
-            : null;
+        $value = json_decode($originalText, true, $this->maximumDepth);
 
-        return is_string($originalText) && $value !== $stringNode->value;
-    }
-
-    private function hasNumberValueChanged(NumberNode $numberNode): bool
-    {
-        $originalText = $numberNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
-
-        return is_string($originalText) && $originalText !== $numberNode->rawValue;
-    }
-
-    private function hasBooleanValueChanged(BooleanNode $booleanNode): bool
-    {
-        $originalText = $booleanNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
-
-        return is_string($originalText)
-            && ($booleanNode->value ? 'true' : 'false') !== $originalText;
+        return $value !== $stringNode->value;
     }
 
     private function hasChangedDescendant(NodeJson $nodeJson): bool

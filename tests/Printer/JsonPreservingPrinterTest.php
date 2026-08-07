@@ -3687,6 +3687,78 @@ JSON,
         $this->assertSame("[\n    \n    1\n]", (new JsonPreservingPrinter())->print($jsonDocument));
     }
 
+    /**
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function reindentedWhitespaceOnlyLineProvider(): iterable
+    {
+        yield 'narrow four spaces to two' => [
+            '  ',
+            "{\n    \"a\": 1,\n    \n    \"b\": 2\n}\n",
+            "{\n  \"a\": 1,\n  \n  \"b\": 2\n}\n",
+        ];
+        yield 'widen four spaces to eight' => [
+            '        ',
+            "{\n    \"a\": 1,\n    \n    \"b\": 2\n}\n",
+            "{\n        \"a\": 1,\n        \n        \"b\": 2\n}\n",
+        ];
+        yield 'convert spaces to tabs' => [
+            "\t",
+            "{\n    \"a\": 1,\n    \n    \"b\": 2\n}\n",
+            "{\n\t\"a\": 1,\n\t\n\t\"b\": 2\n}\n",
+        ];
+        yield 'nested container' => [
+            '  ',
+            "{\n    \"outer\": {\n        \"a\": 1,\n        \n        \"b\": 2\n    }\n}\n",
+            "{\n  \"outer\": {\n    \"a\": 1,\n    \n    \"b\": 2\n  }\n}\n",
+        ];
+    }
+
+    #[DataProvider('reindentedWhitespaceOnlyLineProvider')]
+    public function testItReindentsWhitespaceOnlyLineWithItsSiblings(
+        string $indent,
+        string $json,
+        string $expected,
+    ): void {
+        $jsonDocument = (new JsonParser())->parse($json);
+
+        $this->assertSame($expected, (new JsonPreservingPrinter(indent: $indent))->print($jsonDocument));
+    }
+
+    public function testItKeepsEmptyLineEmptyWhenReindenting(): void
+    {
+        $jsonDocument = (new JsonParser())->parse("{\n    \"a\": 1,\n\n    \"b\": 2\n}\n");
+
+        $this->assertSame(
+            "{\n  \"a\": 1,\n\n  \"b\": 2\n}\n",
+            (new JsonPreservingPrinter(indent: '  '))->print($jsonDocument),
+        );
+    }
+
+    public function testItReindentsUnindentedInteriorLineWhenNodeIsGraftedDeeper(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            "{\n  \"shallow\": {\n\"a\": 1\n},\n  \"deep\": {\n    \"target\": null\n  }\n}\n",
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $shallowItem = $jsonDocument->value->get('shallow');
+        $this->assertInstanceOf(ObjectItemNode::class, $shallowItem);
+        $deepItem = $jsonDocument->value->get('deep');
+        $this->assertInstanceOf(ObjectItemNode::class, $deepItem);
+        $this->assertInstanceOf(ObjectNode::class, $deepItem->value);
+
+        $deepItem->value->set('target', $shallowItem->value);
+        $jsonDocument->value->remove('shallow');
+
+        // The interior line sits at the margin, so it has no indentation of its
+        // own, but it is not blank: the depth delta still has to be applied.
+        $this->assertSame(
+            "{\n  \"deep\": {\n    \"target\": {\n  \"a\": 1\n  }\n  }\n}\n",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesSeparatorWhenInsertingIntoSingleItemArray(): void
     {
         $jsonDocument = (new JsonParser())->parse('[1]');

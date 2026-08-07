@@ -3828,6 +3828,20 @@ JSON,
         );
     }
 
+    public function testItPrintsUnknownNodeJsonImplementationFromNullLiteralOriginalText(): void
+    {
+        // The "null" literal decodes to null just like invalid text does, so it
+        // must not be mistaken for text the printer cannot stand behind.
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, 'null');
+
+        $this->assertSame(
+            'null',
+            (new JsonPreservingPrinter())->print(new JsonDocument($unknownNode)),
+        );
+    }
+
     public function testItRejectsUnknownNodeJsonImplementationWithoutOriginalText(): void
     {
         $this->expectException(RuntimeException::class);
@@ -3835,6 +3849,37 @@ JSON,
 
         (new JsonPreservingPrinter())->print(new JsonDocument(new class extends AbstractNodeJson {
         }));
+    }
+
+    public function testItRejectsUnknownNodeJsonImplementationWhoseOriginalTextIsNoJsonValue(): void
+    {
+        // Recorded text of an unknown node is emitted verbatim, so text that is
+        // no JSON value on its own would print a document that no longer parses.
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '"foo": 123');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Unsupported JSON node.');
+
+        (new JsonPreservingPrinter())->print(new JsonDocument($unknownNode));
+    }
+
+    public function testItRejectsNestedUnknownNodeJsonImplementationWhoseOriginalTextIsNoJsonValue(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('[1]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, 'THIS IS NOT JSON');
+
+        $jsonDocument->value->items[0]->value = $unknownNode;
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Unsupported JSON node.');
+
+        (new JsonPreservingPrinter())->print($jsonDocument);
     }
 
     public function testItRejectsInvalidUtf8String(): void

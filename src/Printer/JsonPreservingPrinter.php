@@ -36,6 +36,7 @@ use function is_int;
 use function is_string;
 use function json_decode;
 use function json_encode;
+use function json_last_error;
 use function max;
 use function min;
 use function preg_split;
@@ -51,6 +52,7 @@ use function substr_compare;
 use function trim;
 use function usort;
 
+use const JSON_ERROR_NONE;
 use const JSON_UNESCAPED_SLASHES;
 use const JSON_UNESCAPED_UNICODE;
 
@@ -1433,7 +1435,26 @@ final class JsonPreservingPrinter implements JsonPrinter
             default => null,
         };
 
-        return is_string($reconstructedOriginalText) && $reconstructedOriginalText !== $originalText;
+        // Only a node kind outside the built-in set reconstructs to null: it
+        // exposes no structure to assemble text from, so the printer can do
+        // nothing but emit its recorded text verbatim into a value position.
+        // Text that is not a JSON value on its own cannot stand for the node
+        // there, so such a node counts as unpreservable and falls through to
+        // the unsupported node error rather than printing a broken document.
+        if ($reconstructedOriginalText === null) {
+            return ! $this->isJsonValueText($originalText);
+        }
+
+        return $reconstructedOriginalText !== $originalText;
+    }
+
+    private function isJsonValueText(string $text): bool
+    {
+        // json_decode() returns null both for the "null" literal and for
+        // invalid text, so the error state is what separates them.
+        json_decode($text, true, $this->maximumDepth);
+
+        return json_last_error() === JSON_ERROR_NONE;
     }
 
     private function getOriginalText(NodeJson $nodeJson): string

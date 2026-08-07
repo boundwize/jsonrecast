@@ -1065,15 +1065,22 @@ final class JsonPreservingPrinter implements JsonPrinter
             return $originalText;
         }
 
+        $delta          = $printContext->level() - $originalDepth;
+        $originalIndent = $nodeJson->getAttribute(NodeAttributes::INDENT);
+
+        // The node sits at its original depth and the target indent unit matches
+        // the source, so reindentLeadingWhitespace() would hand every lead back
+        // untouched and the split lines would rejoin into $originalText.
+        if ($delta === 0 && is_string($originalIndent) && $originalIndent === $printContext->indentUnit()) {
+            return $originalText;
+        }
+
         /** @var non-empty-list<string> $lines */
         $lines = preg_split(self::LINE_ENDING_SPLIT_PATTERN, $originalText);
 
-        $output = $lines[0];
-        $count  = count($lines);
-
-        $delta          = $printContext->level() - $originalDepth;
-        $originalIndent = $nodeJson->getAttribute(NodeAttributes::INDENT);
-        $interiorShift  = null;
+        $output        = $lines[0];
+        $count         = count($lines);
+        $interiorShift = null;
 
         if ($this->canShiftOffGridInterior($originalIndent, $printContext->indentUnit(), $delta)) {
             $interiorLeads = [];

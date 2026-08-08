@@ -153,6 +153,108 @@ final class JsonPreservingPrinterTest extends TestCase
         }
     }
 
+    /**
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function syntheticInlineObjectItemColonWhitespaceProvider(): iterable
+    {
+        yield 'no authored whitespace' => [
+            '',
+            '',
+            <<<'JSON'
+{"payload":{"c": 3}}
+JSON,
+        ];
+        yield 'space on both sides of the colon' => [
+            ' ',
+            ' ',
+            <<<'JSON'
+{"payload":{"c" : 3}}
+JSON,
+        ];
+        yield 'space before the colon only' => [
+            ' ',
+            '',
+            <<<'JSON'
+{"payload":{"c" :3}}
+JSON,
+        ];
+        yield 'two spaces after the colon' => [
+            '',
+            '  ',
+            <<<'JSON'
+{"payload":{"c":  3}}
+JSON,
+        ];
+    }
+
+    /**
+     * The inline synthetic printer must honour the authored colon whitespace
+     * exactly like the multiline printer does.
+     */
+    #[DataProvider('syntheticInlineObjectItemColonWhitespaceProvider')]
+    public function testItPreservesAuthoredColonWhitespaceWhenPrintingSyntheticObjectItemsInline(
+        string $betweenKeyAndColon,
+        string $betweenColonAndValue,
+        string $expected,
+    ): void {
+        $source = <<<'JSON'
+{"payload":null}
+JSON;
+
+        $jsonDocument = (new JsonParser())->parse($source);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('payload', new ObjectNode([
+            new ObjectItemNode(
+                new StringNode('c'),
+                new NumberNode('3'),
+                '',
+                $betweenKeyAndColon,
+                $betweenColonAndValue,
+            ),
+        ]));
+
+        $this->assertSame($expected, (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function syntheticInlineObjectItemMultilineColonWhitespaceProvider(): iterable
+    {
+        yield 'LF' => ["\n    "];
+        yield 'CRLF' => ["\r\n    "];
+        yield 'CR' => ["\r    "];
+    }
+
+    /**
+     * Authored whitespace that would break the single line the inline printer
+     * exists to produce falls back to the canonical separator instead.
+     */
+    #[DataProvider('syntheticInlineObjectItemMultilineColonWhitespaceProvider')]
+    public function testItCompactsMultilineColonWhitespaceWhenPrintingSyntheticObjectItemsInline(
+        string $betweenColonAndValue,
+    ): void {
+        $source = <<<'JSON'
+{"payload":null}
+JSON;
+
+        $jsonDocument = (new JsonParser())->parse($source);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('payload', new ObjectNode([
+            new ObjectItemNode(new StringNode('c'), new NumberNode('3'), '', '', $betweenColonAndValue),
+        ]));
+
+        $this->assertSame(
+            <<<'JSON'
+{"payload":{"c": 3}}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     private const SPLICE_INVARIANT_CASE_COUNT = 256;
 
     public function testItPrintsNewScalarNodes(): void

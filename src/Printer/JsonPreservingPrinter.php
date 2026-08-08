@@ -707,7 +707,7 @@ final class JsonPreservingPrinter implements JsonPrinter
                 $nodeJson,
             ),
             $nodeJson instanceof ObjectItemNode => $this->printSyntheticNodeInline($nodeJson->key)
-                . ': '
+                . $this->syntheticInlineObjectItemSeparator($nodeJson)
                 . $this->printSyntheticNodeInline($nodeJson->value),
             $nodeJson instanceof ArrayItemNode => $this->printSyntheticNodeInline($nodeJson->value),
             $nodeJson instanceof StringNode => ScalarEncodeHelper::encodeString(
@@ -719,6 +719,19 @@ final class JsonPreservingPrinter implements JsonPrinter
             $nodeJson instanceof NullNode => 'null',
             default => throw new RuntimeException('Unsupported JSON node.'),
         };
+    }
+
+    private function syntheticInlineObjectItemSeparator(ObjectItemNode $objectItemNode): string
+    {
+        $separator = $this->objectItemSeparator($objectItemNode);
+
+        // Inline compaction must keep the value on a single line, so authored
+        // multiline spacing around the colon cannot be carried over here.
+        if (str_contains($separator, "\n") || str_contains($separator, "\r")) {
+            return ': ';
+        }
+
+        return $separator;
     }
 
     private function printSyntheticContainerInline(ArrayNode|ObjectNode $containerNode): string

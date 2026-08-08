@@ -3634,7 +3634,9 @@ JSON,
 
     /**
      * Compacting the container around a reused parsed scalar must not respell
-     * the scalar: the source lexeme carries meaning that re-encoding drops.
+     * it. Each lexeme below denotes a value that re-encoding would spell some
+     * other way — exponent form, a trailing zero, an escaped solidus — so only
+     * reusing the source token keeps the document byte-faithful.
      */
     #[DataProvider('parsedScalarInSyntheticContainerProvider')]
     public function testItPreservesTheSourceSpellingOfAParsedScalarInsideAnInlinedSyntheticContainer(

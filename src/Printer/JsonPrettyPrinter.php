@@ -19,7 +19,7 @@ use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\Printer\Helper\ContainerPrintHelper;
 use Boundwize\JsonRecast\Printer\Helper\ScalarEncodeHelper;
-use RuntimeException;
+use Boundwize\JsonRecast\Printer\Helper\UnknownNodeHelper;
 
 use function array_splice;
 
@@ -63,7 +63,17 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
             $nodeJson instanceof NumberNode => ScalarEncodeHelper::encodeNumber($nodeJson->rawValue),
             $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
             $nodeJson instanceof NullNode => 'null',
-            default => throw new RuntimeException('Unsupported JSON node.'),
+            // A node kind outside the built-in set exposes no structure to lay
+            // out, so there is nothing here to reformat: its recorded text is
+            // emitted as it stands, exactly as the preserving printer emits it,
+            // and refused on the same terms. Its own interior spacing therefore
+            // survives a pretty print, being spacing this printer cannot see
+            // into to canonicalise.
+            default => UnknownNodeHelper::valueText(
+                $nodeJson,
+                $this->maximumDepth,
+                $printContext->level(),
+            ),
         };
     }
 

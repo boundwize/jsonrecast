@@ -24,7 +24,7 @@ use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeTraverser\NodeChangeSet;
 use Boundwize\JsonRecast\Printer\Helper\ContainerPrintHelper;
 use Boundwize\JsonRecast\Printer\Helper\ScalarEncodeHelper;
-use RuntimeException;
+use Boundwize\JsonRecast\Printer\Helper\UnknownNodeHelper;
 use SplObjectStorage;
 
 use function abs;
@@ -36,7 +36,6 @@ use function is_float;
 use function is_int;
 use function is_string;
 use function json_decode;
-use function json_last_error;
 use function max;
 use function min;
 use function preg_split;
@@ -51,8 +50,6 @@ use function substr;
 use function substr_compare;
 use function trim;
 use function usort;
-
-use const JSON_ERROR_NONE;
 
 final class JsonPreservingPrinter implements JsonPrinter
 {
@@ -168,13 +165,21 @@ final class JsonPreservingPrinter implements JsonPrinter
      */
     private function printUnknownNode(NodeJson $nodeJson, PrintContext $printContext, int $depth): string
     {
-        $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+        return $this->reindentOriginalText(
+            $nodeJson,
+            $this->unknownNodeText($nodeJson, $depth),
+            $printContext,
+        );
+    }
 
-        if (! is_string($originalText) || ! $this->isJsonValueText($originalText, $depth)) {
-            throw new RuntimeException('Unsupported JSON node.');
-        }
-
-        return $this->reindentOriginalText($nodeJson, $originalText, $printContext);
+    /**
+     * The recorded text an unknown node stands for, refused unless it can hold
+     * the value position the node occupies. Used by the inline printer too, so
+     * that compacting a container never lowers this bar.
+     */
+    private function unknownNodeText(NodeJson $nodeJson, int $depth): string
+    {
+        return UnknownNodeHelper::valueText($nodeJson, $this->maximumDepth, $depth);
     }
 
     private function printDocument(
@@ -219,7 +224,7 @@ final class JsonPreservingPrinter implements JsonPrinter
 
         $printedChangedItemValues = [];
         $itemLayouts              = [];
-        $shouldPrintBestEffort    = $this->shouldPrintContainerBestEffort($containerNode, $containerNode->items)
+        $shouldPrintBestEffort    = $this->shouldPrintContainerBestEffort($containerNode)
             || $this->shouldPrintInsertedMultilineItemsBestEffort($containerNode);
 
         if (! $shouldPrintBestEffort) {
@@ -371,18 +376,23 @@ final class JsonPreservingPrinter implements JsonPrinter
             }
         }
 
-        $separator         = $this->adoptNewlineStyle(
+        $separator = $this->adoptNewlineStyle(
             $this->objectItemSeparator($objectItemNode),
             $objectItemNode,
             $printContext,
         );
-        $valuePrintContext = $this->valuePrintContext($objectItemNode, $printContext, $separator);
 
         return $beforeKey
             . $this->printNode($objectItemNode->key, $printContext, $depth)
             . $separator
+            // An already printed value needs no context of its own, so the
+            // value's context is resolved only where it is actually consumed.
             . ($printedValue
-                ?? $this->printNode($objectItemNode->value, $valuePrintContext, $depth))
+                ?? $this->printNode(
+                    $objectItemNode->value,
+                    $this->valuePrintContext($objectItemNode, $printContext, $separator),
+                    $depth,
+                ))
             . $afterValue;
     }
 
@@ -392,17 +402,20 @@ final class JsonPreservingPrinter implements JsonPrinter
         int $depth,
         ?string $printedValue,
     ): string {
-        $separator         = $this->adoptNewlineStyle(
+        $separator = $this->adoptNewlineStyle(
             $this->objectItemSeparator($objectItemNode),
             $objectItemNode,
             $printContext,
         );
-        $valuePrintContext = $this->valuePrintContext($objectItemNode, $printContext, $separator);
 
         return $this->printNode($objectItemNode->key, $printContext, $depth)
             . $separator
             . ($printedValue
-                ?? $this->printNode($objectItemNode->value, $valuePrintContext, $depth));
+                ?? $this->printNode(
+                    $objectItemNode->value,
+                    $this->valuePrintContext($objectItemNode, $printContext, $separator),
+                    $depth,
+                ));
     }
 
     private function objectItemSeparator(ObjectItemNode $objectItemNode): string
@@ -449,7 +462,7 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     /**
      * @param list<ArrayItemNode|ObjectItemNode> $items
-     * @return array{?string, string}
+     * @return array{string, string}
      */
     private function getItemLayout(
         array $items,
@@ -458,16 +471,15 @@ final class JsonPreservingPrinter implements JsonPrinter
         string $containerAfterOpen,
         string $containerBeforeClose,
     ): array {
-        $item        = $items[$index];
-        $lastIndex   = count($items) - 1;
-        $beforeValue = $index === 0 ? $containerAfterOpen : null;
-        $afterValue  = $index === $lastIndex ? $containerBeforeClose : $layoutDonor->afterValue;
+        $lastIndex  = count($items) - 1;
+        $afterValue = $index === $lastIndex ? $containerBeforeClose : $layoutDonor->afterValue;
 
-        if ($index > 0 && $layoutDonor !== $item) {
-            $beforeValue = $layoutDonor instanceof ObjectItemNode
-                ? $layoutDonor->beforeKey
-                : $layoutDonor->beforeValue;
-        }
+        // Only the first item sits against the opening delimiter; every later
+        // one leads with its layout donor's own whitespace, which for an item
+        // donating to itself is simply the whitespace it already carries.
+        $beforeValue = $index === 0
+            ? $containerAfterOpen
+            : $this->beforeItem($layoutDonor);
 
         if ($index < $lastIndex) {
             $afterValue = $this->normalizeSyntheticAfterValue(
@@ -516,9 +528,8 @@ final class JsonPreservingPrinter implements JsonPrinter
             $newlineSource = $this->newlineStyleSource($item, $containerNode);
             $afterValue    = $this->adoptNewlineStyle($afterValue, $newlineSource, $printContext);
 
-            $beforeItem ??= $this->beforeItem($item);
-            $beforeItem   = $this->adoptNewlineStyle($beforeItem, $newlineSource, $printContext);
-            $beforeItem   = $interiorShift !== null
+            $beforeItem = $this->adoptNewlineStyle($beforeItem, $newlineSource, $printContext);
+            $beforeItem = $interiorShift !== null
                 ? $this->shiftWhitespaceBeforeNode($beforeItem, $interiorShift)
                 : $this->reindentWhitespaceBeforeNode($item, $beforeItem, $childPrintContext);
 
@@ -551,18 +562,17 @@ final class JsonPreservingPrinter implements JsonPrinter
         ArrayItemNode|ObjectItemNode $itemNode,
         string $containerBeforeClose,
     ): string {
-        if ($containerBeforeClose === '') {
+        // Only whitespace that duplicates the container's closing whitespace is
+        // a candidate for normalization, so everything else leaves immediately.
+        if ($containerBeforeClose === '' || $afterValue !== $containerBeforeClose) {
             return $afterValue;
         }
 
-        if (
-            $afterValue === $containerBeforeClose
-            && StartOffsetHelper::isSyntheticNode($items[$index + 1])
-        ) {
+        if (StartOffsetHelper::isSyntheticNode($items[$index + 1])) {
             return $this->findSeparatorBeforeIndex($items, $index, $containerBeforeClose);
         }
 
-        if (! StartOffsetHelper::isSyntheticNode($itemNode) || $afterValue !== $containerBeforeClose) {
+        if (! StartOffsetHelper::isSyntheticNode($itemNode)) {
             return $afterValue;
         }
 
@@ -627,13 +637,23 @@ final class JsonPreservingPrinter implements JsonPrinter
     ): array {
         $printedValues = [];
 
+        // Both of these describe the container rather than any one item, so
+        // they are resolved once here instead of per changed item. A directly
+        // printed changed container keeps the established best-effort multiline
+        // layout; whole documents and nested inline containers compact whatever
+        // value can be rendered on one line, so that its expansion does not
+        // force untouched content to reflow.
+        $hasMultilineEdgeWhitespace    = $this->hasContainerMultilineEdgeWhitespace($containerNode);
+        $compactsInlinePrintableValues = ($this->printingDocument || $depth > 0)
+            && ! $hasMultilineEdgeWhitespace;
+
         foreach ($containerNode->items as $i => $item) {
             if (! $this->isChanged($item)) {
                 continue;
             }
 
-            $printedValue      = $this->shouldPrintSyntheticValueInline($containerNode, $item->value, $depth)
-                ? $this->printSyntheticNodeInline($item->value)
+            $printedValue      = $compactsInlinePrintableValues && $this->isInlinePrintableValue($item->value)
+                ? $this->printNodeInline($item->value, $depth + 1)
                 : $this->printNode(
                     $item->value,
                     $this->valuePrintContext($item, $itemLayouts[$i][2]),
@@ -646,53 +666,96 @@ final class JsonPreservingPrinter implements JsonPrinter
                     continue;
                 }
 
-                return [! $this->hasContainerMultilineEdgeWhitespace($containerNode), $printedValues];
+                return [! $hasMultilineEdgeWhitespace, $printedValues];
             }
         }
 
         return [false, $printedValues];
     }
 
-    private function shouldPrintSyntheticValueInline(
-        ArrayNode|ObjectNode $containerNode,
-        NodeJson $nodeJson,
-        int $depth,
-    ): bool {
-        // A directly printed changed container keeps the established best-effort
-        // multiline layout. Whole documents and nested inline containers compact
-        // wholly new values so their expansion does not force untouched content to reflow.
-        return ($this->printingDocument || $depth > 0)
-            && ! $this->hasContainerMultilineEdgeWhitespace($containerNode)
-            && ($nodeJson instanceof ArrayNode || $nodeJson instanceof ObjectNode)
-            && $this->isEntirelySynthetic($nodeJson);
+    /**
+     * Compacting only ever applies to a container value: a scalar already
+     * occupies the single line the inline printer produces.
+     */
+    private function isInlinePrintableValue(NodeJson $nodeJson): bool
+    {
+        return ($nodeJson instanceof ArrayNode || $nodeJson instanceof ObjectNode)
+            && $this->isInlinePrintable($nodeJson);
     }
 
-    private function isEntirelySynthetic(NodeJson $nodeJson): bool
+    /**
+     * Whether the inline printer can render this node on the single line it
+     * exists to produce. A wholly new node always can: it carries no source
+     * layout that compacting could lose. A node reused from a parsed document
+     * can only when its own source text already occupies one line — which every
+     * scalar token does, so source metadata on a reused scalar never by itself
+     * forces a newly inserted container to expand and reflow its host.
+     */
+    private function isInlinePrintable(NodeJson $nodeJson): bool
     {
-        // Mutations mark synthetic nodes with a null original text attribute;
-        // only parsed source metadata makes a node non-synthetic.
-        if (! StartOffsetHelper::isSyntheticNode($nodeJson)) {
-            return false;
+        return match (true) {
+            $nodeJson instanceof ObjectNode, $nodeJson instanceof ArrayNode => $this->isInlinePrintableContainer(
+                $nodeJson,
+            ),
+            $nodeJson instanceof ObjectItemNode => $this->isInlinePrintable($nodeJson->key)
+                && $this->isInlinePrintable($nodeJson->value),
+            $nodeJson instanceof ArrayItemNode => $this->isInlinePrintable($nodeJson->value),
+            // No JSON scalar token spans lines: a string escapes its newlines
+            // and no other literal admits one. Whether the token came from a
+            // parsed document therefore cannot decide the enclosing layout, and
+            // the inline printer reuses its source spelling either way.
+            $nodeJson instanceof StringNode,
+            $nodeJson instanceof NumberNode,
+            $nodeJson instanceof BooleanNode,
+            $nodeJson instanceof NullNode => true,
+            // A node kind outside the built-in set exposes no structure to
+            // assemble a line from, so its recorded text is the only thing the
+            // printer can emit for it — and that fits the line exactly when it
+            // holds no line ending. Whether the text is a JSON value at all is
+            // settled where it prints, here as on the normal path.
+            default => $this->hasSingleLineOriginalText($nodeJson),
+        };
+    }
+
+    private function isInlinePrintableContainer(ArrayNode|ObjectNode $containerNode): bool
+    {
+        // Recorded source text is itself what makes a container non-synthetic
+        // (mutations mark synthetic nodes with a null original text attribute),
+        // and a reused parsed container prints as exactly that text. So it fits
+        // the single line when the text holds no line ending. Text a later
+        // mutation left stale says nothing about what the container would print
+        // as, so a changed one never qualifies.
+        if ($this->hasSingleLineOriginalText($containerNode)) {
+            return ! $this->isChanged($containerNode);
         }
 
-        return match (true) {
-            $nodeJson instanceof ObjectNode, $nodeJson instanceof ArrayNode => $this->areEntirelySynthetic(
-                $nodeJson->items,
-            ),
-            $nodeJson instanceof ObjectItemNode => $this->isEntirelySynthetic($nodeJson->key)
-                && $this->isEntirelySynthetic($nodeJson->value),
-            $nodeJson instanceof ArrayItemNode => $this->isEntirelySynthetic($nodeJson->value),
-            default => true,
-        };
+        // Parsed but text-less, so nothing records how it looked: only a wholly
+        // new container can be assembled onto the line from its items alone.
+        return StartOffsetHelper::isSyntheticNode($containerNode)
+            && $this->areInlinePrintable($containerNode->items);
+    }
+
+    /**
+     * Whether the node records source text that already occupies a single line,
+     * which is what lets the inline printer emit that text verbatim instead of
+     * reassembling the node from its structure.
+     */
+    private function hasSingleLineOriginalText(NodeJson $nodeJson): bool
+    {
+        $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+
+        return is_string($originalText)
+            && ! str_contains($originalText, "\n")
+            && ! str_contains($originalText, "\r");
     }
 
     /**
      * @param list<NodeJson> $nodes
      */
-    private function areEntirelySynthetic(array $nodes): bool
+    private function areInlinePrintable(array $nodes): bool
     {
         foreach ($nodes as $node) {
-            if (! $this->isEntirelySynthetic($node)) {
+            if (! $this->isInlinePrintable($node)) {
                 return false;
             }
         }
@@ -700,28 +763,54 @@ final class JsonPreservingPrinter implements JsonPrinter
         return true;
     }
 
-    private function printSyntheticNodeInline(NodeJson $nodeJson): string
+    /**
+     * Renders onto a single line any node isInlinePrintable() admitted — wholly
+     * new, reused from a parsed document, or of a kind outside the built-in set
+     * — reusing recorded source text wherever one is carried.
+     *
+     * $depth tracks the printed node's position exactly as printNode() does, so
+     * that text admitted here is held to the same depth bound it would be on
+     * the normal path. Compacting moves no node up or down the tree.
+     */
+    private function printNodeInline(NodeJson $nodeJson, int $depth): string
     {
         return match (true) {
-            $nodeJson instanceof ObjectNode, $nodeJson instanceof ArrayNode => $this->printSyntheticContainerInline(
+            $nodeJson instanceof ObjectNode, $nodeJson instanceof ArrayNode => $this->printContainerInline(
                 $nodeJson,
+                $depth,
             ),
-            $nodeJson instanceof ObjectItemNode => $this->printSyntheticNodeInline($nodeJson->key)
-                . $this->syntheticInlineObjectItemSeparator($nodeJson)
-                . $this->printSyntheticNodeInline($nodeJson->value),
-            $nodeJson instanceof ArrayItemNode => $this->printSyntheticNodeInline($nodeJson->value),
-            $nodeJson instanceof StringNode => ScalarEncodeHelper::encodeString(
-                $nodeJson->value,
-                $this->maximumDepth,
-            ),
+            $nodeJson instanceof ObjectItemNode => $this->printNodeInline($nodeJson->key, $depth)
+                . $this->inlineObjectItemSeparator($nodeJson)
+                . $this->printNodeInline($nodeJson->value, $depth),
+            $nodeJson instanceof ArrayItemNode => $this->printNodeInline($nodeJson->value, $depth),
+            // Reuses the source token of a reused parsed string, so compacting
+            // the container around it does not respell its escapes.
+            $nodeJson instanceof StringNode => $this->printStringPreserving($nodeJson),
+            // rawValue is the source lexeme of a parsed number, so the spelling
+            // it was written with survives here too.
             $nodeJson instanceof NumberNode => ScalarEncodeHelper::encodeNumber($nodeJson->rawValue),
             $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
             $nodeJson instanceof NullNode => 'null',
-            default => throw new RuntimeException('Unsupported JSON node.'),
+            default => $this->unknownNodeText($nodeJson, $depth),
         };
     }
 
-    private function syntheticInlineObjectItemSeparator(ObjectItemNode $objectItemNode): string
+    private function printContainerInline(ArrayNode|ObjectNode $containerNode, int $depth): string
+    {
+        $originalText = $containerNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+
+        // Recorded source text means the container came from a parsed document,
+        // and isInlinePrintableContainer() admitted it only because that text
+        // already fits one line. Reuse it: reassembling the container from its
+        // structure would drop the interior spacing the source carries.
+        if (is_string($originalText)) {
+            return $originalText;
+        }
+
+        return $this->printSyntheticContainerInline($containerNode, $depth);
+    }
+
+    private function inlineObjectItemSeparator(ObjectItemNode $objectItemNode): string
     {
         $separator = $this->objectItemSeparator($objectItemNode);
 
@@ -734,7 +823,7 @@ final class JsonPreservingPrinter implements JsonPrinter
         return $separator;
     }
 
-    private function printSyntheticContainerInline(ArrayNode|ObjectNode $containerNode): string
+    private function printSyntheticContainerInline(ArrayNode|ObjectNode $containerNode, int $depth): string
     {
         array_splice($containerNode->items, 0, 0);
 
@@ -745,7 +834,9 @@ final class JsonPreservingPrinter implements JsonPrinter
                 $output .= ', ';
             }
 
-            $output .= $this->printSyntheticNodeInline($item);
+            // An item sits one level below the container holding it, matching
+            // how printContainer() descends.
+            $output .= $this->printNodeInline($item, $depth + 1);
         }
 
         return $output . ContainerPrintHelper::closingDelimiter($containerNode);
@@ -813,6 +904,12 @@ final class JsonPreservingPrinter implements JsonPrinter
         NodeJson $nodeJson,
         PrintContext $printContext,
     ): string {
+        // Text holding no line ending converts to itself whatever the node's
+        // style is, so the attribute behind that style need not be read at all.
+        if (! str_contains($text, "\n") && ! str_contains($text, "\r")) {
+            return $text;
+        }
+
         return $this->convertNewlineStyle(
             $text,
             $nodeJson->getAttribute(NodeAttributes::NEWLINE),
@@ -1217,11 +1314,10 @@ final class JsonPreservingPrinter implements JsonPrinter
         return false;
     }
 
-    /**
-     * @param list<NodeJson> $items
-     */
-    private function shouldPrintContainerBestEffort(ObjectNode|ArrayNode $nodeJson, array $items): bool
+    private function shouldPrintContainerBestEffort(ObjectNode|ArrayNode $nodeJson): bool
     {
+        $items = $nodeJson->items;
+
         if ($this->nodeChangeSet instanceof NodeChangeSet && $this->nodeChangeSet->isChanged($nodeJson)) {
             if (
                 $items !== []
@@ -1454,21 +1550,6 @@ final class JsonPreservingPrinter implements JsonPrinter
         return $reconstructedOriginalText !== $originalText;
     }
 
-    private function isJsonValueText(string $text, int $depth): bool
-    {
-        // Text printed at $depth nests that far below the document root already,
-        // so it may only spend what the maximum depth has left over there. The
-        // subtraction stays positive for every position the tree guard admits;
-        // the clamp keeps json_decode() out of its rejected-depth range anyway.
-        $remainingDepth = max(1, $this->maximumDepth - $depth);
-
-        // json_decode() returns null both for the "null" literal and for
-        // invalid text, so the error state is what separates them.
-        json_decode($text, true, $remainingDepth);
-
-        return json_last_error() === JSON_ERROR_NONE;
-    }
-
     private function getOriginalText(NodeJson $nodeJson): string
     {
         $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
@@ -1513,7 +1594,8 @@ final class JsonPreservingPrinter implements JsonPrinter
                 . ':'
                 . $item->betweenColonAndValue
                 . $this->getOriginalText($item->value),
-            $item instanceof ArrayItemNode => $this->getOriginalText($item->value),
+            // The remaining kind, ArrayItemNode: it contributes only its value.
+            default => $this->getOriginalText($item->value),
         };
     }
 

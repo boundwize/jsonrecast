@@ -3600,6 +3600,271 @@ JSON,
         );
     }
 
+    public function testItKeepsInsertedSyntheticContainerInlineWhenItContainsParsedScalar(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a": 1, "b": 2}');
+        $parsedValue  = (new JsonParser())->parse('42')->value;
+
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('zz', new ObjectNode([
+            new ObjectItemNode(
+                new StringNode('x'),
+                $parsedValue,
+            ),
+        ]));
+
+        $this->assertSame(
+            <<<'JSON'
+{"a": 1, "b": 2, "zz": {"x": 42}}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    /**
+     * The first element is a bare source lexeme rather than a document, so it
+     * stays a plain string; the expected documents use nowdoc.
+     *
+     * @return iterable<string, array{string, string}>
+     */
+    public static function parsedScalarInSyntheticContainerProvider(): iterable
+    {
+        yield 'exponent lexeme' => [
+            '1e3',
+            <<<'JSON'
+{"a": 1, "b": 2, "zz": {"x": 1e3}}
+JSON,
+        ];
+        yield 'trailing zero' => [
+            '1.50',
+            <<<'JSON'
+{"a": 1, "b": 2, "zz": {"x": 1.50}}
+JSON,
+        ];
+        yield 'escaped solidus' => [
+            '"a\/b"',
+            <<<'JSON'
+{"a": 1, "b": 2, "zz": {"x": "a\/b"}}
+JSON,
+        ];
+        yield 'boolean' => [
+            'true',
+            <<<'JSON'
+{"a": 1, "b": 2, "zz": {"x": true}}
+JSON,
+        ];
+        yield 'null' => [
+            'null',
+            <<<'JSON'
+{"a": 1, "b": 2, "zz": {"x": null}}
+JSON,
+        ];
+    }
+
+    /**
+     * Compacting the container around a reused parsed scalar must not respell
+     * it. Each lexeme below denotes a value that re-encoding would spell some
+     * other way — exponent form, a trailing zero, an escaped solidus — so only
+     * reusing the source token keeps the document byte-faithful.
+     */
+    #[DataProvider('parsedScalarInSyntheticContainerProvider')]
+    public function testItPreservesTheSourceSpellingOfAParsedScalarInsideAnInlinedSyntheticContainer(
+        string $source,
+        string $expected,
+    ): void {
+        $jsonDocument = (new JsonParser())->parse('{"a": 1, "b": 2}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('zz', new ObjectNode([
+            new ObjectItemNode(new StringNode('x'), (new JsonParser())->parse($source)->value),
+        ]));
+
+        $this->assertSame($expected, (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItKeepsInsertedSyntheticContainerInlineWhenItContainsParsedSingleLineContainer(): void
+    {
+        $fragment     = (new JsonParser())->parse('{"y":1,  "z":2}');
+        $jsonDocument = (new JsonParser())->parse('{"a": 1, "b": 2}');
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('zz', new ObjectNode([
+            new ObjectItemNode(new StringNode('x'), $fragment->value),
+        ]));
+
+        // The reused fragment keeps its own interior spacing; only the new
+        // container around it is compacted.
+        $this->assertSame(
+            <<<'JSON'
+{"a": 1, "b": 2, "zz": {"x": {"y":1,  "z":2}}}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItReflowsHostWhenInsertedSyntheticContainerHoldsMutatedParsedContainer(): void
+    {
+        $fragment     = (new JsonParser())->parse('{"y": 1}');
+        $jsonDocument = (new JsonParser())->parse('{"a": 1, "b": 2}');
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        // The mutation leaves the fragment's recorded source text stale, so it
+        // no longer says whether the fragment still fits a single line.
+        $fragment->value->set('z', new NumberNode('2'));
+
+        $jsonDocument->value->set('zz', new ObjectNode([
+            new ObjectItemNode(new StringNode('x'), $fragment->value),
+        ]));
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "a": 1,
+    "b": 2,
+    "zz": {
+        "x": {"y": 1, "z": 2}
+    }
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    /**
+     * NodeJson is a public interface, so a node outside the built-in set can sit
+     * inside an inserted container. Its recorded text is all the printer can
+     * emit for it, and single-line text fits the compacted line just as a
+     * built-in token does.
+     */
+    public function testItKeepsInsertedSyntheticContainerInlineWhenItContainsUnknownNodeWithSingleLineText(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a": 1}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '42');
+
+        $jsonDocument->value->set('zz', new ObjectNode([
+            new ObjectItemNode(new StringNode('x'), $unknownNode),
+        ]));
+
+        $this->assertSame(
+            <<<'JSON'
+{"a": 1, "zz": {"x": 42}}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItDoesNotCompactInsertedContainerHoldingUnknownNodeWithMultilineText(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a": 1}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(
+            NodeAttributes::ORIGINAL_TEXT,
+            <<<'JSON'
+{
+  "k": 1
+}
+JSON,
+        );
+
+        $jsonDocument->value->set('zz', new ObjectNode([
+            new ObjectItemNode(new StringNode('x'), $unknownNode),
+        ]));
+
+        // The recorded text cannot be squeezed onto one line, so the inserted
+        // container expands and the host reflows with it. The text itself is
+        // emitted verbatim: an unknown node records no depth to reindent from.
+        $this->assertSame(
+            <<<'JSON'
+{
+    "a": 1,
+    "zz": {
+        "x": {
+  "k": 1
+}
+    }
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    /**
+     * @return iterable<string, array{int, ?string}>
+     */
+    public static function unknownNodeDepthInsideInlinedContainerProvider(): iterable
+    {
+        yield 'text outgrows the remaining depth' => [3, null];
+        yield 'text fits the remaining depth' => [
+            4,
+            <<<'JSON'
+{"a": 1, "zz": {"x": []}}
+JSON,
+        ];
+    }
+
+    /**
+     * Compacting moves no node up or down the tree, so unknown text is held to
+     * the same depth bound it would be on the multiline path.
+     */
+    #[DataProvider('unknownNodeDepthInsideInlinedContainerProvider')]
+    public function testItBoundsUnknownNodeTextByRemainingDepthInsideInlinedContainer(
+        int $maximumDepth,
+        ?string $expected,
+    ): void {
+        $jsonDocument = (new JsonParser())->parse('{"a": 1}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '[]');
+
+        $jsonDocument->value->set('zz', new ObjectNode([
+            new ObjectItemNode(new StringNode('x'), $unknownNode),
+        ]));
+
+        if ($expected === null) {
+            $this->expectException(RuntimeException::class);
+            $this->expectExceptionMessage('Unsupported JSON node.');
+        }
+
+        $printed = (new JsonPreservingPrinter(maximumDepth: $maximumDepth))->print($jsonDocument);
+
+        $this->assertSame($expected, $printed);
+    }
+
+    public function testItRejectsUnknownNodeWhoseTextIsNoJsonValueInsideInlinedContainer(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a": 1}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '"foo": 123');
+
+        $jsonDocument->value->set('zz', new ObjectNode([
+            new ObjectItemNode(new StringNode('x'), $unknownNode),
+        ]));
+
+        // Compaction must not become a way around the check that keeps unknown
+        // text from printing a document that no longer parses.
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Unsupported JSON node.');
+
+        (new JsonPreservingPrinter())->print($jsonDocument);
+    }
+
     public function testItDoesNotDuplicateMultilineWhitespaceWhenAppendingToEmptyArray(): void
     {
         $jsonDocument = (new JsonParser())->parse("[\n\n]");

@@ -259,6 +259,44 @@ JSON,
         );
     }
 
+    /**
+     * The ragged result below is intended, not an oversight. Reindenting the
+     * recorded text would mean deciding which of its lines are structure and
+     * which are string content — exactly the reading an unknown node denies the
+     * printer. Refusing the tree instead is the only other option, and that is
+     * the asymmetry with the preserving printer this handling exists to remove.
+     */
+    public function testItPrintsNestedUnknownNodeJsonImplementationAtItsOwnIndentation(): void
+    {
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(
+            NodeAttributes::ORIGINAL_TEXT,
+            <<<'JSON'
+{
+  "q": 1
+}
+JSON,
+        );
+
+        $objectNode = new ObjectNode([
+            new ObjectItemNode(new StringNode('a'), new NumberNode('1')),
+            new ObjectItemNode(new StringNode('zz'), $unknownNode),
+        ]);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "a": 1,
+    "zz": {
+  "q": 1
+}
+}
+JSON,
+            (new JsonPrettyPrinter())->print($objectNode),
+        );
+    }
+
     public function testItRejectsUnknownNodeJsonImplementationWithoutOriginalText(): void
     {
         $this->expectException(RuntimeException::class);

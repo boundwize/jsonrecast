@@ -17,16 +17,11 @@ use Boundwize\JsonRecast\Node\NumberNode;
 use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
-use Boundwize\JsonRecast\Parser\NumberLexemeScanner;
+use Boundwize\JsonRecast\Printer\Helper\ContainerPrintHelper;
+use Boundwize\JsonRecast\Printer\Helper\ScalarEncodeHelper;
 use RuntimeException;
 
 use function array_splice;
-use function count;
-use function is_string;
-use function json_encode;
-
-use const JSON_UNESCAPED_SLASHES;
-use const JSON_UNESCAPED_UNICODE;
 
 final readonly class JsonPrettyPrinter implements JsonPrinter
 {
@@ -61,8 +56,11 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
             ),
             $nodeJson instanceof ObjectItemNode => $this->printObjectItem($nodeJson, $printContext),
             $nodeJson instanceof ArrayItemNode => $this->printNode($nodeJson->value, $printContext),
-            $nodeJson instanceof StringNode => $this->encodeString($nodeJson->value),
-            $nodeJson instanceof NumberNode => $this->encodeNumber($nodeJson->rawValue),
+            $nodeJson instanceof StringNode => ScalarEncodeHelper::encodeString(
+                $nodeJson->value,
+                $this->maximumDepth,
+            ),
+            $nodeJson instanceof NumberNode => ScalarEncodeHelper::encodeNumber($nodeJson->rawValue),
             $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
             $nodeJson instanceof NullNode => 'null',
             default => throw new RuntimeException('Unsupported JSON node.'),
@@ -71,7 +69,7 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
 
     private function printObjectItem(ObjectItemNode $objectItemNode, PrintContext $printContext): string
     {
-        return $this->encodeString($objectItemNode->key->value)
+        return ScalarEncodeHelper::encodeString($objectItemNode->key->value, $this->maximumDepth)
             . ': '
             . $this->printNode($objectItemNode->value, $printContext);
     }
@@ -80,53 +78,17 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
     {
         array_splice($node->items, 0, 0);
 
-        $isObject       = $node instanceof ObjectNode;
-        $openDelimiter  = $isObject ? '{' : '[';
-        $closeDelimiter = $isObject ? '}' : ']';
-
         if ($node->items === []) {
-            return $openDelimiter . $closeDelimiter;
+            return ContainerPrintHelper::openingDelimiter($node) . ContainerPrintHelper::closingDelimiter($node);
         }
 
-        $output            = $openDelimiter;
-        $lastIndex         = count($node->items) - 1;
-        $childPrintContext = $printContext->next();
-        $childIndentation  = $printContext->childIndentation();
-
-        foreach ($node->items as $i => $item) {
-            $output .= $printContext->newline
-                . $childIndentation
-                . $this->printNode($item, $childPrintContext);
-
-            if ($i < $lastIndex) {
-                $output .= ',';
-            }
-        }
-
-        return $output . $printContext->newline . $printContext->indentation() . $closeDelimiter;
-    }
-
-    private function encodeString(string $value): string
-    {
-        $encoded = json_encode(
-            $value,
-            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
-            $this->maximumDepth,
+        return ContainerPrintHelper::printItemsOnOwnLines(
+            $node,
+            $printContext,
+            fn (
+                ArrayItemNode|ObjectItemNode $item,
+                PrintContext $childPrintContext,
+            ): string => $this->printNode($item, $childPrintContext),
         );
-
-        if (! is_string($encoded)) {
-            throw new RuntimeException('Unable to encode JSON string.');
-        }
-
-        return $encoded;
-    }
-
-    private function encodeNumber(string $rawValue): string
-    {
-        if (! NumberLexemeScanner::isValidLexeme($rawValue)) {
-            throw new RuntimeException('Unable to encode JSON number.');
-        }
-
-        return $rawValue;
     }
 }

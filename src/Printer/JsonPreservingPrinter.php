@@ -649,11 +649,11 @@ final class JsonPreservingPrinter implements JsonPrinter
         // Both of these describe the container rather than any one item, so
         // they are resolved once here instead of per changed item. A directly
         // printed changed container keeps the established best-effort multiline
-        // layout; whole documents and nested inline containers compact wholly
-        // new values so their expansion does not force untouched content to
-        // reflow.
-        $hasMultilineEdgeWhitespace = $this->hasContainerMultilineEdgeWhitespace($containerNode);
-        $compactsWhollyNewValues    = ($this->printingDocument || $depth > 0)
+        // layout; whole documents and nested inline containers compact whatever
+        // value can be rendered on one line, so that its expansion does not
+        // force untouched content to reflow.
+        $hasMultilineEdgeWhitespace    = $this->hasContainerMultilineEdgeWhitespace($containerNode);
+        $compactsInlinePrintableValues = ($this->printingDocument || $depth > 0)
             && ! $hasMultilineEdgeWhitespace;
 
         foreach ($containerNode->items as $i => $item) {
@@ -661,8 +661,8 @@ final class JsonPreservingPrinter implements JsonPrinter
                 continue;
             }
 
-            $printedValue      = $compactsWhollyNewValues && $this->isInlinePrintableValue($item->value)
-                ? $this->printSyntheticNodeInline($item->value, $depth + 1)
+            $printedValue      = $compactsInlinePrintableValues && $this->isInlinePrintableValue($item->value)
+                ? $this->printNodeInline($item->value, $depth + 1)
                 : $this->printNode(
                     $item->value,
                     $this->valuePrintContext($item, $itemLayouts[$i][2]),
@@ -773,21 +773,25 @@ final class JsonPreservingPrinter implements JsonPrinter
     }
 
     /**
+     * Renders onto a single line any node isInlinePrintable() admitted — wholly
+     * new, reused from a parsed document, or of a kind outside the built-in set
+     * — reusing recorded source text wherever one is carried.
+     *
      * $depth tracks the printed node's position exactly as printNode() does, so
      * that text admitted here is held to the same depth bound it would be on
      * the normal path. Compacting moves no node up or down the tree.
      */
-    private function printSyntheticNodeInline(NodeJson $nodeJson, int $depth): string
+    private function printNodeInline(NodeJson $nodeJson, int $depth): string
     {
         return match (true) {
             $nodeJson instanceof ObjectNode, $nodeJson instanceof ArrayNode => $this->printContainerInline(
                 $nodeJson,
                 $depth,
             ),
-            $nodeJson instanceof ObjectItemNode => $this->printSyntheticNodeInline($nodeJson->key, $depth)
-                . $this->syntheticInlineObjectItemSeparator($nodeJson)
-                . $this->printSyntheticNodeInline($nodeJson->value, $depth),
-            $nodeJson instanceof ArrayItemNode => $this->printSyntheticNodeInline($nodeJson->value, $depth),
+            $nodeJson instanceof ObjectItemNode => $this->printNodeInline($nodeJson->key, $depth)
+                . $this->inlineObjectItemSeparator($nodeJson)
+                . $this->printNodeInline($nodeJson->value, $depth),
+            $nodeJson instanceof ArrayItemNode => $this->printNodeInline($nodeJson->value, $depth),
             // Reuses the source token of a reused parsed string, so compacting
             // the container around it does not respell its escapes.
             $nodeJson instanceof StringNode => $this->printStringPreserving($nodeJson),
@@ -815,7 +819,7 @@ final class JsonPreservingPrinter implements JsonPrinter
         return $this->printSyntheticContainerInline($containerNode, $depth);
     }
 
-    private function syntheticInlineObjectItemSeparator(ObjectItemNode $objectItemNode): string
+    private function inlineObjectItemSeparator(ObjectItemNode $objectItemNode): string
     {
         $separator = $this->objectItemSeparator($objectItemNode);
 
@@ -841,7 +845,7 @@ final class JsonPreservingPrinter implements JsonPrinter
 
             // An item sits one level below the container holding it, matching
             // how printContainer() descends.
-            $output .= $this->printSyntheticNodeInline($item, $depth + 1);
+            $output .= $this->printNodeInline($item, $depth + 1);
         }
 
         return $output . ContainerPrintHelper::closingDelimiter($containerNode);

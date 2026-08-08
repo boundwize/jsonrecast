@@ -22,7 +22,8 @@ use Boundwize\JsonRecast\Node\ObjectItemNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeTraverser\NodeChangeSet;
-use Boundwize\JsonRecast\Parser\NumberLexemeScanner;
+use Boundwize\JsonRecast\Printer\Helper\ContainerPrintHelper;
+use Boundwize\JsonRecast\Printer\Helper\ScalarEncodeHelper;
 use RuntimeException;
 use SplObjectStorage;
 
@@ -35,7 +36,6 @@ use function is_float;
 use function is_int;
 use function is_string;
 use function json_decode;
-use function json_encode;
 use function json_last_error;
 use function max;
 use function min;
@@ -53,8 +53,6 @@ use function trim;
 use function usort;
 
 use const JSON_ERROR_NONE;
-use const JSON_UNESCAPED_SLASHES;
-use const JSON_UNESCAPED_UNICODE;
 
 final class JsonPreservingPrinter implements JsonPrinter
 {
@@ -153,7 +151,7 @@ final class JsonPreservingPrinter implements JsonPrinter
                 $depth,
             ),
             $nodeJson instanceof StringNode => $this->printStringPreserving($nodeJson),
-            $nodeJson instanceof NumberNode => $this->encodeNumber($nodeJson->rawValue),
+            $nodeJson instanceof NumberNode => ScalarEncodeHelper::encodeNumber($nodeJson->rawValue),
             $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
             $nodeJson instanceof NullNode => 'null',
             default => $this->printUnknownNode($nodeJson, $printContext, $depth),
@@ -247,7 +245,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             return $this->printEmptyContainer($containerNode, $printContext);
         }
 
-        $output    = $this->openingDelimiter($containerNode);
+        $output    = ContainerPrintHelper::openingDelimiter($containerNode);
         $lastIndex = count($containerNode->items) - 1;
 
         foreach ($containerNode->items as $i => $item) {
@@ -276,7 +274,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             }
         }
 
-        return $output . $this->closingDelimiter($containerNode);
+        return $output . ContainerPrintHelper::closingDelimiter($containerNode);
     }
 
     /**
@@ -292,37 +290,33 @@ final class JsonPreservingPrinter implements JsonPrinter
             return $this->printEmptyContainer($containerNode, $printContext);
         }
 
-        $output            = $this->openingDelimiter($containerNode);
-        $lastIndex         = count($containerNode->items) - 1;
-        $childPrintContext = $printContext->next();
-        $childIndentation  = $printContext->childIndentation();
+        return ContainerPrintHelper::printItemsOnOwnLines(
+            $containerNode,
+            $printContext,
+            fn (
+                ArrayItemNode|ObjectItemNode $item,
+                PrintContext $childPrintContext,
+                int $i,
+            ): string => $this->printItemBestEffort(
+                $item,
+                $childPrintContext,
+                $depth + 1,
+                $printedChangedItemValues[$i] ?? null,
+            ),
+        );
+    }
 
-        foreach ($containerNode->items as $i => $item) {
-            $output .= $printContext->newline
-                . $childIndentation
-                . ($item instanceof ObjectItemNode
-                    ? $this->printObjectItemBestEffort(
-                        $item,
-                        $childPrintContext,
-                        $depth + 1,
-                        $printedChangedItemValues[$i] ?? null,
-                    )
-                    : ($printedChangedItemValues[$i]
-                        ?? $this->printNode(
-                            $item->value,
-                            $childPrintContext,
-                            $depth + 1,
-                        )));
-
-            if ($i < $lastIndex) {
-                $output .= ',';
-            }
+    private function printItemBestEffort(
+        ArrayItemNode|ObjectItemNode $item,
+        PrintContext $printContext,
+        int $depth,
+        ?string $printedValue,
+    ): string {
+        if ($item instanceof ObjectItemNode) {
+            return $this->printObjectItemBestEffort($item, $printContext, $depth, $printedValue);
         }
 
-        return $output
-            . $printContext->newline
-            . $printContext->indentation()
-            . $this->closingDelimiter($containerNode);
+        return $printedValue ?? $this->printNode($item->value, $printContext, $depth);
     }
 
     private function printEmptyContainer(ArrayNode|ObjectNode $containerNode, PrintContext $printContext): string
@@ -333,17 +327,9 @@ final class JsonPreservingPrinter implements JsonPrinter
             $printContext,
         );
 
-        return $this->openingDelimiter($containerNode) . $beforeClose . $this->closingDelimiter($containerNode);
-    }
-
-    private function openingDelimiter(ArrayNode|ObjectNode $containerNode): string
-    {
-        return $containerNode instanceof ArrayNode ? '[' : '{';
-    }
-
-    private function closingDelimiter(ArrayNode|ObjectNode $containerNode): string
-    {
-        return $containerNode instanceof ArrayNode ? ']' : '}';
+        return ContainerPrintHelper::openingDelimiter($containerNode)
+            . $beforeClose
+            . ContainerPrintHelper::closingDelimiter($containerNode);
     }
 
     private function afterOpen(ArrayNode|ObjectNode $containerNode): string
@@ -725,7 +711,7 @@ final class JsonPreservingPrinter implements JsonPrinter
                 . $this->printSyntheticNodeInline($nodeJson->value),
             $nodeJson instanceof ArrayItemNode => $this->printSyntheticNodeInline($nodeJson->value),
             $nodeJson instanceof StringNode => $this->encodeString($nodeJson->value),
-            $nodeJson instanceof NumberNode => $this->encodeNumber($nodeJson->rawValue),
+            $nodeJson instanceof NumberNode => ScalarEncodeHelper::encodeNumber($nodeJson->rawValue),
             $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
             $nodeJson instanceof NullNode => 'null',
             default => throw new RuntimeException('Unsupported JSON node.'),
@@ -736,7 +722,7 @@ final class JsonPreservingPrinter implements JsonPrinter
     {
         array_splice($containerNode->items, 0, 0);
 
-        $output = $this->openingDelimiter($containerNode);
+        $output = ContainerPrintHelper::openingDelimiter($containerNode);
 
         foreach ($containerNode->items as $i => $item) {
             if ($i > 0) {
@@ -746,7 +732,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             $output .= $this->printSyntheticNodeInline($item);
         }
 
-        return $output . $this->closingDelimiter($containerNode);
+        return $output . ContainerPrintHelper::closingDelimiter($containerNode);
     }
 
     private function itemWasOriginallyMultiline(ArrayItemNode|ObjectItemNode $item): bool
@@ -1477,12 +1463,12 @@ final class JsonPreservingPrinter implements JsonPrinter
     private function reconstructOriginalContainerText(ObjectNode|ArrayNode $containerNode): string
     {
         if ($containerNode->items === []) {
-            return $this->openingDelimiter($containerNode)
+            return ContainerPrintHelper::openingDelimiter($containerNode)
                 . $this->beforeClose($containerNode)
-                . $this->closingDelimiter($containerNode);
+                . ContainerPrintHelper::closingDelimiter($containerNode);
         }
 
-        $output    = $this->openingDelimiter($containerNode);
+        $output    = ContainerPrintHelper::openingDelimiter($containerNode);
         $lastIndex = count($containerNode->items) - 1;
 
         foreach ($containerNode->items as $i => $item) {
@@ -1500,7 +1486,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             }
         }
 
-        return $output . $this->closingDelimiter($containerNode);
+        return $output . ContainerPrintHelper::closingDelimiter($containerNode);
     }
 
     private function reconstructOriginalContainerItemText(ObjectItemNode|ArrayItemNode $item): string
@@ -1553,17 +1539,7 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     private function encodeString(string $value): string
     {
-        $encoded = json_encode(
-            $value,
-            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
-            $this->maximumDepth,
-        );
-
-        if (! is_string($encoded)) {
-            throw new RuntimeException('Unable to encode JSON string.');
-        }
-
-        return $encoded;
+        return ScalarEncodeHelper::encodeString($value, $this->maximumDepth);
     }
 
     private function printStringPreserving(StringNode $stringNode): string
@@ -1580,14 +1556,5 @@ final class JsonPreservingPrinter implements JsonPrinter
         }
 
         return $this->encodeString($stringNode->value);
-    }
-
-    private function encodeNumber(string $rawValue): string
-    {
-        if (! NumberLexemeScanner::isValidLexeme($rawValue)) {
-            throw new RuntimeException('Unable to encode JSON number.');
-        }
-
-        return $rawValue;
     }
 }

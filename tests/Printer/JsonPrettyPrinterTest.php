@@ -259,6 +259,35 @@ JSON,
         );
     }
 
+    public function testItRemovesSurroundingWhitespaceFromUnknownNodeOriginalText(): void
+    {
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, " \t42\r\n");
+
+        $this->assertSame('42', (new JsonPrettyPrinter())->print($unknownNode));
+    }
+
+    public function testItDoesNotLeakUnknownNodeSurroundingWhitespaceIntoPrettyOutput(): void
+    {
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, ' 42 ');
+
+        $objectNode = new ObjectNode([
+            new ObjectItemNode(new StringNode('value'), $unknownNode),
+        ]);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "value": 42
+}
+JSON,
+            (new JsonPrettyPrinter())->print($objectNode),
+        );
+    }
+
     /**
      * The ragged result below is intended, not an oversight. Reindenting the
      * recorded text would mean deciding which of its lines are structure and

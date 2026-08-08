@@ -166,8 +166,27 @@ final class JsonPreservingPrinter implements JsonPrinter
             $nodeJson instanceof NumberNode => $this->encodeNumber($nodeJson->rawValue),
             $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
             $nodeJson instanceof NullNode => 'null',
-            default => throw new RuntimeException('Unsupported JSON node.'),
+            default => $this->printUnknownNode($nodeJson, $printContext, $depth),
         };
+    }
+
+    /**
+     * A node kind outside the built-in set exposes no structure to assemble text
+     * from, so the printer can do nothing but emit its recorded text verbatim
+     * into a value position. Text that is not a JSON value there cannot stand
+     * for the node, and how deep the node sits is part of that question: the
+     * tree guard cannot see inside such a node, so its text is the one way a
+     * printable tree can outgrow the maximum depth it must stay parseable at.
+     */
+    private function printUnknownNode(NodeJson $nodeJson, PrintContext $printContext, int $depth): string
+    {
+        $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+
+        if (! is_string($originalText) || ! $this->isJsonValueText($originalText, $depth)) {
+            throw new RuntimeException('Unsupported JSON node.');
+        }
+
+        return $this->reindentOriginalText($nodeJson, $originalText, $printContext);
     }
 
     private function printDocument(
@@ -1400,8 +1419,18 @@ final class JsonPreservingPrinter implements JsonPrinter
             $nodeJson instanceof NumberNode => $originalText !== $nodeJson->rawValue,
             $nodeJson instanceof BooleanNode => ($nodeJson->value ? 'true' : 'false') !== $originalText,
             $nodeJson instanceof NullNode => false,
-            default => $this->hasStaleOriginalText($nodeJson, $originalText)
+            $nodeJson instanceof ObjectItemNode,
+            $nodeJson instanceof ArrayItemNode,
+            $nodeJson instanceof ObjectNode,
+            $nodeJson instanceof ArrayNode,
+            $nodeJson instanceof JsonDocument => $this->hasStaleOriginalText($nodeJson, $originalText)
                 || $this->hasChangedDescendant($nodeJson),
+            // A node kind outside the built-in set exposes no structure, so it
+            // offers neither text to assemble nor a child to recurse into, and
+            // nothing here could call it unchanged. Whether its recorded text
+            // can stand for it is settled where it prints, at the depth it sits
+            // at — naming the built-in kinds leaves that the only open case.
+            default => true,
         };
     }
 
@@ -1413,8 +1442,10 @@ final class JsonPreservingPrinter implements JsonPrinter
             && (str_ends_with($source, "\n") || str_ends_with($source, "\r"));
     }
 
-    private function hasStaleOriginalText(NodeJson $nodeJson, string $originalText): bool
-    {
+    private function hasStaleOriginalText(
+        JsonDocument|ObjectNode|ArrayNode|ObjectItemNode|ArrayItemNode $nodeJson,
+        string $originalText,
+    ): bool {
         $reconstructedOriginalText = match (true) {
             $nodeJson instanceof JsonDocument => $nodeJson->beforeValue
                 . $this->getOriginalText($nodeJson->value)
@@ -1429,30 +1460,27 @@ final class JsonPreservingPrinter implements JsonPrinter
                 . $nodeJson->betweenColonAndValue
                 . $this->getOriginalText($nodeJson->value)
                 . $nodeJson->afterValue,
-            $nodeJson instanceof ArrayItemNode => $nodeJson->beforeValue
+            // The remaining kind, ArrayItemNode: every kind that reaches here
+            // assembles text from structure the printer knows.
+            default => $nodeJson->beforeValue
                 . $this->getOriginalText($nodeJson->value)
                 . $nodeJson->afterValue,
-            default => null,
         };
-
-        // Only a node kind outside the built-in set reconstructs to null: it
-        // exposes no structure to assemble text from, so the printer can do
-        // nothing but emit its recorded text verbatim into a value position.
-        // Text that is not a JSON value on its own cannot stand for the node
-        // there, so such a node counts as unpreservable and falls through to
-        // the unsupported node error rather than printing a broken document.
-        if ($reconstructedOriginalText === null) {
-            return ! $this->isJsonValueText($originalText);
-        }
 
         return $reconstructedOriginalText !== $originalText;
     }
 
-    private function isJsonValueText(string $text): bool
+    private function isJsonValueText(string $text, int $depth): bool
     {
+        // Text printed at $depth nests that far below the document root already,
+        // so it may only spend what the maximum depth has left over there. The
+        // subtraction stays positive for every position the tree guard admits;
+        // the clamp keeps json_decode() out of its rejected-depth range anyway.
+        $remainingDepth = max(1, $this->maximumDepth - $depth);
+
         // json_decode() returns null both for the "null" literal and for
         // invalid text, so the error state is what separates them.
-        json_decode($text, true, $this->maximumDepth);
+        json_decode($text, true, $remainingDepth);
 
         return json_last_error() === JSON_ERROR_NONE;
     }
@@ -1512,8 +1540,9 @@ final class JsonPreservingPrinter implements JsonPrinter
         return $value !== $stringNode->value;
     }
 
-    private function hasChangedDescendant(NodeJson $nodeJson): bool
-    {
+    private function hasChangedDescendant(
+        JsonDocument|ObjectNode|ArrayNode|ObjectItemNode|ArrayItemNode $nodeJson,
+    ): bool {
         if ($nodeJson instanceof JsonDocument) {
             return $this->isChanged($nodeJson->value);
         }
@@ -1526,11 +1555,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             return $this->isChanged($nodeJson->value);
         }
 
-        if ($nodeJson instanceof ObjectNode || $nodeJson instanceof ArrayNode) {
-            return $this->hasChangedContainerItem($nodeJson);
-        }
-
-        return false;
+        return $this->hasChangedContainerItem($nodeJson);
     }
 
     private function hasChangedContainerItem(ObjectNode|ArrayNode $containerNode): bool

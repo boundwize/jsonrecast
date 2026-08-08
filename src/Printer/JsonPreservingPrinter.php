@@ -166,8 +166,27 @@ final class JsonPreservingPrinter implements JsonPrinter
             $nodeJson instanceof NumberNode => $this->encodeNumber($nodeJson->rawValue),
             $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
             $nodeJson instanceof NullNode => 'null',
-            default => throw new RuntimeException('Unsupported JSON node.'),
+            default => $this->printUnknownNode($nodeJson, $printContext, $depth),
         };
+    }
+
+    /**
+     * A node kind outside the built-in set exposes no structure to assemble text
+     * from, so the printer can do nothing but emit its recorded text verbatim
+     * into a value position. Text that is not a JSON value there cannot stand
+     * for the node, and how deep the node sits is part of that question: the
+     * tree guard cannot see inside such a node, so its text is the one way a
+     * printable tree can outgrow the maximum depth it must stay parseable at.
+     */
+    private function printUnknownNode(NodeJson $nodeJson, PrintContext $printContext, int $depth): string
+    {
+        $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+
+        if (! is_string($originalText) || ! $this->isJsonValueText($originalText, $depth)) {
+            throw new RuntimeException('Unsupported JSON node.');
+        }
+
+        return $this->reindentOriginalText($nodeJson, $originalText, $printContext);
     }
 
     private function printDocument(
@@ -1435,24 +1454,30 @@ final class JsonPreservingPrinter implements JsonPrinter
             default => null,
         };
 
-        // Only a node kind outside the built-in set reconstructs to null: it
-        // exposes no structure to assemble text from, so the printer can do
-        // nothing but emit its recorded text verbatim into a value position.
-        // Text that is not a JSON value on its own cannot stand for the node
-        // there, so such a node counts as unpreservable and falls through to
-        // the unsupported node error rather than printing a broken document.
+        // Only a node kind outside the built-in set reconstructs to null: no
+        // structure to assemble text from means no recorded text to hold that
+        // assembly against either. Whether its text can stand for the node is
+        // decided where the node is printed, since only there is the depth it
+        // sits at known — a question this answer must stay out of, being
+        // memoized per node while a shared node may print at several depths.
         if ($reconstructedOriginalText === null) {
-            return ! $this->isJsonValueText($originalText);
+            return true;
         }
 
         return $reconstructedOriginalText !== $originalText;
     }
 
-    private function isJsonValueText(string $text): bool
+    private function isJsonValueText(string $text, int $depth): bool
     {
+        // Text printed at $depth nests that far below the document root already,
+        // so it may only spend what the maximum depth has left over there. The
+        // subtraction stays positive for every position the tree guard admits;
+        // the clamp keeps json_decode() out of its rejected-depth range anyway.
+        $remainingDepth = max(1, $this->maximumDepth - $depth);
+
         // json_decode() returns null both for the "null" literal and for
         // invalid text, so the error state is what separates them.
-        json_decode($text, true, $this->maximumDepth);
+        json_decode($text, true, $remainingDepth);
 
         return json_last_error() === JSON_ERROR_NONE;
     }

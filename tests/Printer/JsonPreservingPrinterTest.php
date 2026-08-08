@@ -3882,6 +3882,46 @@ JSON,
         (new JsonPreservingPrinter())->print($jsonDocument);
     }
 
+    public function testItRejectsNestedUnknownNodeWhoseOriginalTextExceedsRemainingMaximumDepth(): void
+    {
+        // "[]" is a JSON value on its own within a maximum depth of 2, but the
+        // node sits one level down already, so printing its text there would
+        // emit "[[]]" — a document the same maximum depth no longer parses.
+        $jsonDocument = (new JsonParser())->parse('[0]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '[]');
+
+        $jsonDocument->value->setAt(0, $unknownNode);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Unsupported JSON node.');
+
+        (new JsonPreservingPrinter(maximumDepth: 2))->print($jsonDocument);
+    }
+
+    public function testItPrintsNestedUnknownNodeJsonImplementationWhoseOriginalTextFitsRemainingMaximumDepth(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('[0]');
+        $this->assertInstanceOf(ArrayNode::class, $jsonDocument->value);
+
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '[]');
+
+        $jsonDocument->value->setAt(0, $unknownNode);
+
+        $printed = (new JsonPreservingPrinter(maximumDepth: 3))->print($jsonDocument);
+
+        $this->assertSame('[[]]', $printed);
+
+        // The depth left for the node's text is what keeps the printed document
+        // parseable again at the very maximum depth it was printed with.
+        $this->assertInstanceOf(JsonDocument::class, (new JsonParser(3))->parse($printed));
+    }
+
     public function testItRejectsInvalidUtf8String(): void
     {
         $this->expectException(RuntimeException::class);

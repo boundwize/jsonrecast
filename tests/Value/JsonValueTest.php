@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Tests\Value;
 
+use ArrayObject;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
 use Boundwize\JsonRecast\Node\NullNode;
@@ -294,6 +295,66 @@ final class JsonValueTest extends TestCase
         $this->assertSame('name', $entry->items[0]->key->value);
         $this->assertInstanceOf(StringNode::class, $entry->items[0]->value);
         $this->assertSame('jsonrecast', $entry->items[0]->value->value);
+    }
+
+    public function testItAcceptsInternalObjectPropertyOfStdClass(): void
+    {
+        $package          = new stdClass();
+        $package->package = new ArrayObject([
+            'name' => 'jsonrecast',
+        ]);
+
+        $nodeJson = JsonValue::from($package);
+
+        $this->assertInstanceOf(ObjectNode::class, $nodeJson);
+        $this->assertSame('package', $nodeJson->items[0]->key->value);
+
+        $internalPackage = $nodeJson->items[0]->value;
+        $this->assertInstanceOf(ObjectNode::class, $internalPackage);
+        $this->assertCount(1, $internalPackage->items);
+        $this->assertSame('name', $internalPackage->items[0]->key->value);
+        $this->assertInstanceOf(StringNode::class, $internalPackage->items[0]->value);
+        $this->assertSame('jsonrecast', $internalPackage->items[0]->value->value);
+    }
+
+    public function testItSkipsNonPublicPropertiesOfPlainObjectPropertyOfStdClass(): void
+    {
+        $package           = new stdClass();
+        $package->metadata = new class {
+            public string $name = 'jsonrecast';
+
+            protected string $vendor = 'boundwize';
+
+            private string $token = 'secret';
+
+            public function token(): string
+            {
+                return $this->token;
+            }
+        };
+
+        $nodeJson = JsonValue::from($package);
+
+        $this->assertInstanceOf(ObjectNode::class, $nodeJson);
+
+        $metadata = $nodeJson->items[0]->value;
+        $this->assertInstanceOf(ObjectNode::class, $metadata);
+        $this->assertCount(1, $metadata->items);
+        $this->assertSame('name', $metadata->items[0]->key->value);
+    }
+
+    public function testItCreatesEmptyObjectNodeFromClosurePropertyOfStdClass(): void
+    {
+        $package       = new stdClass();
+        $package->load = static fn (): int => 1;
+
+        $nodeJson = JsonValue::from($package);
+
+        $this->assertInstanceOf(ObjectNode::class, $nodeJson);
+
+        $load = $nodeJson->items[0]->value;
+        $this->assertInstanceOf(ObjectNode::class, $load);
+        $this->assertCount(0, $load->items);
     }
 
     public function testItCreatesStringNodeFromStringBackedEnum(): void

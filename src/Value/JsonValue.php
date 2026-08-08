@@ -21,7 +21,6 @@ use stdClass;
 use UnitEnum;
 
 use function array_is_list;
-use function get_object_vars;
 use function is_array;
 use function is_bool;
 use function is_finite;
@@ -31,6 +30,7 @@ use function is_object;
 use function is_string;
 use function json_encode;
 use function preg_match;
+use function str_starts_with;
 use function strpbrk;
 
 use const JSON_THROW_ON_ERROR;
@@ -184,7 +184,7 @@ final class JsonValue
 
         $items = [];
 
-        foreach (get_object_vars($value) as $key => $item) {
+        foreach (self::objectProperties($value) as $key => $item) {
             $items[] = new ObjectItemNode(
                 key: self::stringNode((string) $key),
                 value: self::fromValue($item, $maximumDepth, $depth + 1, $allowNestedPlainObjects),
@@ -192,5 +192,37 @@ final class JsonValue
         }
 
         return new ObjectNode($items);
+    }
+
+    /**
+     * @return array<array-key, mixed>
+     */
+    private static function objectProperties(object $value): array
+    {
+        // Internal objects such as ArrayObject or DateTime expose the
+        // representation json_encode() serializes through a property handler
+        // rather than through declared properties, so get_object_vars() reports
+        // none of it; the array cast sees the same set json_encode() does.
+        $properties = (array) $value;
+
+        // Objects without an array representation, Closure among them, cast to
+        // a list wrapping themselves; json_encode() emits {} for those.
+        if (($properties[0] ?? null) === $value) {
+            return [];
+        }
+
+        $publicProperties = [];
+
+        foreach ($properties as $key => $item) {
+            // The cast prefixes protected and private properties with a
+            // NUL-delimited class marker; json_encode() leaves them out.
+            if (is_string($key) && str_starts_with($key, "\0")) {
+                continue;
+            }
+
+            $publicProperties[$key] = $item;
+        }
+
+        return $publicProperties;
     }
 }

@@ -22,6 +22,7 @@ use Boundwize\JsonRecast\Printer\Helper\ScalarEncodeHelper;
 use Boundwize\JsonRecast\Printer\Helper\UnknownNodeHelper;
 
 use function array_splice;
+use function trim;
 
 final readonly class JsonPrettyPrinter implements JsonPrinter
 {
@@ -64,15 +65,16 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
             $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
             $nodeJson instanceof NullNode => 'null',
             // A node kind outside the built-in set exposes no structure to lay
-            // out, so there is nothing here to reformat: its recorded text is
-            // emitted as it stands, exactly as the preserving printer emits it,
-            // and refused on the same terms. Its own interior spacing therefore
-            // survives a pretty print, being spacing this printer cannot see
-            // into to canonicalise.
-            default => UnknownNodeHelper::valueText(
-                $nodeJson,
-                $this->maximumDepth,
-                $printContext->level(),
+            // out. Preserve its opaque interior formatting, but remove JSON
+            // whitespace around the value so it cannot leak source trivia into
+            // otherwise normalised pretty output.
+            default => trim(
+                UnknownNodeHelper::valueText(
+                    $nodeJson,
+                    $this->maximumDepth,
+                    $printContext->level(),
+                ),
+                " \t\r\n",
             ),
         };
     }

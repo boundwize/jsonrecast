@@ -56,7 +56,10 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
             ),
             $nodeJson instanceof ObjectItemNode => $this->printObjectItem($nodeJson, $printContext),
             $nodeJson instanceof ArrayItemNode => $this->printNode($nodeJson->value, $printContext),
-            $nodeJson instanceof StringNode => $this->encodeString($nodeJson->value),
+            $nodeJson instanceof StringNode => ScalarEncodeHelper::encodeString(
+                $nodeJson->value,
+                $this->maximumDepth,
+            ),
             $nodeJson instanceof NumberNode => ScalarEncodeHelper::encodeNumber($nodeJson->rawValue),
             $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
             $nodeJson instanceof NullNode => 'null',
@@ -66,7 +69,7 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
 
     private function printObjectItem(ObjectItemNode $objectItemNode, PrintContext $printContext): string
     {
-        return $this->encodeString($objectItemNode->key->value)
+        return ScalarEncodeHelper::encodeString($objectItemNode->key->value, $this->maximumDepth)
             . ': '
             . $this->printNode($objectItemNode->value, $printContext);
     }
@@ -87,10 +90,5 @@ final readonly class JsonPrettyPrinter implements JsonPrinter
                 PrintContext $childPrintContext,
             ): string => $this->printNode($item, $childPrintContext),
         );
-    }
-
-    private function encodeString(string $value): string
-    {
-        return ScalarEncodeHelper::encodeString($value, $this->maximumDepth);
     }
 }

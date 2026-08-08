@@ -710,7 +710,10 @@ final class JsonPreservingPrinter implements JsonPrinter
                 . ': '
                 . $this->printSyntheticNodeInline($nodeJson->value),
             $nodeJson instanceof ArrayItemNode => $this->printSyntheticNodeInline($nodeJson->value),
-            $nodeJson instanceof StringNode => $this->encodeString($nodeJson->value),
+            $nodeJson instanceof StringNode => ScalarEncodeHelper::encodeString(
+                $nodeJson->value,
+                $this->maximumDepth,
+            ),
             $nodeJson instanceof NumberNode => ScalarEncodeHelper::encodeNumber($nodeJson->rawValue),
             $nodeJson instanceof BooleanNode => $nodeJson->value ? 'true' : 'false',
             $nodeJson instanceof NullNode => 'null',
@@ -1537,11 +1540,6 @@ final class JsonPreservingPrinter implements JsonPrinter
         return false;
     }
 
-    private function encodeString(string $value): string
-    {
-        return ScalarEncodeHelper::encodeString($value, $this->maximumDepth);
-    }
-
     private function printStringPreserving(StringNode $stringNode): string
     {
         $originalText  = $stringNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
@@ -1555,6 +1553,6 @@ final class JsonPreservingPrinter implements JsonPrinter
             return $originalText;
         }
 
-        return $this->encodeString($stringNode->value);
+        return ScalarEncodeHelper::encodeString($stringNode->value, $this->maximumDepth);
     }
 }

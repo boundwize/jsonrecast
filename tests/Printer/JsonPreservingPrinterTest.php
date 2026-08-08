@@ -3600,6 +3600,107 @@ JSON,
         );
     }
 
+    public function testItKeepsInsertedSyntheticContainerInlineWhenItContainsParsedScalar(): void
+    {
+        $jsonDocument = (new JsonParser())->parse('{"a": 1, "b": 2}');
+        $parsedValue  = (new JsonParser())->parse('42')->value;
+
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('zz', new ObjectNode([
+            new ObjectItemNode(
+                new StringNode('x'),
+                $parsedValue,
+            ),
+        ]));
+
+        $this->assertSame(
+            '{"a": 1, "b": 2, "zz": {"x": 42}}',
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function parsedScalarInSyntheticContainerProvider(): iterable
+    {
+        yield 'exponent lexeme' => ['1e3', '{"a": 1, "b": 2, "zz": {"x": 1e3}}'];
+        yield 'trailing zero' => ['1.50', '{"a": 1, "b": 2, "zz": {"x": 1.50}}'];
+        yield 'escaped solidus' => ['"a\/b"', '{"a": 1, "b": 2, "zz": {"x": "a\/b"}}'];
+        yield 'boolean' => ['true', '{"a": 1, "b": 2, "zz": {"x": true}}'];
+        yield 'null' => ['null', '{"a": 1, "b": 2, "zz": {"x": null}}'];
+    }
+
+    /**
+     * Compacting the container around a reused parsed scalar must not respell
+     * the scalar: the source lexeme carries meaning that re-encoding drops.
+     */
+    #[DataProvider('parsedScalarInSyntheticContainerProvider')]
+    public function testItPreservesTheSourceSpellingOfAParsedScalarInsideAnInlinedSyntheticContainer(
+        string $source,
+        string $expected,
+    ): void {
+        $jsonDocument = (new JsonParser())->parse('{"a": 1, "b": 2}');
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('zz', new ObjectNode([
+            new ObjectItemNode(new StringNode('x'), (new JsonParser())->parse($source)->value),
+        ]));
+
+        $this->assertSame($expected, (new JsonPreservingPrinter())->print($jsonDocument));
+    }
+
+    public function testItKeepsInsertedSyntheticContainerInlineWhenItContainsParsedSingleLineContainer(): void
+    {
+        $fragment     = (new JsonParser())->parse('{"y":1,  "z":2}');
+        $jsonDocument = (new JsonParser())->parse('{"a": 1, "b": 2}');
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('zz', new ObjectNode([
+            new ObjectItemNode(new StringNode('x'), $fragment->value),
+        ]));
+
+        // The reused fragment keeps its own interior spacing; only the new
+        // container around it is compacted.
+        $this->assertSame(
+            '{"a": 1, "b": 2, "zz": {"x": {"y":1,  "z":2}}}',
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItReflowsHostWhenInsertedSyntheticContainerHoldsMutatedParsedContainer(): void
+    {
+        $fragment     = (new JsonParser())->parse('{"y": 1}');
+        $jsonDocument = (new JsonParser())->parse('{"a": 1, "b": 2}');
+
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        // The mutation leaves the fragment's recorded source text stale, so it
+        // no longer says whether the fragment still fits a single line.
+        $fragment->value->set('z', new NumberNode('2'));
+
+        $jsonDocument->value->set('zz', new ObjectNode([
+            new ObjectItemNode(new StringNode('x'), $fragment->value),
+        ]));
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "a": 1,
+    "b": 2,
+    "zz": {
+        "x": {"y": 1, "z": 2}
+    }
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItDoesNotDuplicateMultilineWhitespaceWhenAppendingToEmptyArray(): void
     {
         $jsonDocument = (new JsonParser())->parse("[\n\n]");

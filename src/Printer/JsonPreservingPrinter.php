@@ -130,7 +130,7 @@ final class JsonPreservingPrinter implements JsonPrinter
     private function printNode(
         NodeJson $nodeJson,
         PrintContext $printContext,
-        int $depth = 0,
+        int $depth,
     ): string {
         if ($nodeJson instanceof JsonDocument) {
             return $this->printDocument($nodeJson, $printContext, $depth);
@@ -151,16 +151,6 @@ final class JsonPreservingPrinter implements JsonPrinter
                 $nodeJson,
                 $printContext,
                 $depth,
-            ),
-            $nodeJson instanceof ObjectItemNode => $this->printObjectItemPreserving(
-                $nodeJson,
-                $printContext,
-                depth: $depth,
-            ),
-            $nodeJson instanceof ArrayItemNode => $this->printArrayItemPreserving(
-                $nodeJson,
-                $printContext,
-                depth: $depth,
             ),
             $nodeJson instanceof StringNode => $this->printStringPreserving($nodeJson),
             $nodeJson instanceof NumberNode => $this->encodeNumber($nodeJson->rawValue),
@@ -296,7 +286,7 @@ final class JsonPreservingPrinter implements JsonPrinter
         ArrayNode|ObjectNode $containerNode,
         PrintContext $printContext,
         int $depth,
-        array $printedChangedItemValues = [],
+        array $printedChangedItemValues,
     ): string {
         if ($containerNode->items === []) {
             return $this->printEmptyContainer($containerNode, $printContext);
@@ -378,14 +368,11 @@ final class JsonPreservingPrinter implements JsonPrinter
     private function printObjectItemPreserving(
         ObjectItemNode $objectItemNode,
         PrintContext $printContext,
-        ?string $beforeKey = null,
-        ?string $afterValue = null,
-        int $depth = 0,
-        ?string $printedValue = null,
+        string $beforeKey,
+        string $afterValue,
+        int $depth,
+        ?string $printedValue,
     ): string {
-        $beforeKey  ??= $objectItemNode->beforeKey;
-        $afterValue ??= $objectItemNode->afterValue;
-
         if (
             $beforeKey === $objectItemNode->beforeKey
             && $afterValue === $objectItemNode->afterValue
@@ -417,7 +404,7 @@ final class JsonPreservingPrinter implements JsonPrinter
         ObjectItemNode $objectItemNode,
         PrintContext $printContext,
         int $depth,
-        ?string $printedValue = null,
+        ?string $printedValue,
     ): string {
         $separator         = $this->adoptNewlineStyle(
             $this->objectItemSeparator($objectItemNode),
@@ -451,14 +438,11 @@ final class JsonPreservingPrinter implements JsonPrinter
     private function printArrayItemPreserving(
         ArrayItemNode $arrayItemNode,
         PrintContext $printContext,
-        ?string $beforeValue = null,
-        ?string $afterValue = null,
-        int $depth = 0,
-        ?string $printedValue = null,
+        string $beforeValue,
+        string $afterValue,
+        int $depth,
+        ?string $printedValue,
     ): string {
-        $beforeValue ??= $arrayItemNode->beforeValue;
-        $afterValue  ??= $arrayItemNode->afterValue;
-
         if (
             $beforeValue === $arrayItemNode->beforeValue
             && $afterValue === $arrayItemNode->afterValue
@@ -587,7 +571,6 @@ final class JsonPreservingPrinter implements JsonPrinter
 
         if (
             $afterValue === $containerBeforeClose
-            && isset($items[$index + 1])
             && StartOffsetHelper::isSyntheticNode($items[$index + 1])
         ) {
             return $this->findSeparatorBeforeIndex($items, $index, $containerBeforeClose);
@@ -1160,14 +1143,13 @@ final class JsonPreservingPrinter implements JsonPrinter
      * @param list<string> $interiorLeads
      */
     private function resolveOffGridInteriorShift(
-        mixed $originalIndent,
+        string $originalIndent,
         array $interiorLeads,
         string $targetIndent,
         int $delta,
     ): ?int {
         if (
-            ! $this->canShiftOffGridInterior($originalIndent, $targetIndent, $delta)
-            || $interiorLeads === []
+            $interiorLeads === []
             || ! $this->hasClampedLeadOffOriginalIndentGrid($interiorLeads, $originalIndent, $delta)
         ) {
             return null;

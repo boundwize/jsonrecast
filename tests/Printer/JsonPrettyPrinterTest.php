@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Boundwize\JsonRecast\Tests\Printer;
 
+use Boundwize\JsonRecast\Attribute\NodeAttributes;
+use Boundwize\JsonRecast\Node\AbstractNodeJson;
 use Boundwize\JsonRecast\Node\ArrayItemNode;
 use Boundwize\JsonRecast\Node\ArrayNode;
 use Boundwize\JsonRecast\Node\BooleanNode;
@@ -16,6 +18,7 @@ use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\Printer\JsonPrettyPrinter;
 use Boundwize\JsonRecast\Value\JsonValue;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 use RuntimeException;
@@ -214,5 +217,111 @@ final class JsonPrettyPrinterTest extends TestCase
             "{\n    \"value\": {}\n}",
             (new JsonPrettyPrinter(maximumDepth: 3))->print(JsonValue::from(['value' => new stdClass()])),
         );
+    }
+
+    /**
+     * NodeJson is a public interface, so a node outside the built-in set reaches
+     * this printer too. It exposes no structure to lay out, leaving its recorded
+     * text the only thing to emit — the same option the preserving printer has,
+     * so both accept and refuse the very same trees.
+     */
+    public function testItPrintsUnknownNodeJsonImplementationFromItsOriginalText(): void
+    {
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '"jsonrecast"');
+
+        $this->assertSame(
+            <<<'JSON'
+"jsonrecast"
+JSON,
+            (new JsonPrettyPrinter())->print(new JsonDocument($unknownNode)),
+        );
+    }
+
+    public function testItPrintsNestedUnknownNodeJsonImplementationWithItsOwnSpacingIntact(): void
+    {
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '{"k1":   7  }');
+
+        // The printer cannot see inside an unknown node, so the interior spacing
+        // it records is spacing there is no way to canonicalise.
+        $this->assertSame(
+            <<<'JSON'
+{
+    "x": {"k1":   7  }
+}
+JSON,
+            (new JsonPrettyPrinter())->print(
+                new ObjectNode([new ObjectItemNode(new StringNode('x'), $unknownNode)]),
+            ),
+        );
+    }
+
+    public function testItRejectsUnknownNodeJsonImplementationWithoutOriginalText(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Unsupported JSON node.');
+
+        (new JsonPrettyPrinter())->print(new JsonDocument(new class extends AbstractNodeJson {
+        }));
+    }
+
+    public function testItRejectsUnknownNodeJsonImplementationWhoseOriginalTextIsNoJsonValue(): void
+    {
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '"foo": 123');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Unsupported JSON node.');
+
+        (new JsonPrettyPrinter())->print(new JsonDocument($unknownNode));
+    }
+
+    /**
+     * @return iterable<string, array{int, ?string}>
+     */
+    public static function nestedUnknownNodeDepthProvider(): iterable
+    {
+        yield 'text outgrows the remaining depth' => [3, null];
+        yield 'text fits the remaining depth' => [
+            4,
+            <<<'JSON'
+{
+    "zz": {
+        "x": []
+    }
+}
+JSON,
+        ];
+    }
+
+    /**
+     * The tree guard cannot see inside an unknown node, so its recorded text is
+     * the one way a printable tree can outgrow the maximum depth — bounded here
+     * at the same position the preserving printer bounds it.
+     */
+    #[DataProvider('nestedUnknownNodeDepthProvider')]
+    public function testItBoundsNestedUnknownNodeTextByRemainingDepth(int $maximumDepth, ?string $expected): void
+    {
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(NodeAttributes::ORIGINAL_TEXT, '[]');
+
+        $objectNode = new ObjectNode([
+            new ObjectItemNode(
+                new StringNode('zz'),
+                new ObjectNode([new ObjectItemNode(new StringNode('x'), $unknownNode)]),
+            ),
+        ]);
+
+        if ($expected === null) {
+            $this->expectException(RuntimeException::class);
+            $this->expectExceptionMessage('Unsupported JSON node.');
+        }
+
+        $this->assertSame($expected, (new JsonPrettyPrinter(maximumDepth: $maximumDepth))->print($objectNode));
     }
 }

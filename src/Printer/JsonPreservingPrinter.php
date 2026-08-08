@@ -24,7 +24,7 @@ use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeTraverser\NodeChangeSet;
 use Boundwize\JsonRecast\Printer\Helper\ContainerPrintHelper;
 use Boundwize\JsonRecast\Printer\Helper\ScalarEncodeHelper;
-use RuntimeException;
+use Boundwize\JsonRecast\Printer\Helper\UnknownNodeHelper;
 use SplObjectStorage;
 
 use function abs;
@@ -36,7 +36,6 @@ use function is_float;
 use function is_int;
 use function is_string;
 use function json_decode;
-use function json_last_error;
 use function max;
 use function min;
 use function preg_split;
@@ -51,8 +50,6 @@ use function substr;
 use function substr_compare;
 use function trim;
 use function usort;
-
-use const JSON_ERROR_NONE;
 
 final class JsonPreservingPrinter implements JsonPrinter
 {
@@ -177,18 +174,12 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     /**
      * The recorded text an unknown node stands for, refused unless it can hold
-     * the value position the node occupies. Shared with the inline printer so
+     * the value position the node occupies. Used by the inline printer too, so
      * that compacting a container never lowers this bar.
      */
     private function unknownNodeText(NodeJson $nodeJson, int $depth): string
     {
-        $originalText = $nodeJson->getAttribute(NodeAttributes::ORIGINAL_TEXT);
-
-        if (! is_string($originalText) || ! $this->isJsonValueText($originalText, $depth)) {
-            throw new RuntimeException('Unsupported JSON node.');
-        }
-
-        return $originalText;
+        return UnknownNodeHelper::valueText($nodeJson, $this->maximumDepth, $depth);
     }
 
     private function printDocument(
@@ -1557,21 +1548,6 @@ final class JsonPreservingPrinter implements JsonPrinter
         };
 
         return $reconstructedOriginalText !== $originalText;
-    }
-
-    private function isJsonValueText(string $text, int $depth): bool
-    {
-        // Text printed at $depth nests that far below the document root already,
-        // so it may only spend what the maximum depth has left over there. The
-        // subtraction stays positive for every position the tree guard admits;
-        // the clamp keeps json_decode() out of its rejected-depth range anyway.
-        $remainingDepth = max(1, $this->maximumDepth - $depth);
-
-        // json_decode() returns null both for the "null" literal and for
-        // invalid text, so the error state is what separates them.
-        json_decode($text, true, $remainingDepth);
-
-        return json_last_error() === JSON_ERROR_NONE;
     }
 
     private function getOriginalText(NodeJson $nodeJson): string

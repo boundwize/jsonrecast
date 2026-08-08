@@ -13,9 +13,8 @@ use function max;
 use function preg_match;
 use function str_contains;
 use function str_replace;
-use function str_starts_with;
+use function strcspn;
 use function strlen;
-use function strpbrk;
 use function strrpos;
 use function strspn;
 use function substr;
@@ -50,13 +49,15 @@ final readonly class WhitespaceHelper
 
     public static function detectNewline(string $source): string
     {
-        $firstNewline = strpbrk($source, "\r\n");
+        // strcspn locates the first line break without strpbrk's copy of the
+        // source from that break onwards, which for a whole document is large.
+        $firstNewlinePosition = strcspn($source, "\r\n");
 
-        if ($firstNewline === false || $firstNewline[0] === "\n") {
+        if (! isset($source[$firstNewlinePosition]) || $source[$firstNewlinePosition] === "\n") {
             return "\n";
         }
 
-        return str_starts_with($firstNewline, "\r\n") ? "\r\n" : "\r";
+        return ($source[$firstNewlinePosition + 1] ?? '') === "\n" ? "\r\n" : "\r";
     }
 
     public static function closingLine(string $whitespace): string

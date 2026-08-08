@@ -1419,8 +1419,18 @@ final class JsonPreservingPrinter implements JsonPrinter
             $nodeJson instanceof NumberNode => $originalText !== $nodeJson->rawValue,
             $nodeJson instanceof BooleanNode => ($nodeJson->value ? 'true' : 'false') !== $originalText,
             $nodeJson instanceof NullNode => false,
-            default => $this->hasStaleOriginalText($nodeJson, $originalText)
+            $nodeJson instanceof ObjectItemNode,
+            $nodeJson instanceof ArrayItemNode,
+            $nodeJson instanceof ObjectNode,
+            $nodeJson instanceof ArrayNode,
+            $nodeJson instanceof JsonDocument => $this->hasStaleOriginalText($nodeJson, $originalText)
                 || $this->hasChangedDescendant($nodeJson),
+            // A node kind outside the built-in set exposes no structure, so it
+            // offers neither text to assemble nor a child to recurse into, and
+            // nothing here could call it unchanged. Whether its recorded text
+            // can stand for it is settled where it prints, at the depth it sits
+            // at — naming the built-in kinds leaves that the only open case.
+            default => true,
         };
     }
 
@@ -1432,8 +1442,10 @@ final class JsonPreservingPrinter implements JsonPrinter
             && (str_ends_with($source, "\n") || str_ends_with($source, "\r"));
     }
 
-    private function hasStaleOriginalText(NodeJson $nodeJson, string $originalText): bool
-    {
+    private function hasStaleOriginalText(
+        JsonDocument|ObjectNode|ArrayNode|ObjectItemNode|ArrayItemNode $nodeJson,
+        string $originalText,
+    ): bool {
         $reconstructedOriginalText = match (true) {
             $nodeJson instanceof JsonDocument => $nodeJson->beforeValue
                 . $this->getOriginalText($nodeJson->value)
@@ -1448,21 +1460,12 @@ final class JsonPreservingPrinter implements JsonPrinter
                 . $nodeJson->betweenColonAndValue
                 . $this->getOriginalText($nodeJson->value)
                 . $nodeJson->afterValue,
-            $nodeJson instanceof ArrayItemNode => $nodeJson->beforeValue
+            // The remaining kind, ArrayItemNode: every kind that reaches here
+            // assembles text from structure the printer knows.
+            default => $nodeJson->beforeValue
                 . $this->getOriginalText($nodeJson->value)
                 . $nodeJson->afterValue,
-            default => null,
         };
-
-        // Only a node kind outside the built-in set reconstructs to null: no
-        // structure to assemble text from means no recorded text to hold that
-        // assembly against either. Whether its text can stand for the node is
-        // decided where the node is printed, since only there is the depth it
-        // sits at known — a question this answer must stay out of, being
-        // memoized per node while a shared node may print at several depths.
-        if ($reconstructedOriginalText === null) {
-            return true;
-        }
 
         return $reconstructedOriginalText !== $originalText;
     }
@@ -1537,8 +1540,9 @@ final class JsonPreservingPrinter implements JsonPrinter
         return $value !== $stringNode->value;
     }
 
-    private function hasChangedDescendant(NodeJson $nodeJson): bool
-    {
+    private function hasChangedDescendant(
+        JsonDocument|ObjectNode|ArrayNode|ObjectItemNode|ArrayItemNode $nodeJson,
+    ): bool {
         if ($nodeJson instanceof JsonDocument) {
             return $this->isChanged($nodeJson->value);
         }
@@ -1551,11 +1555,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             return $this->isChanged($nodeJson->value);
         }
 
-        if ($nodeJson instanceof ObjectNode || $nodeJson instanceof ArrayNode) {
-            return $this->hasChangedContainerItem($nodeJson);
-        }
-
-        return false;
+        return $this->hasChangedContainerItem($nodeJson);
     }
 
     private function hasChangedContainerItem(ObjectNode|ArrayNode $containerNode): bool

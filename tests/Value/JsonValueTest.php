@@ -505,7 +505,7 @@ final class JsonValueTest extends TestCase
         JsonValue::from($serializableLink);
     }
 
-    public function testItRejectsJsonSerializableChainExceedingMaximumNestingDepth(): void
+    public function testItAcceptsLongFiniteJsonSerializableChain(): void
     {
         $value = 'end';
 
@@ -513,17 +513,14 @@ final class JsonValueTest extends TestCase
             $value = new SerializableLink($value);
         }
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+        $nodeJson = JsonValue::from($value);
 
-        JsonValue::from($value);
+        $this->assertInstanceOf(StringNode::class, $nodeJson);
+        $this->assertSame('end', $nodeJson->value);
     }
 
     public function testItAcceptsJsonSerializableChainWithoutConsumingNestingDepth(): void
     {
-        // jsonSerialize() hops are capped at maximumDepth but do not consume a
-        // container nesting level, so a 10-hop chain to a scalar resolves at
-        // maximumDepth 10 where charging the hops as levels would reject it
         $value = 'end';
 
         for ($link = 0; $link < 10; $link++) {
@@ -531,6 +528,20 @@ final class JsonValueTest extends TestCase
         }
 
         $nodeJson = JsonValue::from($value, maximumDepth: 10);
+
+        $this->assertInstanceOf(StringNode::class, $nodeJson);
+        $this->assertSame('end', $nodeJson->value);
+    }
+
+    public function testJsonSerializableHopsDoNotConsumeMaximumNestingDepth(): void
+    {
+        $value = 'end';
+
+        for ($link = 0; $link < 2; $link++) {
+            $value = new SerializableLink($value);
+        }
+
+        $nodeJson = JsonValue::from($value, maximumDepth: 1);
 
         $this->assertInstanceOf(StringNode::class, $nodeJson);
         $this->assertSame('end', $nodeJson->value);

@@ -17,6 +17,7 @@ use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use InvalidArgumentException;
 use JsonSerializable;
+use SplObjectStorage;
 use stdClass;
 use UnitEnum;
 
@@ -77,13 +78,17 @@ final class JsonValue
         int $depth
     ): NodeJson {
         // jsonSerialize() hops never consume a container nesting level, mirroring
-        // json_encode(); the hop count is capped at maximumDepth separately so
-        // cyclic or endless jsonSerialize() chains are rejected instead of
-        // recursing until the stack is exhausted
-        $hops = 0;
+        // json_encode(). Track object identities to reject cycles without
+        // imposing an unrelated limit on finite serializer chains.
+        /** @var SplObjectStorage<JsonSerializable, null> $serializableObjects */
+        $serializableObjects = new SplObjectStorage();
 
         while (true) {
-            MaximumDepthGuard::guardMaximumDepth($maximumDepth, $hops);
+            if ($serializableObjects->contains($jsonSerializable)) {
+                throw new InvalidArgumentException(MaximumDepthGuard::EXCEEDED_MESSAGE);
+            }
+
+            $serializableObjects->attach($jsonSerializable);
 
             $serializedValue = $jsonSerializable->jsonSerialize();
 
@@ -97,7 +102,6 @@ final class JsonValue
             }
 
             $jsonSerializable = $serializedValue;
-            $hops++;
         }
     }
 

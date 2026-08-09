@@ -505,6 +505,21 @@ final class JsonValueTest extends TestCase
         JsonValue::from($serializableLink);
     }
 
+    public function testItRejectsEndlessJsonSerializableChainWithFreshObjects(): void
+    {
+        $value = new class implements JsonSerializable {
+            public function jsonSerialize(): mixed
+            {
+                return new self();
+            }
+        };
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+
+        JsonValue::from($value);
+    }
+
     public function testItAcceptsLongFiniteJsonSerializableChain(): void
     {
         $value = 'end';
@@ -513,7 +528,7 @@ final class JsonValueTest extends TestCase
             $value = new SerializableLink($value);
         }
 
-        $nodeJson = JsonValue::from($value);
+        $nodeJson = JsonValue::from($value, maximumDepth: 1);
 
         $this->assertInstanceOf(StringNode::class, $nodeJson);
         $this->assertSame('end', $nodeJson->value);

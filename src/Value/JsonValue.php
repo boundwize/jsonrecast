@@ -38,6 +38,8 @@ use const JSON_THROW_ON_ERROR;
 
 final class JsonValue
 {
+    private const MAXIMUM_JSON_SERIALIZABLE_HOPS = 4_096;
+
     public static function from(mixed $value, int $maximumDepth = MaximumDepthGuard::DEFAULT_MAXIMUM_DEPTH): NodeJson
     {
         MaximumDepthGuard::validateMaximumDepth($maximumDepth);
@@ -78,13 +80,18 @@ final class JsonValue
         int $depth
     ): NodeJson {
         // jsonSerialize() hops never consume a container nesting level, mirroring
-        // json_encode(). Track object identities to reject cycles without
-        // imposing an unrelated limit on finite serializer chains.
+        // json_encode(). Track object identities to reject cycles and use a
+        // separate safety limit for chains that endlessly produce new objects.
         /** @var SplObjectStorage<JsonSerializable, null> $serializableObjects */
         $serializableObjects = new SplObjectStorage();
+        $hops                = 0;
 
         while (true) {
             if ($serializableObjects->contains($jsonSerializable)) {
+                throw new InvalidArgumentException(MaximumDepthGuard::EXCEEDED_MESSAGE);
+            }
+
+            if ($hops >= self::MAXIMUM_JSON_SERIALIZABLE_HOPS) {
                 throw new InvalidArgumentException(MaximumDepthGuard::EXCEEDED_MESSAGE);
             }
 
@@ -102,6 +109,7 @@ final class JsonValue
             }
 
             $jsonSerializable = $serializedValue;
+            $hops++;
         }
     }
 

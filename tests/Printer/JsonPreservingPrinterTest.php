@@ -375,7 +375,7 @@ JSON,
             <<<'JSON'
 {
     "a": 1
-  }
+ }
 JSON,
             (new JsonPreservingPrinter())->print($jsonDocument),
         );
@@ -400,7 +400,7 @@ JSON,
             <<<'JSON'
 {
     "a": 1,
-      "b": 3
+     "b": 3
 }
 JSON,
             (new JsonPreservingPrinter())->print($jsonDocument),
@@ -434,7 +434,7 @@ JSON,
             <<<'JSON'
 {
     "a": 1,
-  "grafted": {
+   "grafted": {
         "x": 1
     }
 }

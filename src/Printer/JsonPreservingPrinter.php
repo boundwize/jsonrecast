@@ -898,6 +898,7 @@ final class JsonPreservingPrinter implements JsonPrinter
                 $leadingWhitespace,
                 $printContext,
                 $originalBaseIndentation,
+                true,
             );
     }
 
@@ -1035,6 +1036,7 @@ final class JsonPreservingPrinter implements JsonPrinter
         string $leadingWhitespace,
         PrintContext $printContext,
         ?string $originalBaseIndentation,
+        bool $preserveDepthResidual,
     ): string {
         $originalDepth = $nodeJson->getAttribute(NodeAttributes::DEPTH);
 
@@ -1058,6 +1060,20 @@ final class JsonPreservingPrinter implements JsonPrinter
             ) {
                 $leadingWhitespace     = substr($leadingWhitespace, strlen($originalBaseIndentation));
                 $targetBaseIndentation = $this->targetBaseIndentation($printContext);
+            }
+
+            if (
+                $preserveDepthResidual
+                && ! str_contains($originalIndent, "\t")
+                && ! str_contains($printContext->indentUnit(), "\t")
+            ) {
+                return $targetBaseIndentation . $this->reindentLeadingWhitespaceAtDepth(
+                    $leadingWhitespace,
+                    $originalIndent,
+                    $printContext->indentUnit(),
+                    $originalDepth,
+                    $printContext->level(),
+                );
             }
 
             return $targetBaseIndentation . $this->reindentLeadingWhitespaceUnit(
@@ -1088,6 +1104,43 @@ final class JsonPreservingPrinter implements JsonPrinter
         }
 
         return substr($leadingWhitespace, $stripLength);
+    }
+
+    /**
+     * Replaces the structural indentation at a known node boundary while
+     * retaining any deliberate off-grid whitespace in source-space units.
+     */
+    private function reindentLeadingWhitespaceAtDepth(
+        string $leadingWhitespace,
+        string $originalIndent,
+        string $targetIndent,
+        int $originalDepth,
+        int $targetDepth,
+    ): string {
+        $originalStructuralIndentation = str_repeat($originalIndent, $originalDepth);
+        $targetStructuralIndentation   = str_repeat($targetIndent, $targetDepth);
+
+        if (str_starts_with($leadingWhitespace, $originalStructuralIndentation)) {
+            return $targetStructuralIndentation
+                . substr($leadingWhitespace, strlen($originalStructuralIndentation));
+        }
+
+        if (str_starts_with($originalStructuralIndentation, $leadingWhitespace)) {
+            $missingLength = strlen($originalStructuralIndentation) - strlen($leadingWhitespace);
+
+            return substr(
+                $targetStructuralIndentation,
+                0,
+                max(strlen($targetStructuralIndentation) - $missingLength, 0),
+            );
+        }
+
+        return $this->reindentLeadingWhitespaceUnit(
+            $leadingWhitespace,
+            $originalIndent,
+            $targetIndent,
+            $targetDepth - $originalDepth,
+        );
     }
 
     private function resolveOriginalBaseIndentation(NodeJson $nodeJson, string $leadingWhitespace): ?string
@@ -1330,8 +1383,8 @@ final class JsonPreservingPrinter implements JsonPrinter
 
             // Interior lines off the original indent grid carry intentional relative
             // indentation that per-line level scaling would flatten; shift the whole
-            // interior by the depth delta instead. The closing line still scales so
-            // the bracket aligns with its container.
+            // interior by the depth delta instead. The closing line is a known node
+            // boundary, so its structural indentation changes while its residual stays.
             $output .= ($interiorShift !== null && $i < $count - 1
                 ? substr($leadingWhitespace, -$interiorShift)
                 : $this->reindentLeadingWhitespace(
@@ -1339,6 +1392,7 @@ final class JsonPreservingPrinter implements JsonPrinter
                     $leadingWhitespace,
                     $printContext,
                     $originalBaseIndentation,
+                    $i === $count - 1,
                 ))
                 . substr($line, $leadingWhitespaceLength);
         }

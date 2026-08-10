@@ -143,7 +143,10 @@ final class JsonPreservingPrinter implements JsonPrinter
 
             // isChanged() already compares a scalar node against its token, so
             // an unchanged node can never carry a mutated scalar value here.
-            if (is_string($originalText)) {
+            if (
+                is_string($originalText)
+                && ! $this->shouldReconstructContainerForIndentChange($nodeJson, $printContext)
+            ) {
                 return $this->reindentOriginalText($nodeJson, $originalText, $printContext);
             }
         }
@@ -160,6 +163,21 @@ final class JsonPreservingPrinter implements JsonPrinter
             $nodeJson instanceof NullNode => 'null',
             default => $this->printUnknownNode($nodeJson, $printContext, $depth),
         };
+    }
+
+    private function shouldReconstructContainerForIndentChange(
+        NodeJson $nodeJson,
+        PrintContext $printContext,
+    ): bool {
+        if (! $nodeJson instanceof ObjectNode && ! $nodeJson instanceof ArrayNode) {
+            return false;
+        }
+
+        $originalIndent = $nodeJson->getAttribute(NodeAttributes::INDENT);
+
+        return is_string($originalIndent)
+            && $originalIndent !== ''
+            && $originalIndent !== $printContext->indentUnit();
     }
 
     /**
@@ -892,7 +910,12 @@ final class JsonPreservingPrinter implements JsonPrinter
 
         $leadingWhitespace = substr($whitespace, $lastNewlinePosition + 1);
 
-        return substr($whitespace, 0, $lastNewlinePosition + 1)
+        return $this->reindentWhitespaceOnlyLines(
+            $nodeJson,
+            substr($whitespace, 0, $lastNewlinePosition + 1),
+            $printContext,
+            $originalBaseIndentation,
+        )
             . $this->reindentLeadingWhitespace(
                 $nodeJson,
                 $leadingWhitespace,
@@ -900,6 +923,39 @@ final class JsonPreservingPrinter implements JsonPrinter
                 $originalBaseIndentation,
                 true,
             );
+    }
+
+    private function reindentWhitespaceOnlyLines(
+        NodeJson $nodeJson,
+        string $whitespace,
+        PrintContext $printContext,
+        ?string $originalBaseIndentation,
+    ): string {
+        /** @var non-empty-list<string> $lines */
+        $lines  = preg_split(self::LINE_ENDING_SPLIT_PATTERN, $whitespace);
+        $output = $lines[0];
+        $count  = count($lines);
+
+        for ($i = 1; $i < $count; $i++) {
+            $line                    = $lines[$i];
+            $leadingWhitespaceLength = strspn($line, " \t");
+
+            if ($leadingWhitespaceLength === 0) {
+                $output .= $line;
+
+                continue;
+            }
+
+            $output .= $this->reindentLeadingWhitespace(
+                $nodeJson,
+                substr($line, 0, $leadingWhitespaceLength),
+                $printContext,
+                $originalBaseIndentation,
+                false,
+            ) . substr($line, $leadingWhitespaceLength);
+        }
+
+        return $output;
     }
 
     private function shiftWhitespaceBeforeNode(string $whitespace, int $interiorShift): string

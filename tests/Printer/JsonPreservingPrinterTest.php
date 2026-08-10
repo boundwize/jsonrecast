@@ -407,6 +407,46 @@ JSON,
         );
     }
 
+    public function testItPreservesResidualIndentationWhenChangingIndentUnitInUnchangedContainer(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "a": 1,
+   "b": 2
+}
+JSON,
+        );
+
+        $jsonDocument->setAttribute(NodeAttributes::INDENT, '    ');
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "a": 1,
+     "b": 2
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItScalesMixedOffGridIndentationWhenChangingIndentUnit(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            "{\n  \"a\": 1,\n \t\"b\": 2\n}",
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('b', new NumberNode('3'));
+        $jsonDocument->setAttribute(NodeAttributes::INDENT, '    ');
+
+        $this->assertSame(
+            "{\n    \"a\": 1,\n    \"b\": 3\n}",
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItDoesNotTreatOffGridTargetIndentationAsBaseIndentation(): void
     {
         $fragment     = (new JsonParser())->parse(
@@ -2320,7 +2360,7 @@ JSON,
         );
     }
 
-    public function testItScalesInconsistentIndentationWhenGraftingIntoSpaceIndentedDocument(): void
+    public function testItPreservesNegativeResidualWhenGraftingIntoSpaceIndentedDocument(): void
     {
         $fragment     = (new JsonParser())->parse(
             <<<'JSON'
@@ -2356,7 +2396,7 @@ JSON,
   "outer": 1,
   "grafted": {
     "a": 1,
-   "b": 2,
+  "b": 2,
     "c": 3
   }
 }
@@ -2365,7 +2405,7 @@ JSON,
         );
     }
 
-    public function testItScalesPositiveResidualIndentationWhenGraftingIntoSpaceIndentedDocument(): void
+    public function testItPreservesPositiveResidualWhenGraftingIntoSpaceIndentedDocument(): void
     {
         $fragment     = (new JsonParser())->parse(
             <<<'JSON'
@@ -2410,10 +2450,10 @@ JSON,
         );
     }
 
-    public function testItNormalisesTabWithinPositiveResidual(): void
+    public function testItPreservesTabWithinPositiveResidual(): void
     {
-        // The residual contains a tab (8 spaces + \t). main preserved the tab
-        // verbatim; the fix normalises it to the target unit's whitespace (5 spaces).
+        // The residual contains a tab after the source's eight structural spaces;
+        // changing the structural indent leaves that residual byte untouched.
         $fragment     = (new JsonParser())->parse(
             "{\n    \"source\": {\n        \"a\": 1,\n        \t\"b\": 2,\n        \"c\": 3\n    }\n}",
         );
@@ -2430,16 +2470,15 @@ JSON,
         $jsonDocument->value->set('grafted', $sourceItem->value);
 
         $this->assertSame(
-            "{\n  \"outer\": 1,\n  \"grafted\": {\n    \"a\": 1,\n     \"b\": 2,\n    \"c\": 3\n  }\n}",
+            "{\n  \"outer\": 1,\n  \"grafted\": {\n    \"a\": 1,\n    \t\"b\": 2,\n    \"c\": 3\n  }\n}",
             (new JsonPreservingPrinter())->print($jsonDocument),
         );
     }
 
     public function testItKeepsTabResidualVerbatimWhenTargetIsTabIndented(): void
     {
-        // Counterpart to testItNormalisesTabWithinPositiveResidual: a tab target takes the
-        // whole-unit branch, which copies the residual through unchanged, so the residual tab
-        // survives as a third tab instead of being normalised.
+        // A tab target also copies the residual through unchanged, so the residual
+        // tab survives as a third tab.
         $fragment     = (new JsonParser())->parse(
             "{\n    \"source\": {\n        \"a\": 1,\n        \t\"b\": 2,\n        \"c\": 3\n    }\n}",
         );
@@ -2487,7 +2526,7 @@ JSON,
         );
     }
 
-    public function testItScalesInconsistentIndentationWhenGraftingIntoNestedSpaceIndentedDocument(): void
+    public function testItPreservesNegativeResidualWhenGraftingIntoNestedSpaceIndentedDocument(): void
     {
         $fragment     = (new JsonParser())->parse(
             <<<'JSON'
@@ -2528,7 +2567,7 @@ JSON,
   "wrapper": {
     "grafted": {
       "a": 1,
-     "b": 2,
+    "b": 2,
       "c": 3
     }
   }

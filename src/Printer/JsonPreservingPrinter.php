@@ -89,7 +89,7 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     private bool $printingDocument = false;
 
-    private ?NodeJson $documentSourceRoot = null;
+    private ?NodeJson $nodeJson = null;
 
     private ?string $documentSourceBaseIndentation = null;
 
@@ -124,7 +124,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             // them also releases the node references they hold.
             $this->memoizedChangeResults         = new SplObjectStorage();
             $this->printingDocument              = false;
-            $this->documentSourceRoot            = null;
+            $this->nodeJson                      = null;
             $this->documentSourceBaseIndentation = null;
         }
     }
@@ -1110,7 +1110,7 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     private function resolveContainerOriginalBaseIndentation(ArrayNode|ObjectNode $containerNode): ?string
     {
-        if ($containerNode === $this->documentSourceRoot) {
+        if ($containerNode === $this->nodeJson) {
             return $this->documentSourceBaseIndentation;
         }
 
@@ -1145,7 +1145,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             return;
         }
 
-        $this->documentSourceRoot            = $root;
+        $this->nodeJson                      = $root;
         $this->documentSourceBaseIndentation = WhitespaceHelper::leadingIndentationOnLastLine(
             $jsonDocument->beforeValue,
         );

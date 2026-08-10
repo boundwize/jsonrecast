@@ -17,7 +17,7 @@ final class JsonParserInternalStateTest extends TestCase
     {
         $jsonParser = new JsonParser();
         $this->setParserState($jsonParser, '123', [
-            new Token(TokenType::STRING, '123', 0, 3, 1, 1, 0),
+            new Token(TokenType::STRING, '123', 0, 3, 1, 1),
         ]);
 
         $this->expectException(ParseError::class);
@@ -29,7 +29,7 @@ final class JsonParserInternalStateTest extends TestCase
     public function testCurrentTokenFallsBackToEndOfFileToken(): void
     {
         $jsonParser = new JsonParser();
-        $token      = new Token(TokenType::END_OF_FILE, '', 5, 5, 1, 6, 0);
+        $token      = new Token(TokenType::END_OF_FILE, '', 5, 5, 1, 6);
         $this->setParserState($jsonParser, '', [$token], 10);
 
         $this->assertSame($token, $this->invokeParserMethod($jsonParser, 'currentToken'));
@@ -39,7 +39,7 @@ final class JsonParserInternalStateTest extends TestCase
     {
         $jsonParser = new JsonParser();
         $this->setParserState($jsonParser, '', [
-            new Token(TokenType::END_OF_FILE, '', 0, 0, 1, 1, 0),
+            new Token(TokenType::END_OF_FILE, '', 0, 0, 1, 1),
         ]);
 
         $this->expectException(ParseError::class);

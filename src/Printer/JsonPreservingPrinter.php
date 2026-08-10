@@ -965,8 +965,8 @@ final class JsonPreservingPrinter implements JsonPrinter
         string $whitespace,
         PrintContext $printContext,
         ?string $originalBaseIndentation,
-        ?string $originalBoundaryIndentation = null,
-        ?string $targetBoundaryIndentation = null,
+        ?string $originalBoundaryIndentation,
+        ?string $targetBoundaryIndentation,
     ): string {
         $lastNewlinePosition = WhitespaceHelper::lastNewlinePosition($whitespace);
 

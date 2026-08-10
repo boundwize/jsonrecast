@@ -37,6 +37,8 @@ final class Lexer
 
     private int $column = 1;
 
+    private int $lineStartOffset = 0;
+
     private bool $previousWasCarriageReturn = false;
 
     private string $source = '';
@@ -53,6 +55,7 @@ final class Lexer
         $this->offset                    = 0;
         $this->line                      = 1;
         $this->column                    = 1;
+        $this->lineStartOffset           = 0;
         $this->previousWasCarriageReturn = false;
         $tokens                          = [];
 
@@ -82,6 +85,7 @@ final class Lexer
             $this->offset,
             $this->line,
             $this->column,
+            $this->lineStartOffset,
         );
 
         return $tokens;
@@ -118,7 +122,15 @@ final class Lexer
         $this->column                   += $length;
         $this->previousWasCarriageReturn = false;
 
-        return new Token(self::KEYWORD_TOKENS[$text], $text, $startOffset, $this->offset, $line, $column);
+        return new Token(
+            self::KEYWORD_TOKENS[$text],
+            $text,
+            $startOffset,
+            $this->offset,
+            $line,
+            $column,
+            $this->lineStartOffset,
+        );
     }
 
     /**
@@ -129,11 +141,13 @@ final class Lexer
         $text = $this->currentChar();
         $this->advance();
 
-        return new Token($tokenType, $text, $startOffset, $this->offset, $line, $column);
+        return new Token($tokenType, $text, $startOffset, $this->offset, $line, $column, $this->lineStartOffset);
     }
 
     private function whitespaceToken(int $startOffset, int $line, int $column): Token
     {
+        $lineStartOffset = $this->lineStartOffset;
+
         while (! $this->isAtEnd() && isset(self::WHITESPACE_CHARS[$this->currentChar()])) {
             $this->advance();
         }
@@ -145,6 +159,7 @@ final class Lexer
             $this->offset,
             $line,
             $column,
+            $lineStartOffset,
         );
     }
 
@@ -165,6 +180,7 @@ final class Lexer
                     $this->offset,
                     $line,
                     $column,
+                    $this->lineStartOffset,
                 );
             }
 
@@ -234,6 +250,7 @@ final class Lexer
             $this->offset,
             $line,
             $column,
+            $this->lineStartOffset,
         );
     }
 
@@ -255,6 +272,7 @@ final class Lexer
         if ($char === "\r") {
             $this->line++;
             $this->column                    = 1;
+            $this->lineStartOffset           = $this->offset;
             $this->previousWasCarriageReturn = true;
 
             return;
@@ -266,6 +284,7 @@ final class Lexer
             }
 
             $this->column                    = 1;
+            $this->lineStartOffset           = $this->offset;
             $this->previousWasCarriageReturn = false;
 
             return;

@@ -16,6 +16,7 @@ final readonly class Token
         public int $endOffset,
         public int $line,
         public int $column,
+        public int $lineStartOffset = 0,
     ) {
     }
 }

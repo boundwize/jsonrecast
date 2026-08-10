@@ -143,7 +143,12 @@ final class JsonPreservingPrinter implements JsonPrinter
 
             // isChanged() already compares a scalar node against its token, so
             // an unchanged node can never carry a mutated scalar value here.
-            if (is_string($originalText)) {
+            if (
+                is_string($originalText) && ! $this->shouldReconstructContainerForIndentChange(
+                    $nodeJson,
+                    $printContext,
+                )
+            ) {
                 return $this->reindentOriginalText($nodeJson, $originalText, $printContext);
             }
         }
@@ -160,6 +165,21 @@ final class JsonPreservingPrinter implements JsonPrinter
             $nodeJson instanceof NullNode => 'null',
             default => $this->printUnknownNode($nodeJson, $printContext, $depth),
         };
+    }
+
+    private function shouldReconstructContainerForIndentChange(
+        NodeJson $nodeJson,
+        PrintContext $printContext,
+    ): bool {
+        if (! $nodeJson instanceof ObjectNode && ! $nodeJson instanceof ArrayNode) {
+            return false;
+        }
+
+        $originalIndent = $nodeJson->getAttribute(NodeAttributes::INDENT);
+
+        return is_string($originalIndent)
+            && $originalIndent !== ''
+            && $originalIndent !== $printContext->indentUnit();
     }
 
     /**
@@ -335,11 +355,18 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     private function printEmptyContainer(ArrayNode|ObjectNode $containerNode, PrintContext $printContext): string
     {
-        $beforeClose = $this->reindentWhitespaceBeforeNode(
+        $originalOpeningIndentation = $containerNode->getAttribute(NodeAttributes::OPENING_LINE_INDENTATION);
+        $targetOpeningIndentation   = $this->resolveTargetContainerOpeningIndentation(
+            $containerNode,
+            $printContext,
+        );
+        $beforeClose                = $this->reindentWhitespaceBeforeNode(
             $containerNode,
             $this->adoptNewlineStyle($this->beforeClose($containerNode), $containerNode, $printContext),
             $printContext,
             $this->resolveContainerOriginalBaseIndentation($containerNode),
+            is_string($originalOpeningIndentation) ? $originalOpeningIndentation : null,
+            is_string($originalOpeningIndentation) ? $targetOpeningIndentation : null,
         );
 
         return ContainerPrintHelper::openingDelimiter($containerNode)
@@ -378,6 +405,10 @@ final class JsonPreservingPrinter implements JsonPrinter
             $beforeKey === $objectItemNode->beforeKey
             && $afterValue === $objectItemNode->afterValue
             && ! $this->isChanged($objectItemNode)
+            && ! $this->shouldReconstructContainerForIndentChange(
+                $objectItemNode->value,
+                $this->valuePrintContext($objectItemNode, $printContext),
+            )
         ) {
             $originalText = $objectItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
@@ -456,6 +487,7 @@ final class JsonPreservingPrinter implements JsonPrinter
             $beforeValue === $arrayItemNode->beforeValue
             && $afterValue === $arrayItemNode->afterValue
             && ! $this->isChanged($arrayItemNode)
+            && ! $this->shouldReconstructContainerForIndentChange($arrayItemNode->value, $printContext)
         ) {
             $originalText = $arrayItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 
@@ -511,21 +543,34 @@ final class JsonPreservingPrinter implements JsonPrinter
         ArrayNode|ObjectNode $containerNode,
         PrintContext $printContext,
     ): array {
-        $itemLayouts             = [];
-        $itemsInOriginalOrder    = $this->getItemsInOriginalOrder($containerNode->items);
-        $interiorShift           = $this->resolveInteriorItemShift($containerNode, $printContext);
-        $childPrintContext       = $printContext->next();
-        $originalBaseIndentation = $this->resolveContainerOriginalBaseIndentation($containerNode);
-        $containerAfterOpen      = $this->adoptNewlineStyle(
+        $itemLayouts                = [];
+        $itemsInOriginalOrder       = $this->getItemsInOriginalOrder($containerNode->items);
+        $interiorShift              = $this->resolveInteriorItemShift($containerNode, $printContext);
+        $childPrintContext          = $printContext->next();
+        $originalBaseIndentation    = $this->resolveContainerOriginalBaseIndentation($containerNode);
+        $originalIndent             = $containerNode->getAttribute(NodeAttributes::INDENT);
+        $originalOpeningIndentation = $containerNode->getAttribute(NodeAttributes::OPENING_LINE_INDENTATION);
+        $isChangingIndent           = is_string($originalIndent)
+            && $originalIndent !== ''
+            && $originalIndent !== $printContext->indentUnit();
+        $hasOpeningBaseline         = $isChangingIndent
+            && ! str_contains($originalIndent, "\t")
+            && is_string($originalOpeningIndentation);
+        $targetOpeningIndentation   = $isChangingIndent
+            ? $this->resolveTargetContainerOpeningIndentation($containerNode, $printContext)
+            : null;
+        $containerAfterOpen         = $this->adoptNewlineStyle(
             $this->afterOpen($containerNode),
             $containerNode,
             $printContext,
         );
-        $containerBeforeClose    = $this->reindentWhitespaceBeforeNode(
+        $containerBeforeClose       = $this->reindentWhitespaceBeforeNode(
             $containerNode,
             $this->adoptNewlineStyle($this->beforeClose($containerNode), $containerNode, $printContext),
             $printContext,
             $originalBaseIndentation,
+            $hasOpeningBaseline ? $originalOpeningIndentation : null,
+            $hasOpeningBaseline ? $targetOpeningIndentation : null,
         );
 
         foreach ($containerNode->items as $i => $item) {
@@ -548,9 +593,17 @@ final class JsonPreservingPrinter implements JsonPrinter
                     $beforeItem,
                     $childPrintContext,
                     $originalBaseIndentation,
+                    $hasOpeningBaseline ? $originalOpeningIndentation . $originalIndent : null,
+                    $hasOpeningBaseline
+                        ? $targetOpeningIndentation . $printContext->indentUnit()
+                        : null,
                 );
 
-            $itemPrintContext = $childPrintContext->afterText($beforeItem);
+            $itemPrintContext = $isChangingIndent && WhitespaceHelper::lastNewlinePosition($beforeItem) < 0
+                ? $childPrintContext->withIndentation(
+                    $targetOpeningIndentation ?? $printContext->indentation(),
+                )
+                : $childPrintContext->afterText($beforeItem);
             $itemLayouts[$i]  = [$beforeItem, $afterValue, $itemPrintContext];
         }
 
@@ -878,11 +931,47 @@ final class JsonPreservingPrinter implements JsonPrinter
             || str_contains($beforeClose, "\r");
     }
 
+    /**
+     * A container opened inline can begin on a line shallower than its AST
+     * depth. Convert that recorded line indentation independently of the node
+     * depth so its closing boundary does not acquire a synthetic residual.
+     */
+    private function resolveTargetContainerOpeningIndentation(
+        ArrayNode|ObjectNode $containerNode,
+        PrintContext $printContext,
+    ): string {
+        if ($containerNode === $this->nodeJson) {
+            return $printContext->indentation();
+        }
+
+        $originalDepth              = $containerNode->getAttribute(NodeAttributes::DEPTH);
+        $originalIndent             = $containerNode->getAttribute(NodeAttributes::INDENT);
+        $originalOpeningIndentation = $containerNode->getAttribute(NodeAttributes::OPENING_LINE_INDENTATION);
+
+        if (
+            ! is_int($originalDepth)
+            || ! is_string($originalIndent)
+            || $originalIndent === ''
+            || ! is_string($originalOpeningIndentation)
+        ) {
+            return $printContext->indentation();
+        }
+
+        return $this->reindentLeadingWhitespaceUnit(
+            $originalOpeningIndentation,
+            $originalIndent,
+            $printContext->indentUnit(),
+            $printContext->level() - $originalDepth,
+        );
+    }
+
     private function reindentWhitespaceBeforeNode(
         NodeJson $nodeJson,
         string $whitespace,
         PrintContext $printContext,
         ?string $originalBaseIndentation,
+        ?string $originalBoundaryIndentation,
+        ?string $targetBoundaryIndentation,
     ): string {
         $lastNewlinePosition = WhitespaceHelper::lastNewlinePosition($whitespace);
 
@@ -890,15 +979,84 @@ final class JsonPreservingPrinter implements JsonPrinter
             return $whitespace;
         }
 
+        $originalDepth  = $nodeJson->getAttribute(NodeAttributes::DEPTH);
+        $originalIndent = $nodeJson->getAttribute(NodeAttributes::INDENT);
+
+        if (
+            is_int($originalDepth)
+            && $originalDepth === $printContext->level()
+            && is_string($originalIndent)
+            && $originalIndent === $printContext->indentUnit()
+        ) {
+            return $whitespace;
+        }
+
         $leadingWhitespace = substr($whitespace, $lastNewlinePosition + 1);
 
-        return substr($whitespace, 0, $lastNewlinePosition + 1)
-            . $this->reindentLeadingWhitespace(
+        $reindentedLeadingWhitespace = $originalBoundaryIndentation !== null
+            && $targetBoundaryIndentation !== null
+            && is_int($originalDepth)
+            && is_string($originalIndent)
+            ? $this->reindentLeadingWhitespaceBetweenBaselines(
+                $leadingWhitespace,
+                $originalBoundaryIndentation,
+                $targetBoundaryIndentation,
+                $originalIndent,
+                $printContext->indentUnit(),
+                $printContext->level() - $originalDepth,
+            )
+            : $this->reindentLeadingWhitespace(
                 $nodeJson,
                 $leadingWhitespace,
                 $printContext,
                 $originalBaseIndentation,
+                true,
             );
+
+        return $this->reindentWhitespaceOnlyLines(
+            $nodeJson,
+            substr($whitespace, 0, $lastNewlinePosition + 1),
+            $printContext,
+            $originalBaseIndentation,
+        )
+            . $reindentedLeadingWhitespace;
+    }
+
+    private function reindentWhitespaceOnlyLines(
+        NodeJson $nodeJson,
+        string $whitespace,
+        PrintContext $printContext,
+        ?string $originalBaseIndentation,
+    ): string {
+        if (! str_contains($whitespace, ' ') && ! str_contains($whitespace, "\t")) {
+            return $whitespace;
+        }
+
+        /** @var non-empty-list<string> $lines */
+        $lines  = preg_split(self::LINE_ENDING_SPLIT_PATTERN, $whitespace);
+        $output = $lines[0];
+        $count  = count($lines);
+
+        for ($i = 1; $i < $count; $i++) {
+            $line                    = $lines[$i];
+            $leadingWhitespaceLength = strspn($line, " \t");
+
+            if ($leadingWhitespaceLength === 0) {
+                $output .= $line;
+
+                continue;
+            }
+
+            $output .= $this->reindentLeadingWhitespace(
+                $nodeJson,
+                substr($line, 0, $leadingWhitespaceLength),
+                $printContext,
+                $originalBaseIndentation,
+                false,
+            ) . substr($line, $leadingWhitespaceLength);
+        }
+
+        return $output;
     }
 
     private function shiftWhitespaceBeforeNode(string $whitespace, int $interiorShift): string
@@ -1035,6 +1193,7 @@ final class JsonPreservingPrinter implements JsonPrinter
         string $leadingWhitespace,
         PrintContext $printContext,
         ?string $originalBaseIndentation,
+        bool $preserveDepthResidual,
     ): string {
         $originalDepth = $nodeJson->getAttribute(NodeAttributes::DEPTH);
 
@@ -1060,16 +1219,26 @@ final class JsonPreservingPrinter implements JsonPrinter
                 $targetBaseIndentation = $this->targetBaseIndentation($printContext);
             }
 
+            if (
+                $preserveDepthResidual
+                && ! str_contains($originalIndent, "\t")
+            ) {
+                return $targetBaseIndentation . $this->reindentLeadingWhitespaceBetweenBaselines(
+                    $leadingWhitespace,
+                    str_repeat($originalIndent, $originalDepth),
+                    str_repeat($printContext->indentUnit(), $printContext->level()),
+                    $originalIndent,
+                    $printContext->indentUnit(),
+                    $delta,
+                );
+            }
+
             return $targetBaseIndentation . $this->reindentLeadingWhitespaceUnit(
                 $leadingWhitespace,
                 $originalIndent,
                 $printContext->indentUnit(),
                 $delta,
             );
-        }
-
-        if ($delta === 0 || $printContext->indentUnit() === '') {
-            return $leadingWhitespace;
         }
 
         if ($delta > 0) {
@@ -1088,6 +1257,40 @@ final class JsonPreservingPrinter implements JsonPrinter
         }
 
         return substr($leadingWhitespace, $stripLength);
+    }
+
+    private function reindentLeadingWhitespaceBetweenBaselines(
+        string $leadingWhitespace,
+        string $originalBaseline,
+        string $targetBaseline,
+        string $originalIndent,
+        string $targetIndent,
+        int $delta,
+    ): string {
+        if (str_starts_with($leadingWhitespace, $originalBaseline)) {
+            return $targetBaseline
+                . substr($leadingWhitespace, strlen($originalBaseline));
+        }
+
+        if (
+            ! str_contains($targetIndent, "\t")
+            && str_starts_with($originalBaseline, $leadingWhitespace)
+        ) {
+            $missingLength = strlen($originalBaseline) - strlen($leadingWhitespace);
+
+            return substr(
+                $targetBaseline,
+                0,
+                max(strlen($targetBaseline) - $missingLength, 0),
+            );
+        }
+
+        return $this->reindentLeadingWhitespaceUnit(
+            $leadingWhitespace,
+            $originalIndent,
+            $targetIndent,
+            $delta,
+        );
     }
 
     private function resolveOriginalBaseIndentation(NodeJson $nodeJson, string $leadingWhitespace): ?string
@@ -1330,8 +1533,8 @@ final class JsonPreservingPrinter implements JsonPrinter
 
             // Interior lines off the original indent grid carry intentional relative
             // indentation that per-line level scaling would flatten; shift the whole
-            // interior by the depth delta instead. The closing line still scales so
-            // the bracket aligns with its container.
+            // interior by the depth delta instead. The closing line is a known node
+            // boundary, so its structural indentation changes while its residual stays.
             $output .= ($interiorShift !== null && $i < $count - 1
                 ? substr($leadingWhitespace, -$interiorShift)
                 : $this->reindentLeadingWhitespace(
@@ -1339,6 +1542,7 @@ final class JsonPreservingPrinter implements JsonPrinter
                     $leadingWhitespace,
                     $printContext,
                     $originalBaseIndentation,
+                    $i === $count - 1,
                 ))
                 . substr($line, $leadingWhitespaceLength);
         }

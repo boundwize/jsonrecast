@@ -22,9 +22,11 @@ final class LexerNumberTokenTest extends TestCase
         $this->assertSame(10, $tokens[1]->endOffset);
         $this->assertSame(2, $tokens[1]->line);
         $this->assertSame(1, $tokens[1]->column);
+        $this->assertSame(1, $tokens[1]->lineStartOffset);
         $this->assertSame(TokenType::COMMA, $tokens[2]->type);
         $this->assertSame(2, $tokens[2]->line);
         $this->assertSame(10, $tokens[2]->column);
+        $this->assertSame(1, $tokens[2]->lineStartOffset);
     }
 
     public function testNumberTokenRejectsInvalidStartingCharacter(): void

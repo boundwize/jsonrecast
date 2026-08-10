@@ -108,6 +108,7 @@ JsonDocument
     │   ├── endOffset: 29
     │   ├── depth: 0
     │   ├── indent: "    "
+    │   ├── openingLineIndentation: ""
     │   ├── newline: "\n"
     │   └── originalText: |-
     │       {

@@ -1017,7 +1017,7 @@ final class JsonPreservingPrinter implements JsonPrinter
         NodeJson $nodeJson,
         string $leadingWhitespace,
         PrintContext $printContext,
-        ?string $originalBaseIndentation = null,
+        ?string $originalBaseIndentation,
     ): string {
         $originalDepth = $nodeJson->getAttribute(NodeAttributes::DEPTH);
 

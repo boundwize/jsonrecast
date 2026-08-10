@@ -18,6 +18,8 @@ final class NodeAttributes
 
     public const INDENT = 'indent';
 
+    public const OPENING_LINE_INDENTATION = 'openingLineIndentation';
+
     public const TRAILING_NEWLINE = 'trailingNewline';
 
     public const DEPTH = 'depth';

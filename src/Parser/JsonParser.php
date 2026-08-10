@@ -24,6 +24,7 @@ use function is_string;
 use function json_decode;
 use function str_ends_with;
 use function strlen;
+use function strspn;
 use function substr;
 
 use const JSON_THROW_ON_ERROR;
@@ -110,7 +111,13 @@ final class JsonParser
             $node  = $isObject
                 ? new ObjectNode([], afterOpenBrace: $beforeItem, beforeCloseBrace: $beforeItem)
                 : new ArrayNode([], afterOpenBracket: $beforeItem, beforeCloseBracket: $beforeItem);
-            $this->setSourceMetadata($node, $token->startOffset, $close->endOffset, $depth);
+            $this->setSourceMetadata(
+                $node,
+                $token->startOffset,
+                $close->endOffset,
+                $depth,
+                $this->lineIndentationAt($token),
+            );
 
             return $node;
         }
@@ -167,7 +174,13 @@ final class JsonParser
                 $node  = $isObject
                     ? new ObjectNode($objectItems, $objectItems[0]->beforeKey, $afterValue)
                     : new ArrayNode($arrayItems, $arrayItems[0]->beforeValue, $afterValue);
-                $this->setSourceMetadata($node, $token->startOffset, $close->endOffset, $depth);
+                $this->setSourceMetadata(
+                    $node,
+                    $token->startOffset,
+                    $close->endOffset,
+                    $depth,
+                    $this->lineIndentationAt($token),
+                );
 
                 return $node;
             }
@@ -288,17 +301,39 @@ final class JsonParser
         );
     }
 
-    private function setSourceMetadata(NodeJson $nodeJson, int $startOffset, int $endOffset, int $depth): void
-    {
+    private function setSourceMetadata(
+        NodeJson $nodeJson,
+        int $startOffset,
+        int $endOffset,
+        int $depth,
+        ?string $lineIndentation = null,
+    ): void {
         $nodeJson->setAttribute(NodeAttributes::START_OFFSET, $startOffset);
         $nodeJson->setAttribute(NodeAttributes::END_OFFSET, $endOffset);
         $nodeJson->setAttribute(NodeAttributes::DEPTH, $depth);
         $nodeJson->setAttribute(NodeAttributes::INDENT, $this->indent);
+
+        if ($lineIndentation !== null) {
+            $nodeJson->setAttribute(NodeAttributes::OPENING_LINE_INDENTATION, $lineIndentation);
+        }
+
         $nodeJson->setAttribute(NodeAttributes::NEWLINE, $this->newline);
         $nodeJson->setAttribute(
             NodeAttributes::ORIGINAL_TEXT,
             substr($this->source, $startOffset, $endOffset - $startOffset),
         );
+    }
+
+    private function lineIndentationAt(Token $token): string
+    {
+        $linePrefixLength = $token->column - 1;
+        $linePrefix       = substr(
+            $this->source,
+            $token->startOffset - $linePrefixLength,
+            $linePrefixLength,
+        );
+
+        return substr($linePrefix, 0, strspn($linePrefix, " \t"));
     }
 
     private function hasTrailingNewline(string $source): bool

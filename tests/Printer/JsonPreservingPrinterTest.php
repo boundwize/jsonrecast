@@ -19,6 +19,7 @@ use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\NodeTraverser\NodeChangeSet;
 use Boundwize\JsonRecast\Parser\JsonParser;
 use Boundwize\JsonRecast\Printer\JsonPreservingPrinter;
+use Boundwize\JsonRecast\Printer\PrintContext;
 use Boundwize\JsonRecast\Value\JsonValue;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -427,6 +428,53 @@ JSON,
      "b": 2
 }
 JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItDoesNotInventResidualIndentationForInlineOpenedContainer(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "b": [1, {
+    "c": true
+  }]
+}
+JSON,
+        );
+
+        $jsonDocument->setAttribute(NodeAttributes::INDENT, '    ');
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "b": [1, {
+        "c": true
+    }]
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItPreservesResidualSpaceWhenChangingUnchangedContainerIndentToTabs(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "outer": {
+    "a": 1,
+     "b": 2
+  }
+}
+JSON,
+        );
+
+        $jsonDocument->setAttribute(NodeAttributes::INDENT, "\t");
+
+        $this->assertSame(
+            "{\n\t\"outer\": {\n\t\t\"a\": 1,\n\t\t \"b\": 2\n\t}\n}",
             (new JsonPreservingPrinter())->print($jsonDocument),
         );
     }
@@ -4850,9 +4898,21 @@ JSON,
             'reindentLeadingWhitespaceUnit',
             ['        ', '    ', "\t", 0],
         ));
+        $this->assertSame("\t\t", $this->invokeJsonPreservingPrinterMethod(
+            'reindentLeadingWhitespaceUnit',
+            ["    \t", '    ', "\t", 0],
+        ));
         $this->assertSame('', $this->invokeJsonPreservingPrinterMethod(
             'reindentLeadingWhitespaceUnit',
             ['    ', '    ', "\t", -2],
+        ));
+    }
+
+    public function testItUsesNoBaseForOffGridTargetIndentation(): void
+    {
+        $this->assertSame('', $this->invokeJsonPreservingPrinterMethod(
+            'targetBaseIndentation',
+            [new PrintContext('    ', "\n", 1, '   ')],
         ));
     }
 

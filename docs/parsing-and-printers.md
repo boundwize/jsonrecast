@@ -135,6 +135,8 @@ echo JsonRecast::print($result);
 
 After traversal, pass the `JsonRecastResult` itself to `JsonRecast::print()` so explicit change records are retained. The preserving printer also detects direct changes to document-level printer metadata: `NodeAttributes::INDENT`, `NodeAttributes::NEWLINE`, and `NodeAttributes::TRAILING_NEWLINE`. These attributes can therefore be changed on a parsed document and printed without requiring a traversal solely to mark the document as changed.
 
+When `INDENT` changes, structural indentation adopts the new unit while intentional off-grid residual whitespace remains intact. Parsed object and array nodes record `NodeAttributes::OPENING_LINE_INDENTATION`, the actual leading whitespace on the line where the container opens. This matters for containers opened inline: their opening and closing alignment follows that source line rather than assuming every container begins at `DEPTH × INDENT`.
+
 The preserving printer keeps the document newline style and trailing newline when they were present in the parsed source.
 
 ## Pretty Printer

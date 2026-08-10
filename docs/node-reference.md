@@ -114,9 +114,22 @@ Built-in attribute names are available in `Boundwize\JsonRecast\Attribute\NodeAt
 | `END_OFFSET` | End offset in the original source. |
 | `ORIGINAL_TEXT` | Exact source substring for the node. |
 | `DEPTH` | Original nesting depth, where the root JSON value and document are depth `0`. |
+| `OPENING_LINE_INDENTATION` | Leading spaces or tabs on the source line where a parsed object or array opens. Stored on container nodes only. |
 | `SOURCE` | Original source used as document-framing provenance; a replacement document that adopts host framing also adopts the host source. |
 | `NEWLINE` | Detected newline sequence, stored on the document and parsed nodes. |
 | `INDENT` | Detected indentation unit, stored on the document and parsed nodes, and used when printing newly-created nested structures. |
 | `TRAILING_NEWLINE` | Whether the document ended with a newline. |
+
+`OPENING_LINE_INDENTATION` is not necessarily the same as `INDENT` repeated `DEPTH` times. A container can open inline after a shallower value, as the object does here:
+
+```json
+{
+  "items": [1, {
+    "enabled": true
+  }]
+}
+```
+
+The inner object's depth is `2`, but its opening line begins with one two-space indent. The preserving printer uses this source coordinate when changing indent units so closing delimiters remain aligned without inventing off-grid residual whitespace.
 
 Attributes are useful for tooling and debugging. JsonRecast does not use a mutable "has changed" node attribute; changes are tracked in the traversal result.

@@ -37,6 +37,8 @@ final class Lexer
 
     private int $column = 1;
 
+    private int $lineStartOffset = 0;
+
     private bool $previousWasCarriageReturn = false;
 
     private string $source = '';
@@ -53,25 +55,68 @@ final class Lexer
         $this->offset                    = 0;
         $this->line                      = 1;
         $this->column                    = 1;
+        $this->lineStartOffset           = 0;
         $this->previousWasCarriageReturn = false;
         $tokens                          = [];
 
         while (! $this->isAtEnd()) {
-            $char        = $this->currentChar();
-            $startOffset = $this->offset;
-            $line        = $this->line;
-            $column      = $this->column;
+            $char            = $this->currentChar();
+            $startOffset     = $this->offset;
+            $line            = $this->line;
+            $column          = $this->column;
+            $lineStartOffset = $this->lineStartOffset;
 
             $tokens[] = match ($char) {
-                '{' => $this->singleCharacterToken(TokenType::LEFT_BRACE, $startOffset, $line, $column),
-                '}' => $this->singleCharacterToken(TokenType::RIGHT_BRACE, $startOffset, $line, $column),
-                '[' => $this->singleCharacterToken(TokenType::LEFT_BRACKET, $startOffset, $line, $column),
-                ']' => $this->singleCharacterToken(TokenType::RIGHT_BRACKET, $startOffset, $line, $column),
-                ':' => $this->singleCharacterToken(TokenType::COLON, $startOffset, $line, $column),
-                ',' => $this->singleCharacterToken(TokenType::COMMA, $startOffset, $line, $column),
-                '"' => $this->stringToken($startOffset, $line, $column),
-                ' ', "\t", "\n", "\r" => $this->whitespaceToken($startOffset, $line, $column),
-                default => $this->keywordOrNumberToken($startOffset, $line, $column),
+                '{' => $this->singleCharacterToken(
+                    TokenType::LEFT_BRACE,
+                    $startOffset,
+                    $line,
+                    $column,
+                    $lineStartOffset,
+                ),
+                '}' => $this->singleCharacterToken(
+                    TokenType::RIGHT_BRACE,
+                    $startOffset,
+                    $line,
+                    $column,
+                    $lineStartOffset,
+                ),
+                '[' => $this->singleCharacterToken(
+                    TokenType::LEFT_BRACKET,
+                    $startOffset,
+                    $line,
+                    $column,
+                    $lineStartOffset,
+                ),
+                ']' => $this->singleCharacterToken(
+                    TokenType::RIGHT_BRACKET,
+                    $startOffset,
+                    $line,
+                    $column,
+                    $lineStartOffset,
+                ),
+                ':' => $this->singleCharacterToken(
+                    TokenType::COLON,
+                    $startOffset,
+                    $line,
+                    $column,
+                    $lineStartOffset,
+                ),
+                ',' => $this->singleCharacterToken(
+                    TokenType::COMMA,
+                    $startOffset,
+                    $line,
+                    $column,
+                    $lineStartOffset,
+                ),
+                '"' => $this->stringToken($startOffset, $line, $column, $lineStartOffset),
+                ' ', "\t", "\n", "\r" => $this->whitespaceToken(
+                    $startOffset,
+                    $line,
+                    $column,
+                    $lineStartOffset,
+                ),
+                default => $this->keywordOrNumberToken($startOffset, $line, $column, $lineStartOffset),
             };
         }
 
@@ -82,17 +127,22 @@ final class Lexer
             $this->offset,
             $this->line,
             $this->column,
+            $this->lineStartOffset,
         );
 
         return $tokens;
     }
 
-    private function keywordOrNumberToken(int $startOffset, int $line, int $column): Token
-    {
+    private function keywordOrNumberToken(
+        int $startOffset,
+        int $line,
+        int $column,
+        int $lineStartOffset,
+    ): Token {
         $char = $this->currentChar();
 
         if ($char === '-' || ctype_digit($char)) {
-            return $this->numberToken($startOffset, $line, $column);
+            return $this->numberToken($startOffset, $line, $column, $lineStartOffset);
         }
 
         $text = match ($char) {
@@ -118,21 +168,34 @@ final class Lexer
         $this->column                   += $length;
         $this->previousWasCarriageReturn = false;
 
-        return new Token(self::KEYWORD_TOKENS[$text], $text, $startOffset, $this->offset, $line, $column);
+        return new Token(
+            self::KEYWORD_TOKENS[$text],
+            $text,
+            $startOffset,
+            $this->offset,
+            $line,
+            $column,
+            $lineStartOffset,
+        );
     }
 
     /**
      * @param TokenType::* $tokenType
      */
-    private function singleCharacterToken(string $tokenType, int $startOffset, int $line, int $column): Token
-    {
+    private function singleCharacterToken(
+        string $tokenType,
+        int $startOffset,
+        int $line,
+        int $column,
+        int $lineStartOffset,
+    ): Token {
         $text = $this->currentChar();
         $this->advance();
 
-        return new Token($tokenType, $text, $startOffset, $this->offset, $line, $column);
+        return new Token($tokenType, $text, $startOffset, $this->offset, $line, $column, $lineStartOffset);
     }
 
-    private function whitespaceToken(int $startOffset, int $line, int $column): Token
+    private function whitespaceToken(int $startOffset, int $line, int $column, int $lineStartOffset): Token
     {
         while (! $this->isAtEnd() && isset(self::WHITESPACE_CHARS[$this->currentChar()])) {
             $this->advance();
@@ -145,10 +208,11 @@ final class Lexer
             $this->offset,
             $line,
             $column,
+            $lineStartOffset,
         );
     }
 
-    private function stringToken(int $startOffset, int $line, int $column): Token
+    private function stringToken(int $startOffset, int $line, int $column, int $lineStartOffset): Token
     {
         $this->advance();
 
@@ -165,6 +229,7 @@ final class Lexer
                     $this->offset,
                     $line,
                     $column,
+                    $lineStartOffset,
                 );
             }
 
@@ -208,7 +273,7 @@ final class Lexer
         throw $this->error('Unterminated JSON string.');
     }
 
-    private function numberToken(int $startOffset, int $line, int $column): Token
+    private function numberToken(int $startOffset, int $line, int $column, int $lineStartOffset): Token
     {
         $numberLexemeScanResult = NumberLexemeScanner::scan($this->source, $this->offset);
 
@@ -234,6 +299,7 @@ final class Lexer
             $this->offset,
             $line,
             $column,
+            $lineStartOffset,
         );
     }
 
@@ -255,6 +321,7 @@ final class Lexer
         if ($char === "\r") {
             $this->line++;
             $this->column                    = 1;
+            $this->lineStartOffset           = $this->offset;
             $this->previousWasCarriageReturn = true;
 
             return;
@@ -266,6 +333,7 @@ final class Lexer
             }
 
             $this->column                    = 1;
+            $this->lineStartOffset           = $this->offset;
             $this->previousWasCarriageReturn = false;
 
             return;

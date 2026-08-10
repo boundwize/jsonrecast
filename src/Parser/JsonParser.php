@@ -326,11 +326,10 @@ final class JsonParser
 
     private function lineIndentationAt(Token $token): string
     {
-        $linePrefixLength = $token->column - 1;
-        $linePrefix       = substr(
+        $linePrefix = substr(
             $this->source,
-            $token->startOffset - $linePrefixLength,
-            $linePrefixLength,
+            $token->lineStartOffset,
+            $token->startOffset - $token->lineStartOffset,
         );
 
         return substr($linePrefix, 0, strspn($linePrefix, " \t"));

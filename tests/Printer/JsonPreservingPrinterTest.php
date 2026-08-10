@@ -458,6 +458,44 @@ JSON,
         );
     }
 
+    public function testItDetectsOpeningLineIndentationAfterUtf8Content(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "é": [1, {
+    "enabled": true
+  }]
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $item = $jsonDocument->value->get('é');
+        $this->assertInstanceOf(ObjectItemNode::class, $item);
+        $this->assertInstanceOf(ArrayNode::class, $item->value);
+
+        $inlineItem = $item->value->items[1];
+        $this->assertInstanceOf(ObjectNode::class, $inlineItem->value);
+        $this->assertSame(
+            '  ',
+            $inlineItem->value->getAttribute(NodeAttributes::OPENING_LINE_INDENTATION),
+        );
+
+        $jsonDocument->setAttribute(NodeAttributes::INDENT, '    ');
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "é": [1, {
+        "enabled": true
+    }]
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesResidualSpaceWhenChangingUnchangedContainerIndentToTabs(): void
     {
         $jsonDocument = (new JsonParser())->parse(

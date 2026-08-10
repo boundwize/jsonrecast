@@ -359,6 +359,68 @@ JSON,
         );
     }
 
+    public function testItPreservesResidualIndentationWhenChangingIndentUnitInChangedContainer(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "a": 1,
+   "b": 2
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('b', new NumberNode('3'));
+        $jsonDocument->setAttribute(NodeAttributes::INDENT, '    ');
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "a": 1,
+      "b": 3
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
+    public function testItDoesNotTreatOffGridTargetIndentationAsBaseIndentation(): void
+    {
+        $fragment     = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "x": 1
+}
+JSON,
+        );
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "a": 1,
+ "grafted": {}
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $fragment->value);
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $jsonDocument->value->set('grafted', $fragment->value);
+        $jsonDocument->setAttribute(NodeAttributes::INDENT, '    ');
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "a": 1,
+  "grafted": {
+        "x": 1
+    }
+}
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPrettyPrintsArrayWithNewItem(): void
     {
         $arrayNode = new ArrayNode([

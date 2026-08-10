@@ -359,6 +359,28 @@ JSON,
         );
     }
 
+    public function testItDoesNotTreatOffGridClosingIndentationAsRootBaseIndentation(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "a": 1
+ }
+JSON,
+        );
+
+        $jsonDocument->setAttribute(NodeAttributes::INDENT, '    ');
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "a": 1
+  }
+JSON,
+            (new JsonPreservingPrinter())->print($jsonDocument),
+        );
+    }
+
     public function testItPreservesResidualIndentationWhenChangingIndentUnitInChangedContainer(): void
     {
         $jsonDocument = (new JsonParser())->parse(

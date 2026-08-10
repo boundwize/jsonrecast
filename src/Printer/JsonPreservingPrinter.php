@@ -89,6 +89,10 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     private bool $printingDocument = false;
 
+    private ?NodeJson $documentSourceRoot = null;
+
+    private ?string $documentSourceBaseIndentation = null;
+
     public function __construct(
         private readonly ?NodeChangeSet $nodeChangeSet = null,
         ?string $indent = null,
@@ -118,8 +122,10 @@ final class JsonPreservingPrinter implements JsonPrinter
             // Results memoized during this run must not leak into the next one
             // (the tree or change set may be mutated in between), and dropping
             // them also releases the node references they hold.
-            $this->memoizedChangeResults = new SplObjectStorage();
-            $this->printingDocument      = false;
+            $this->memoizedChangeResults         = new SplObjectStorage();
+            $this->printingDocument              = false;
+            $this->documentSourceRoot            = null;
+            $this->documentSourceBaseIndentation = null;
         }
     }
 
@@ -188,6 +194,8 @@ final class JsonPreservingPrinter implements JsonPrinter
         PrintContext $printContext,
         int $depth,
     ): string {
+        $this->captureDocumentSourceRootBaseIndentation($jsonDocument);
+
         $originalNewline = $this->originalDocumentNewline($jsonDocument);
 
         $beforeValue = $this->convertNewlineStyle($jsonDocument->beforeValue, $originalNewline, $printContext);
@@ -1102,6 +1110,10 @@ final class JsonPreservingPrinter implements JsonPrinter
 
     private function resolveContainerOriginalBaseIndentation(ArrayNode|ObjectNode $containerNode): ?string
     {
+        if ($containerNode === $this->documentSourceRoot) {
+            return $this->documentSourceBaseIndentation;
+        }
+
         $closingWhitespace   = $this->beforeClose($containerNode);
         $lastNewlinePosition = WhitespaceHelper::lastNewlinePosition($closingWhitespace);
 
@@ -1112,6 +1124,30 @@ final class JsonPreservingPrinter implements JsonPrinter
         return $this->resolveOriginalBaseIndentation(
             $containerNode,
             substr($closingWhitespace, $lastNewlinePosition + 1),
+        );
+    }
+
+    private function captureDocumentSourceRootBaseIndentation(JsonDocument $jsonDocument): void
+    {
+        $source       = $jsonDocument->getAttribute(NodeAttributes::SOURCE);
+        $root         = $jsonDocument->value;
+        $originalText = $root->getAttribute(NodeAttributes::ORIGINAL_TEXT);
+        $startOffset  = $root->getAttribute(NodeAttributes::START_OFFSET);
+
+        if (
+            ! is_string($source)
+            || ! is_string($originalText)
+            || ! is_int($startOffset)
+            || $startOffset !== strlen($jsonDocument->beforeValue)
+            || substr($source, 0, $startOffset) !== $jsonDocument->beforeValue
+            || substr($source, $startOffset, strlen($originalText)) !== $originalText
+        ) {
+            return;
+        }
+
+        $this->documentSourceRoot            = $root;
+        $this->documentSourceBaseIndentation = WhitespaceHelper::leadingIndentationOnLastLine(
+            $jsonDocument->beforeValue,
         );
     }
 

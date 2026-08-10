@@ -4354,6 +4354,35 @@ JSON,
         );
     }
 
+    public function testItDoesNotInvertOffGridIndentationWhenHoistingUnknownMultilineText(): void
+    {
+        $unknownNode = new class extends AbstractNodeJson {
+        };
+        $unknownNode->setAttribute(
+            NodeAttributes::ORIGINAL_TEXT,
+            <<<'JSON'
+{
+    "a": 1,
+
+  "b": 2
+}
+JSON,
+        );
+        $unknownNode->setAttribute(NodeAttributes::DEPTH, 2);
+        $unknownNode->setAttribute(NodeAttributes::INDENT, '    ');
+
+        $this->assertSame(
+            <<<'JSON'
+{
+  "a": 1,
+
+"b": 2
+}
+JSON,
+            (new JsonPreservingPrinter(indent: '  '))->print(new JsonDocument($unknownNode)),
+        );
+    }
+
     public function testItRejectsUnknownNodeJsonImplementationWithoutOriginalText(): void
     {
         $this->expectException(RuntimeException::class);

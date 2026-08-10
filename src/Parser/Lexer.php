@@ -66,42 +66,12 @@ final class Lexer
             $column      = $this->column;
 
             $tokens[] = match ($char) {
-                '{' => $this->singleCharacterToken(
-                    TokenType::LEFT_BRACE,
-                    $startOffset,
-                    $line,
-                    $column,
-                ),
-                '}' => $this->singleCharacterToken(
-                    TokenType::RIGHT_BRACE,
-                    $startOffset,
-                    $line,
-                    $column,
-                ),
-                '[' => $this->singleCharacterToken(
-                    TokenType::LEFT_BRACKET,
-                    $startOffset,
-                    $line,
-                    $column,
-                ),
-                ']' => $this->singleCharacterToken(
-                    TokenType::RIGHT_BRACKET,
-                    $startOffset,
-                    $line,
-                    $column,
-                ),
-                ':' => $this->singleCharacterToken(
-                    TokenType::COLON,
-                    $startOffset,
-                    $line,
-                    $column,
-                ),
-                ',' => $this->singleCharacterToken(
-                    TokenType::COMMA,
-                    $startOffset,
-                    $line,
-                    $column,
-                ),
+                '{' => $this->singleCharacterToken(TokenType::LEFT_BRACE, $startOffset, $line, $column),
+                '}' => $this->singleCharacterToken(TokenType::RIGHT_BRACE, $startOffset, $line, $column),
+                '[' => $this->singleCharacterToken(TokenType::LEFT_BRACKET, $startOffset, $line, $column),
+                ']' => $this->singleCharacterToken(TokenType::RIGHT_BRACKET, $startOffset, $line, $column),
+                ':' => $this->singleCharacterToken(TokenType::COLON, $startOffset, $line, $column),
+                ',' => $this->singleCharacterToken(TokenType::COMMA, $startOffset, $line, $column),
                 '"' => $this->stringToken($startOffset, $line, $column),
                 ' ', "\t", "\n", "\r" => $this->whitespaceToken($startOffset, $line, $column),
                 default => $this->keywordOrNumberToken($startOffset, $line, $column),
@@ -166,12 +136,8 @@ final class Lexer
     /**
      * @param TokenType::* $tokenType
      */
-    private function singleCharacterToken(
-        string $tokenType,
-        int $startOffset,
-        int $line,
-        int $column,
-    ): Token {
+    private function singleCharacterToken(string $tokenType, int $startOffset, int $line, int $column): Token
+    {
         $text = $this->currentChar();
         $this->advance();
 

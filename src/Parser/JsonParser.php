@@ -326,13 +326,15 @@ final class JsonParser
 
     private function lineIndentationAt(Token $token): string
     {
-        $linePrefix = substr(
+        $linePrefixLength = $token->startOffset - $token->lineStartOffset;
+        $indentLength     = strspn(
             $this->source,
+            " \t",
             $token->lineStartOffset,
-            $token->startOffset - $token->lineStartOffset,
+            $linePrefixLength,
         );
 
-        return substr($linePrefix, 0, strspn($linePrefix, " \t"));
+        return substr($this->source, $token->lineStartOffset, $indentLength);
     }
 
     private function hasTrailingNewline(string $source): bool

@@ -44,6 +44,6 @@ final class LexerNumberTokenTest extends TestCase
         $this->expectException(ParseError::class);
         $this->expectExceptionMessage('Invalid JSON number.');
 
-        $reflectionClass->getMethod('numberToken')->invoke($lexer, 0, 1, 1, 0);
+        $reflectionClass->getMethod('numberToken')->invoke($lexer, 0, 1, 1);
     }
 }

@@ -533,6 +533,37 @@ JSON,
         );
     }
 
+    /**
+     * Hoisting shallower with a changed indent unit only shifts the interior
+     * as a block when a lead off the source indent grid would be clamped;
+     * leads all on the grid rescale per line to the target unit instead.
+     */
+    public function testItScalesOnGridInteriorIndentationPerLineWhenPrintingNestedContainerShallower(): void
+    {
+        $jsonDocument = (new JsonParser())->parse(
+            <<<'JSON'
+{
+  "outer": {
+    "b": 1
+  }
+}
+JSON,
+        );
+        $this->assertInstanceOf(ObjectNode::class, $jsonDocument->value);
+
+        $objectItemNode = $jsonDocument->value->get('outer');
+        $this->assertInstanceOf(ObjectItemNode::class, $objectItemNode);
+
+        $this->assertSame(
+            <<<'JSON'
+{
+    "b": 1
+}
+JSON,
+            (new JsonPreservingPrinter(indent: '    '))->print($objectItemNode->value),
+        );
+    }
+
     public function testItDoesNotTreatOffGridTargetIndentationAsBaseIndentation(): void
     {
         $fragment     = (new JsonParser())->parse(

@@ -1820,8 +1820,12 @@ final class JsonPreservingPrinter implements JsonPrinter
             $nodeJson instanceof ArrayItemNode,
             $nodeJson instanceof ObjectNode,
             $nodeJson instanceof ArrayNode,
-            $nodeJson instanceof JsonDocument => $this->hasStaleOriginalText($nodeJson, $originalText)
-                || $this->hasChangedDescendant($nodeJson),
+            // The descendant check comes first: it walks memoized per-child
+            // results the printing below needs anyway, while the stale check
+            // rebuilds the node's whole subtree text — work that is thrown
+            // away whenever a descendant already proves the node changed.
+            $nodeJson instanceof JsonDocument => $this->hasChangedDescendant($nodeJson)
+                || $this->hasStaleOriginalText($nodeJson, $originalText),
             // A node kind outside the built-in set exposes no structure, so it
             // offers neither text to assemble nor a child to recurse into, and
             // nothing here could call it unchanged. Whether its recorded text

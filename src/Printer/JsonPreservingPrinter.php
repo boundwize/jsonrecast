@@ -1469,6 +1469,13 @@ final class JsonPreservingPrinter implements JsonPrinter
         string $originalText,
         PrintContext $printContext,
     ): string {
+        // Re-indenting only ever rewrites what follows a line ending, so text
+        // on a single line passes through every step below byte-identical: no
+        // newline style to convert, no lines to split, no leads to rescale.
+        if (! str_contains($originalText, "\n") && ! str_contains($originalText, "\r")) {
+            return $originalText;
+        }
+
         $originalText  = $this->adoptNewlineStyle($originalText, $nodeJson, $printContext);
         $originalDepth = $nodeJson->getAttribute(NodeAttributes::DEPTH);
 

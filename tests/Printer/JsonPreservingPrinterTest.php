@@ -562,6 +562,16 @@ JSON,
 JSON,
             (new JsonPreservingPrinter(indent: '    '))->print($objectItemNode->value),
         );
+
+        // Keeping the source's own unit hoists by stripping one level per line.
+        $this->assertSame(
+            <<<'JSON'
+{
+  "b": 1
+}
+JSON,
+            (new JsonPreservingPrinter(indent: '  '))->print($objectItemNode->value),
+        );
     }
 
     public function testItDoesNotTreatOffGridTargetIndentationAsBaseIndentation(): void

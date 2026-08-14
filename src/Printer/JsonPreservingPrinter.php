@@ -405,10 +405,10 @@ final class JsonPreservingPrinter implements JsonPrinter
             $beforeKey === $objectItemNode->beforeKey
             && $afterValue === $objectItemNode->afterValue
             && ! $this->isChanged($objectItemNode)
-            && ! $this->shouldReconstructContainerForIndentChange(
-                $objectItemNode->value,
-                $this->valuePrintContext($objectItemNode, $printContext),
-            )
+            // The reconstruct check only reads the indent unit, which every
+            // context derived through valuePrintContext() shares, so the item
+            // context stands in without resolving the separator at all.
+            && ! $this->shouldReconstructContainerForIndentChange($objectItemNode->value, $printContext)
         ) {
             $originalText = $objectItemNode->getAttribute(NodeAttributes::ORIGINAL_TEXT);
 

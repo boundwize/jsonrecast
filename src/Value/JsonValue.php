@@ -72,67 +72,41 @@ final class JsonValue
         };
     }
 
+    /**
+     * @param SplObjectStorage<object, mixed> $chain
+     */
     private static function fromJsonSerializable(
         JsonSerializable $jsonSerializable,
         int $maximumDepth,
-        int $depth
+        int $depth,
+        SplObjectStorage $chain = new SplObjectStorage()
     ): NodeJson {
+        $chain->attach($jsonSerializable);
+
+        $serializedValue = $jsonSerializable->jsonSerialize();
+
+        // json_encode() serializes the object's properties when jsonSerialize() returns $this
+        if ($serializedValue === $jsonSerializable) {
+            return self::fromObject($jsonSerializable, $maximumDepth, $depth, true);
+        }
+
+        if (! $serializedValue instanceof JsonSerializable) {
+            return self::fromValue($serializedValue, $maximumDepth, $depth, true);
+        }
+
+        // Hopping back to an object this chain already serialized can never
+        // terminate; json_encode() reports that as recursion and so does this
+        if ($chain->contains($serializedValue)) {
+            throw new InvalidArgumentException('Recursion detected.');
+        }
+
         // jsonSerialize() hops never consume a container nesting level and a
         // linear chain of them is not capped by maximumDepth, mirroring
-        // json_encode(); hopping back to an object the chain already
-        // serialized is cyclic, and so is hopping to a freshly created object
-        // whose class and property state match one the chain already
-        // serialized -- equal state replays the chain -- so both are rejected
-        // the way json_encode() reports recursion instead of looping forever
-        $chain       = new SplObjectStorage();
-        $chainStates = [];
-
-        while (true) {
-            $chain->attach($jsonSerializable);
-            $chainStates[$jsonSerializable::class][] = (array) $jsonSerializable;
-
-            $serializedValue = $jsonSerializable->jsonSerialize();
-
-            // json_encode() serializes the object's properties when jsonSerialize() returns $this
-            if ($serializedValue === $jsonSerializable) {
-                return self::fromObject($jsonSerializable, $maximumDepth, $depth, true);
-            }
-
-            if (! $serializedValue instanceof JsonSerializable) {
-                return self::fromValue($serializedValue, $maximumDepth, $depth, true);
-            }
-
-            if (
-                $chain->contains($serializedValue)
-                || self::isRepeatedChainState($chainStates, $serializedValue)
-            ) {
-                throw new InvalidArgumentException('Recursion detected.');
-            }
-
-            $jsonSerializable = $serializedValue;
-        }
-    }
-
-    /**
-     * @param array<class-string, list<array<array-key, mixed>>> $chainStates
-     */
-    private static function isRepeatedChainState(
-        array $chainStates,
-        JsonSerializable $jsonSerializable
-    ): bool {
-        // The array cast fingerprints the full shallow state, private and
-        // protected properties included; nested objects compare by identity,
-        // so equal fingerprints mean the chain reached a state it already
-        // serialized from
-        $properties = (array) $jsonSerializable;
-
-        foreach ($chainStates[$jsonSerializable::class] ?? [] as $chainState) {
-            if ($chainState === $properties) {
-                return true;
-            }
-        }
-
-        return false;
+        // json_encode(); whether an endless chain of freshly created objects
+        // ever terminates is undecidable from out here, so hops recurse
+        // instead of iterating, leaving runaway chains to the engine call
+        // stack guard that stops them inside json_encode() as well
+        return self::fromJsonSerializable($serializedValue, $maximumDepth, $depth, $chain);
     }
 
     private static function stringNode(string $value): StringNode

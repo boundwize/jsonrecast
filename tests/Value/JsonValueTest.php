@@ -14,14 +14,17 @@ use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\Tests\Value\Fixture\CountdownSerializable;
 use Boundwize\JsonRecast\Tests\Value\Fixture\EndlessSerializable;
 use Boundwize\JsonRecast\Tests\Value\Fixture\IntegerBackedPriority;
+use Boundwize\JsonRecast\Tests\Value\Fixture\ProgressingSerializable;
 use Boundwize\JsonRecast\Tests\Value\Fixture\PureDirection;
 use Boundwize\JsonRecast\Tests\Value\Fixture\SerializableDirection;
 use Boundwize\JsonRecast\Tests\Value\Fixture\SerializableLink;
 use Boundwize\JsonRecast\Tests\Value\Fixture\StringBackedStatus;
 use Boundwize\JsonRecast\Value\JsonValue;
+use Error;
 use InvalidArgumentException;
 use JsonSerializable;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\RequiresPhp;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
@@ -518,14 +521,26 @@ final class JsonValueTest extends TestCase
         $this->assertSame('launch', $nodeJson->value);
     }
 
+    public function testItAcceptsJsonSerializableChainProgressingThroughStaticState(): void
+    {
+        // Hidden static state advances the chain even though every hop is a
+        // brand-new object with identical property state, so no inspection of
+        // the objects can rule the chain terminating; json_encode() resolves
+        // it and so must this
+        $nodeJson = JsonValue::from(new ProgressingSerializable());
+
+        $this->assertInstanceOf(StringNode::class, $nodeJson);
+        $this->assertSame('done', $nodeJson->value);
+    }
+
+    #[RequiresPhp('>= 8.3')]
     public function testItRejectsEndlessJsonSerializableChainOfFreshObjects(): void
     {
         // Every hop returns a brand-new object, so identity-based cycle
-        // detection never fires; repeating class and property state marks the
-        // chain as replaying itself where json_encode() would exhaust the
-        // call stack
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Recursion detected.');
+        // detection never fires; hops recurse, so the engine call stack guard
+        // stops the chain the same way it stops it inside json_encode()
+        $this->expectException(Error::class);
+        $this->expectExceptionMessage('Maximum call stack size');
 
         JsonValue::from(new EndlessSerializable());
     }

@@ -72,41 +72,42 @@ final class JsonValue
         };
     }
 
-    /**
-     * @param SplObjectStorage<object, mixed> $chain
-     */
     private static function fromJsonSerializable(
         JsonSerializable $jsonSerializable,
         int $maximumDepth,
-        int $depth,
-        SplObjectStorage $chain = new SplObjectStorage()
+        int $depth
     ): NodeJson {
-        $chain->attach($jsonSerializable);
-
-        $serializedValue = $jsonSerializable->jsonSerialize();
-
-        // json_encode() serializes the object's properties when jsonSerialize() returns $this
-        if ($serializedValue === $jsonSerializable) {
-            return self::fromObject($jsonSerializable, $maximumDepth, $depth, true);
-        }
-
-        if (! $serializedValue instanceof JsonSerializable) {
-            return self::fromValue($serializedValue, $maximumDepth, $depth, true);
-        }
-
-        // Hopping back to an object this chain already serialized can never
-        // terminate; json_encode() reports that as recursion and so does this
-        if ($chain->contains($serializedValue)) {
-            throw new InvalidArgumentException('Recursion detected.');
-        }
-
         // jsonSerialize() hops never consume a container nesting level and a
         // linear chain of them is not capped by maximumDepth, mirroring
-        // json_encode(); whether an endless chain of freshly created objects
-        // ever terminates is undecidable from out here, so hops recurse
-        // instead of iterating, leaving runaway chains to the engine call
-        // stack guard that stops them inside json_encode() as well
-        return self::fromJsonSerializable($serializedValue, $maximumDepth, $depth, $chain);
+        // json_encode(); hopping back to an object the chain already
+        // serialized can never terminate and is rejected the way
+        // json_encode() reports recursion. Whether a chain fabricating a
+        // fresh object on every hop ever terminates is undecidable, and
+        // json_encode() has no detection for it either -- it runs until
+        // engine limits end it -- so such chains stay the caller's
+        // responsibility here as well
+        $chain = new SplObjectStorage();
+
+        while (true) {
+            $chain->attach($jsonSerializable);
+
+            $serializedValue = $jsonSerializable->jsonSerialize();
+
+            // json_encode() serializes the object's properties when jsonSerialize() returns $this
+            if ($serializedValue === $jsonSerializable) {
+                return self::fromObject($jsonSerializable, $maximumDepth, $depth, true);
+            }
+
+            if (! $serializedValue instanceof JsonSerializable) {
+                return self::fromValue($serializedValue, $maximumDepth, $depth, true);
+            }
+
+            if ($chain->contains($serializedValue)) {
+                throw new InvalidArgumentException('Recursion detected.');
+            }
+
+            $jsonSerializable = $serializedValue;
+        }
     }
 
     private static function stringNode(string $value): StringNode

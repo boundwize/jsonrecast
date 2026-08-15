@@ -17,6 +17,7 @@ use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
 use InvalidArgumentException;
 use JsonSerializable;
+use SplObjectStorage;
 use stdClass;
 use UnitEnum;
 
@@ -76,14 +77,15 @@ final class JsonValue
         int $maximumDepth,
         int $depth
     ): NodeJson {
-        // jsonSerialize() hops never consume a container nesting level, mirroring
-        // json_encode(); the hop count is capped at maximumDepth separately so
-        // cyclic or endless jsonSerialize() chains are rejected instead of
-        // recursing until the stack is exhausted
-        $hops = 0;
+        // jsonSerialize() hops never consume a container nesting level and a
+        // linear chain of them is not capped by maximumDepth, mirroring
+        // json_encode(); a chain that hops back to an object it already
+        // serialized is cyclic and is rejected the way json_encode() reports
+        // recursion instead of looping forever
+        $chain = new SplObjectStorage();
 
         while (true) {
-            MaximumDepthGuard::guardMaximumDepth($maximumDepth, $hops);
+            $chain->attach($jsonSerializable);
 
             $serializedValue = $jsonSerializable->jsonSerialize();
 
@@ -96,8 +98,11 @@ final class JsonValue
                 return self::fromValue($serializedValue, $maximumDepth, $depth, true);
             }
 
+            if ($chain->contains($serializedValue)) {
+                throw new InvalidArgumentException('Recursion detected.');
+            }
+
             $jsonSerializable = $serializedValue;
-            $hops++;
         }
     }
 

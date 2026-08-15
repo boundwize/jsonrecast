@@ -500,30 +500,33 @@ final class JsonValueTest extends TestCase
         $serializableLink->next = $otherLink;
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+        $this->expectExceptionMessage('Recursion detected.');
 
         JsonValue::from($serializableLink);
     }
 
-    public function testItRejectsJsonSerializableChainExceedingMaximumNestingDepth(): void
+    public function testItAcceptsJsonSerializableChainLongerThanMaximumDepth(): void
     {
+        // A linear jsonSerialize() chain is not nesting, so json_encode() does
+        // not charge its hops against the depth limit; a 600-hop chain to a
+        // scalar resolves under the default maximumDepth of 512
         $value = 'end';
 
         for ($link = 0; $link < 600; $link++) {
             $value = new SerializableLink($value);
         }
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+        $nodeJson = JsonValue::from($value);
 
-        JsonValue::from($value);
+        $this->assertInstanceOf(StringNode::class, $nodeJson);
+        $this->assertSame('end', $nodeJson->value);
     }
 
     public function testItAcceptsJsonSerializableChainWithoutConsumingNestingDepth(): void
     {
-        // jsonSerialize() hops are capped at maximumDepth but do not consume a
-        // container nesting level, so a 10-hop chain to a scalar resolves at
-        // maximumDepth 10 where charging the hops as levels would reject it
+        // jsonSerialize() hops do not consume a container nesting level, so a
+        // 10-hop chain to a scalar resolves at maximumDepth 10 where charging
+        // the hops as levels would reject it
         $value = 'end';
 
         for ($link = 0; $link < 10; $link++) {

@@ -14,6 +14,8 @@ use Boundwize\JsonRecast\Node\StringNode;
 use Boundwize\JsonRecast\Tests\Value\Fixture\IntegerBackedPriority;
 use Boundwize\JsonRecast\Tests\Value\Fixture\PureDirection;
 use Boundwize\JsonRecast\Tests\Value\Fixture\SerializableDirection;
+use Boundwize\JsonRecast\Tests\Value\Fixture\CountdownSerializable;
+use Boundwize\JsonRecast\Tests\Value\Fixture\EndlessSerializable;
 use Boundwize\JsonRecast\Tests\Value\Fixture\SerializableLink;
 use Boundwize\JsonRecast\Tests\Value\Fixture\StringBackedStatus;
 use Boundwize\JsonRecast\Value\JsonValue;
@@ -503,6 +505,29 @@ final class JsonValueTest extends TestCase
         $this->expectExceptionMessage('Recursion detected.');
 
         JsonValue::from($serializableLink);
+    }
+
+    public function testItAcceptsFiniteJsonSerializableChainOfFreshObjects(): void
+    {
+        // Each hop fabricates a brand-new object whose property state differs
+        // from every earlier hop, so the chain is not a replay and resolves
+        // the way json_encode() resolves it
+        $nodeJson = JsonValue::from(new CountdownSerializable(50));
+
+        $this->assertInstanceOf(StringNode::class, $nodeJson);
+        $this->assertSame('launch', $nodeJson->value);
+    }
+
+    public function testItRejectsEndlessJsonSerializableChainOfFreshObjects(): void
+    {
+        // Every hop returns a brand-new object, so identity-based cycle
+        // detection never fires; repeating class and property state marks the
+        // chain as replaying itself where json_encode() would exhaust the
+        // call stack
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Recursion detected.');
+
+        JsonValue::from(new EndlessSerializable());
     }
 
     public function testItAcceptsJsonSerializableChainLongerThanMaximumDepth(): void

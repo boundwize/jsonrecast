@@ -79,13 +79,17 @@ final class JsonValue
     ): NodeJson {
         // jsonSerialize() hops never consume a container nesting level and a
         // linear chain of them is not capped by maximumDepth, mirroring
-        // json_encode(); a chain that hops back to an object it already
-        // serialized is cyclic and is rejected the way json_encode() reports
-        // recursion instead of looping forever
-        $chain = new SplObjectStorage();
+        // json_encode(); hopping back to an object the chain already
+        // serialized is cyclic, and so is hopping to a freshly created object
+        // whose class and property state match one the chain already
+        // serialized -- equal state replays the chain -- so both are rejected
+        // the way json_encode() reports recursion instead of looping forever
+        $chain       = new SplObjectStorage();
+        $chainStates = [];
 
         while (true) {
             $chain->attach($jsonSerializable);
+            $chainStates[$jsonSerializable::class][] = (array) $jsonSerializable;
 
             $serializedValue = $jsonSerializable->jsonSerialize();
 
@@ -98,12 +102,37 @@ final class JsonValue
                 return self::fromValue($serializedValue, $maximumDepth, $depth, true);
             }
 
-            if ($chain->contains($serializedValue)) {
+            if (
+                $chain->contains($serializedValue)
+                || self::isRepeatedChainState($chainStates, $serializedValue)
+            ) {
                 throw new InvalidArgumentException('Recursion detected.');
             }
 
             $jsonSerializable = $serializedValue;
         }
+    }
+
+    /**
+     * @param array<class-string, list<array<array-key, mixed>>> $chainStates
+     */
+    private static function isRepeatedChainState(
+        array $chainStates,
+        JsonSerializable $jsonSerializable
+    ): bool {
+        // The array cast fingerprints the full shallow state, private and
+        // protected properties included; nested objects compare by identity,
+        // so equal fingerprints mean the chain reached a state it already
+        // serialized from
+        $properties = (array) $jsonSerializable;
+
+        foreach ($chainStates[$jsonSerializable::class] ?? [] as $chainState) {
+            if ($chainState === $properties) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function stringNode(string $value): StringNode

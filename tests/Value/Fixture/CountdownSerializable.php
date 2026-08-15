@@ -6,9 +6,9 @@ namespace Boundwize\JsonRecast\Tests\Value\Fixture;
 
 use JsonSerializable;
 
-final class CountdownSerializable implements JsonSerializable
+final readonly class CountdownSerializable implements JsonSerializable
 {
-    public function __construct(private readonly int $remaining)
+    public function __construct(private int $remaining)
     {
     }
 

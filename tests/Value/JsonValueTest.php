@@ -11,7 +11,9 @@ use Boundwize\JsonRecast\Node\NullNode;
 use Boundwize\JsonRecast\Node\NumberNode;
 use Boundwize\JsonRecast\Node\ObjectNode;
 use Boundwize\JsonRecast\Node\StringNode;
+use Boundwize\JsonRecast\Tests\Value\Fixture\CountdownSerializable;
 use Boundwize\JsonRecast\Tests\Value\Fixture\IntegerBackedPriority;
+use Boundwize\JsonRecast\Tests\Value\Fixture\ProgressingSerializable;
 use Boundwize\JsonRecast\Tests\Value\Fixture\PureDirection;
 use Boundwize\JsonRecast\Tests\Value\Fixture\SerializableDirection;
 use Boundwize\JsonRecast\Tests\Value\Fixture\SerializableLink;
@@ -500,30 +502,56 @@ final class JsonValueTest extends TestCase
         $serializableLink->next = $otherLink;
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+        $this->expectExceptionMessage('Recursion detected.');
 
         JsonValue::from($serializableLink);
     }
 
-    public function testItRejectsJsonSerializableChainExceedingMaximumNestingDepth(): void
+    public function testItAcceptsFiniteJsonSerializableChainOfFreshObjects(): void
     {
+        // Each hop fabricates a brand-new object whose property state differs
+        // from every earlier hop, so the chain is not a replay and resolves
+        // the way json_encode() resolves it
+        $nodeJson = JsonValue::from(new CountdownSerializable(50));
+
+        $this->assertInstanceOf(StringNode::class, $nodeJson);
+        $this->assertSame('launch', $nodeJson->value);
+    }
+
+    public function testItAcceptsJsonSerializableChainProgressingThroughStaticState(): void
+    {
+        // Hidden static state advances the chain even though every hop is a
+        // brand-new object with identical property state, so no inspection of
+        // the objects can rule the chain terminating; json_encode() resolves
+        // it and so must this
+        $nodeJson = JsonValue::from(new ProgressingSerializable());
+
+        $this->assertInstanceOf(StringNode::class, $nodeJson);
+        $this->assertSame('done', $nodeJson->value);
+    }
+
+    public function testItAcceptsJsonSerializableChainLongerThanMaximumDepth(): void
+    {
+        // A linear jsonSerialize() chain is not nesting, so json_encode() does
+        // not charge its hops against the depth limit; a 600-hop chain to a
+        // scalar resolves under the default maximumDepth of 512
         $value = 'end';
 
         for ($link = 0; $link < 600; $link++) {
             $value = new SerializableLink($value);
         }
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Maximum stack depth exceeded.');
+        $nodeJson = JsonValue::from($value);
 
-        JsonValue::from($value);
+        $this->assertInstanceOf(StringNode::class, $nodeJson);
+        $this->assertSame('end', $nodeJson->value);
     }
 
     public function testItAcceptsJsonSerializableChainWithoutConsumingNestingDepth(): void
     {
-        // jsonSerialize() hops are capped at maximumDepth but do not consume a
-        // container nesting level, so a 10-hop chain to a scalar resolves at
-        // maximumDepth 10 where charging the hops as levels would reject it
+        // jsonSerialize() hops do not consume a container nesting level, so a
+        // 10-hop chain to a scalar resolves at maximumDepth 10 where charging
+        // the hops as levels would reject it
         $value = 'end';
 
         for ($link = 0; $link < 10; $link++) {

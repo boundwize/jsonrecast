@@ -129,7 +129,7 @@ final class ObjectNode extends AbstractNodeJson
         $lastItem   = $itemCount > 0 ? $this->items[$itemCount - 1] : null;
         $styleDonor = StartOffsetHelper::findStyleDonor($this->items) ?? $lastItem;
         $beforeKey  = $this->beforeKeyForAppendedItem($styleDonor);
-        $afterValue = $styleDonor !== null ? $styleDonor->afterValue : $this->beforeCloseBrace;
+        $afterValue = $styleDonor?->afterValue ?? $this->beforeCloseBrace;
 
         if (
             $styleDonor === null
@@ -142,7 +142,7 @@ final class ObjectNode extends AbstractNodeJson
             key: new StringNode($key),
             value: $nodeJson,
             beforeKey: $beforeKey,
-            betweenKeyAndColon: $styleDonor !== null ? $styleDonor->betweenKeyAndColon : '',
+            betweenKeyAndColon: $styleDonor?->betweenKeyAndColon ?? '',
             betweenColonAndValue: $this->betweenColonAndValueForAppendedItem($styleDonor),
             afterValue: $afterValue,
         );

@@ -89,7 +89,7 @@ final class JsonValue
         $chain = new SplObjectStorage();
 
         while (true) {
-            $chain->attach($jsonSerializable);
+            $chain->offsetSet($jsonSerializable);
 
             $serializedValue = $jsonSerializable->jsonSerialize();
 
@@ -102,7 +102,7 @@ final class JsonValue
                 return self::fromValue($serializedValue, $maximumDepth, $depth, true);
             }
 
-            if ($chain->contains($serializedValue)) {
+            if ($chain->offsetExists($serializedValue)) {
                 throw new InvalidArgumentException('Recursion detected.');
             }
 

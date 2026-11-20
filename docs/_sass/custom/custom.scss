@@ -3,6 +3,98 @@
   --jr-content-width: 62rem;
   --jr-layout-width: 75rem;
   --jr-sidebar-offset-width: var(--jr-sidebar-width);
+
+  --jr-surface: #ffffff;
+  --jr-border: #d0d7de;
+  --jr-border-strong: #8c959f;
+  --jr-muted: #6e7781;
+  --jr-strong: #24292f;
+  --jr-link: #0969da;
+  --jr-nav-link: #7253ed;
+  --jr-success: #1a7f37;
+  --jr-button-fg: #57606a;
+  --jr-inline-code-fg: #6639a6;
+  --jr-inline-code-bg: #f5f0ff;
+  --jr-inline-code-border: #e4d8f5;
+  --jr-code-bg: #f8fafc;
+  --jr-syntax-comment: #6e7781;
+  --jr-syntax-keyword: #cf222e;
+  --jr-syntax-name: #8250df;
+  --jr-syntax-variable: #953800;
+  --jr-syntax-string: #0a3069;
+  --jr-syntax-number: #0550ae;
+  --jr-syntax-operator: #24292f;
+  --jr-diff-bg: #ffffff;
+  --jr-diff-del-bg: #ffebe9;
+  --jr-diff-del-fg: #82071e;
+  --jr-diff-ins-bg: #dafbe1;
+  --jr-diff-ins-fg: #116329;
+  --jr-diff-hunk-bg: #ddf4ff;
+  --jr-diff-hunk-fg: #0550ae;
+}
+
+html[data-jr-theme="dark"] {
+  --jr-surface: #302d36;
+  --jr-border: #44434d;
+  --jr-border-strong: #6e7681;
+  --jr-muted: #8b949e;
+  --jr-strong: #e6edf3;
+  --jr-link: #58a6ff;
+  --jr-nav-link: #5ea1fb;
+  --jr-success: #3fb950;
+  --jr-button-fg: #c9d1d9;
+  --jr-inline-code-fg: #d2a8ff;
+  --jr-inline-code-bg: #2a2140;
+  --jr-inline-code-border: #3d3160;
+  --jr-code-bg: #0d1117;
+  --jr-syntax-comment: #8b949e;
+  --jr-syntax-keyword: #ff7b72;
+  --jr-syntax-name: #d2a8ff;
+  --jr-syntax-variable: #ffa657;
+  --jr-syntax-string: #a5d6ff;
+  --jr-syntax-number: #79c0ff;
+  --jr-syntax-operator: #e6edf3;
+  --jr-diff-bg: #0d1117;
+  --jr-diff-del-bg: #490202;
+  --jr-diff-del-fg: #ffdcd7;
+  --jr-diff-ins-bg: #0f5323;
+  --jr-diff-ins-fg: #aff5b4;
+  --jr-diff-hunk-bg: #0c2d6b;
+  --jr-diff-hunk-fg: #79c0ff;
+}
+
+.jr-theme-toggle {
+  margin-left: auto;
+  border: 0;
+  background-color: transparent;
+  color: var(--jr-nav-link);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+// Below the theme's desktop breakpoint the opened header stacks its children,
+// which left the toggle on a row of its own. Keep search full width and put the
+// toggle on the same row as the auxiliary links.
+@media (max-width: 49.99rem) {
+  .side-bar + .main .main-header.nav-open {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .side-bar + .main .main-header.nav-open .search {
+    flex: 0 0 100%;
+  }
+
+  .jr-theme-toggle {
+    height: auto;
+    margin-left: 0;
+  }
+}
+
+html[data-jr-theme="dark"] div.highlighter-rouge div.highlight {
+  border-color: var(--jr-border);
 }
 
 @media (min-width: 50rem) {
@@ -49,6 +141,12 @@ code {
   border-radius: 4px;
 }
 
+.main-content code:not(pre code):not(figure code) {
+  color: var(--jr-inline-code-fg);
+  background-color: var(--jr-inline-code-bg);
+  border-color: var(--jr-inline-code-border);
+}
+
 div.highlighter-rouge,
 figure.highlight {
   margin: 1rem 0 1.25rem;
@@ -57,8 +155,8 @@ figure.highlight {
 
 div.highlight,
 figure.highlight {
-  background: #f8fafc;
-  border: 1px solid #d0d7de;
+  background: var(--jr-code-bg);
+  border: 1px solid var(--jr-border);
   border-radius: 6px;
 }
 
@@ -84,6 +182,23 @@ figure.highlight code {
   width: 300px;
   max-width: 80%;
   height: auto;
+}
+
+// The logo SVG holds a light and a dark rendition and picks one from the system
+// appearance, which is not always what the switch selected (Safari does not
+// pass the page's scheme into an image). So the page pins each rendition
+// (`#light` / `#dark`) and shows the one that matches.
+html:not([data-jr-theme="dark"]) .jr-dark-only,
+html[data-jr-theme="dark"] .jr-light-only {
+  display: none;
+}
+
+// The flow diagram is drawn dark on a white canvas. In the dark scheme, flip
+// its colors and let the now-black canvas blend into the page instead of
+// leaving a white box.
+html[data-jr-theme="dark"] .jr-diagram img {
+  filter: invert(1) hue-rotate(180deg);
+  mix-blend-mode: screen;
 }
 
 .jr-example-output {
@@ -122,7 +237,7 @@ figure.highlight code {
 #markdown-toc > li > a::before {
   content: counter(toc);
   min-width: 1.35rem;
-  color: #6e7781;
+  color: var(--jr-muted);
   font-size: 0.86rem;
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -142,7 +257,7 @@ figure.highlight code {
   height: 0.35rem;
   flex: 0 0 auto;
   border-radius: 999px;
-  background: #8c959f;
+  background: var(--jr-border-strong);
   transform: translateY(-0.12rem);
 }
 
@@ -151,10 +266,10 @@ figure.highlight code {
   top: 0.55rem;
   right: 0.55rem;
   padding: 0.2rem 0.45rem;
-  border: 1px solid #d0d7de;
+  border: 1px solid var(--jr-border);
   border-radius: 4px;
-  background: #ffffff;
-  color: #57606a;
+  background: var(--jr-surface);
+  color: var(--jr-button-fg);
   font-size: 0.72rem;
   line-height: 1.2;
   cursor: pointer;
@@ -162,13 +277,13 @@ figure.highlight code {
 
 .jr-copy-code-fallback:hover,
 .jr-copy-code-fallback:focus-visible {
-  color: #24292f;
-  border-color: #8c959f;
+  color: var(--jr-strong);
+  border-color: var(--jr-border-strong);
 }
 
 .jr-copy-code-fallback.is-copied {
-  color: #1a7f37;
-  border-color: #1a7f37;
+  color: var(--jr-success);
+  border-color: var(--jr-success);
 }
 
 .jr-page-nav {
@@ -186,22 +301,22 @@ figure.highlight code {
   display: block;
   min-height: 4.25rem;
   padding: 0.75rem 0.85rem;
-  border: 1px solid #d0d7de;
+  border: 1px solid var(--jr-border);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--jr-surface);
   color: inherit;
   text-decoration: none;
 }
 
 .jr-page-nav__link:hover,
 .jr-page-nav__link:focus-visible {
-  border-color: #8c959f;
+  border-color: var(--jr-border-strong);
   text-decoration: none;
 }
 
 .jr-page-nav__eyebrow {
   display: block;
-  color: #6e7781;
+  color: var(--jr-muted);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -212,7 +327,7 @@ figure.highlight code {
 .jr-page-nav__title {
   display: block;
   margin-top: 0.3rem;
-  color: #0969da;
+  color: var(--jr-link);
   font-weight: 600;
   line-height: 1.3;
   overflow-wrap: anywhere;
@@ -228,7 +343,7 @@ figure.highlight code {
 .highlight .c1,
 .highlight .cm,
 .highlight .cp {
-  color: #6e7781;
+  color: var(--jr-syntax-comment);
   font-style: italic;
 }
 
@@ -238,14 +353,14 @@ figure.highlight code {
 .highlight .kp,
 .highlight .kr,
 .highlight .kt {
-  color: #cf222e;
+  color: var(--jr-syntax-keyword);
   font-weight: 600;
 }
 
 .highlight .nc,
 .highlight .nn,
 .highlight .nf {
-  color: #8250df;
+  color: var(--jr-syntax-name);
   font-weight: 600;
 }
 
@@ -256,7 +371,7 @@ figure.highlight code {
 .highlight .vc,
 .highlight .vg,
 .highlight .vi {
-  color: #953800;
+  color: var(--jr-syntax-variable);
 }
 
 .highlight .s,
@@ -266,26 +381,26 @@ figure.highlight code {
 .highlight .sh,
 .highlight .si,
 .highlight .sx {
-  color: #0a3069;
+  color: var(--jr-syntax-string);
 }
 
 .highlight .m,
 .highlight .mi,
 .highlight .mf,
 .highlight .mh {
-  color: #0550ae;
+  color: var(--jr-syntax-number);
 }
 
 .highlight .o,
 .highlight .ow,
 .highlight .p {
-  color: #24292f;
+  color: var(--jr-syntax-operator);
 }
 
 .language-diff .highlight,
 div.language-diff div.highlight,
 figure.highlight pre code.language-diff {
-  background: #ffffff;
+  background: var(--jr-diff-bg);
 }
 
 .language-diff .highlight pre,
@@ -308,15 +423,15 @@ div.language-diff pre.highlight {
 .language-diff .gd,
 .language-diff code span.gd,
 .highlight .gd {
-  background: #ffebe9;
-  color: #82071e;
+  background: var(--jr-diff-del-bg);
+  color: var(--jr-diff-del-fg);
 }
 
 .language-diff .gi,
 .language-diff code span.gi,
 .highlight .gi {
-  background: #dafbe1;
-  color: #116329;
+  background: var(--jr-diff-ins-bg);
+  color: var(--jr-diff-ins-fg);
 }
 
 .language-diff .gu,
@@ -325,6 +440,6 @@ div.language-diff pre.highlight {
 .language-diff code span.gh,
 .highlight .gu,
 .highlight .gh {
-  background: #ddf4ff;
-  color: #0550ae;
+  background: var(--jr-diff-hunk-bg);
+  color: var(--jr-diff-hunk-fg);
 }

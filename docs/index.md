@@ -7,7 +7,8 @@ nav_order: 1
 ---
 
 <p class="jr-logo">
-    <img alt="JsonRecast Logo" src="{{ '/assets/jsonrecast-adaptive.svg' | relative_url }}">
+    <img class="jr-light-only" alt="JsonRecast Logo" src="{{ '/assets/jsonrecast-adaptive.svg#light' | relative_url }}">
+    <img class="jr-dark-only" alt="JsonRecast Logo" src="{{ '/assets/jsonrecast-adaptive.svg#dark' | relative_url }}">
 </p>
 
 <p align="center">
@@ -34,7 +35,7 @@ JsonRecast is a PHP library for tools that need to read, edit, and rewrite JSON 
 
 ## How It Works
 
-<p align="center">
+<p class="jr-diagram" align="center">
     <img alt="JsonRecast flow: parse JSON into a JsonDocument, optionally traverse it with visitors, then print with the original formatting preserved" src="{{ '/assets/how-it-works.svg' | relative_url }}" width="360">
 </p>
 
